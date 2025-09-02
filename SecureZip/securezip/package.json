@@ -9,15 +9,48 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:securezip.export"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "securezip.helloWorld",
-        "title": "Hello World"
+        "command": "securezip.export",
+        "title": "SecureZip: Export Project"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "SecureZip",
+      "properties": {
+        "secureZip.commitMessageTemplate": {
+          "type": "string",
+          "default": "[SecureZip] エクスポート用の自動コミット: ${date} ${time} (ブランチ: ${branch}, タグ: ${tag})",
+          "description": "自動コミット時のメッセージテンプレート。利用可能変数: ${date}, ${time}, ${datetime}, ${branch}, ${tag}"
+        },
+        "secureZip.tagPrefix": {
+          "type": "string",
+          "default": "export",
+          "description": "自動作成するタグの接頭辞（例: export → export-YYYYMMDD-HHmmss）"
+        },
+        "secureZip.additionalExcludes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "追加で除外したいglobパターン（.gitignoreは自動適用）"
+        },
+        "secureZip.includeNodeModules": {
+          "type": "boolean",
+          "default": false,
+          "description": "node_modules を含めるか（既定では除外）"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "globby": "^14.0.2",
+    "simple-git": "^3.27.0"
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
