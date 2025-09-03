@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "globby": "^14.1.0",
+    "simple-git": "^3.28.0"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.3"
+  }
+}

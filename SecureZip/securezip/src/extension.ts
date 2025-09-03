@@ -5,7 +5,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import archiver from 'archiver';
 import simpleGit, { SimpleGit } from 'simple-git';
-import globby from 'globby';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -99,6 +98,7 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
 
     // 収集するファイル
     progress.report({ message: 'ファイルを収集中…' });
+    const { globby } = await import('globby');
     const ignoreDefaults = [
         '.git',
         '.git/**',
