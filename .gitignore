@@ -86,7 +86,7 @@ build/Release
 *.cert
 
 # VSCode
-.vscode/
+# .vscode/
 .history/
 
 # OS

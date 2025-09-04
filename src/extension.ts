@@ -162,11 +162,11 @@ async function createZip(root: string, files: string[], outFile: string) {
     const closed = new Promise<void>((resolve, reject) => {
         output.on('close', () => resolve());
         output.on('error', reject);
-        archive.on('warning', (err) => {
+        archive.on('warning', (err: Error) => {
             // Non-blocking warnings
             console.warn('[SecureZip] archiver warning:', err);
         });
-        archive.on('error', (err) => reject(err));
+        archive.on('error', (err: Error) => reject(err));
     });
 
     archive.pipe(output);
