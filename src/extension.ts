@@ -23,7 +23,14 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    context.subscriptions.push(disposable);
+    // Status Bar button (bottom). Click to run export.
+    const statusBar = vscode.window.createStatusBarItem('securezip.status', vscode.StatusBarAlignment.Right, 100);
+    statusBar.text = '$(package) SecureZip';
+    statusBar.tooltip = 'プロジェクトをZIPとしてエクスポート';
+    statusBar.command = 'securezip.export';
+    statusBar.show();
+
+    context.subscriptions.push(disposable, statusBar);
 }
 
 // This method is called when your extension is deactivated

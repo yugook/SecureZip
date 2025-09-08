@@ -10,7 +10,9 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:securezip.export"
+    "onCommand:securezip.export",
+    "onStartupFinished",
+    "onView:securezip.view"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -20,6 +22,29 @@
         "title": "SecureZip: Export Project"
       }
     ],
+    "views": {
+      "explorer": [
+        {
+          "id": "securezip.view",
+          "name": "SecureZip"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "securezip.view",
+        "contents": "プロジェクトを安全にZIP化します。\\n[エクスポートを実行](command:securezip.export)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "securezip.export",
+          "when": "view == securezip.view",
+          "group": "navigation@1"
+        }
+      ]
+    },
     "configuration": {
       "title": "SecureZip",
       "properties": {
