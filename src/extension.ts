@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import archiver from 'archiver';
 import simpleGit, { SimpleGit } from 'simple-git';
+import { resolveFlags } from './flags';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -23,14 +24,26 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    // Status Bar button (bottom). Click to run export.
-    const statusBar = vscode.window.createStatusBarItem('securezip.status', vscode.StatusBarAlignment.Right, 100);
-    statusBar.text = '$(package) SecureZip';
-    statusBar.tooltip = 'プロジェクトをZIPとしてエクスポート';
-    statusBar.command = 'securezip.export';
-    statusBar.show();
+    // Feature flags (build-time + settings), then gate the status bar button
+    const cfg = vscode.workspace.getConfiguration('secureZip');
+    const settingsFlags = {
+        enableStatusBarButton: cfg.get<boolean>('flags.enableStatusBarButton') ?? undefined,
+    };
+    // @ts-expect-error injected by esbuild define
+    const buildFlags = typeof __BUILD_FLAGS__ !== 'undefined' ? __BUILD_FLAGS__ : undefined;
+    const flags = resolveFlags({ build: buildFlags, settings: settingsFlags, machineId: vscode.env.machineId });
 
-    context.subscriptions.push(disposable, statusBar);
+    // Status Bar button (bottom). Click to run export.
+    if (flags.enableStatusBarButton) {
+        const statusBar = vscode.window.createStatusBarItem('securezip.status', vscode.StatusBarAlignment.Right, 100);
+        statusBar.text = '$(package) SecureZip';
+        statusBar.tooltip = 'プロジェクトをZIPとしてエクスポート';
+        statusBar.command = 'securezip.export';
+        statusBar.show();
+        context.subscriptions.push(statusBar);
+    }
+
+    context.subscriptions.push(disposable);
 }
 
 // This method is called when your extension is deactivated
