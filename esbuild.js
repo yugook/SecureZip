@@ -36,6 +36,12 @@ async function main() {
 		platform: 'node',
 		outfile: 'dist/extension.js',
 		external: ['vscode'],
+		define: {
+			// Build-time flags injected for tree-shaking and defaults.
+			__BUILD_FLAGS__: JSON.stringify({
+				// You can flip defaults per build here if needed.
+			})
+		},
 		logLevel: 'silent',
 		plugins: [
 			/* add to the end of plugins array */

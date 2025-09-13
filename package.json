@@ -48,6 +48,11 @@
     "configuration": {
       "title": "SecureZip",
       "properties": {
+        "secureZip.flags.enableStatusBarButton": {
+          "type": "boolean",
+          "default": true,
+          "description": "ステータスバーの SecureZip ボタンを表示する"
+        },
         "secureZip.commitMessageTemplate": {
           "type": "string",
           "default": "[SecureZip] エクスポート用の自動コミット: ${date} ${time} (ブランチ: ${branch}, タグ: ${tag})",
