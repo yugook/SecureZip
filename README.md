@@ -10,6 +10,35 @@ Unlike simple “zipper” tools, SecureZip is designed for developers who need 
 - 🧹 **Secure Clean** – Exclude sensitive and unnecessary files (e.g. `.git`, `.env`, SSH keys, logs).
 - 🗂 **Manifest File** – Embed an `__export_manifest.json` with commit ID, tag, and export metadata.
 
+## 🛡 Ignore Rules
+SecureZip respects the following when selecting files to include:
+
+- `.gitignore`: Automatically respected.
+- `.securezipignore`: Project-specific rules to exclude and re-include files for export.
+
+`.securezipignore` syntax (gitignore-like subset):
+
+- `# comment` and empty lines are ignored.
+- `pattern` excludes matches.
+- `!pattern` re-includes matches (overrides only `.securezipignore` excludes; it does not bypass `.gitignore`).
+- `/path` is treated as workspace-root relative.
+- `dir/` matches a directory (expanded to `dir/**`).
+
+Examples:
+
+```
+# Exclude all build outputs
+dist/
+out/
+
+# Exclude all env files, but allow the example
+.env*
+!.env.example
+
+# Keep a specific file inside an excluded folder
+!dist/manifest.json
+```
+
 ## 🔧 Feature Flags
 SecureZip supports lightweight feature flags with both build-time defaults and runtime overrides.
 

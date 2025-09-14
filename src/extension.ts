@@ -6,6 +6,7 @@ import * as path from 'path';
 import archiver from 'archiver';
 import simpleGit, { SimpleGit } from 'simple-git';
 import { resolveFlags } from './flags';
+import { loadSecureZipIgnore } from './ignore';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -131,16 +132,38 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         '**/*.pfx',
     ].filter(Boolean) as string[];
 
+    // Load .securezipignore (root-level). Negated patterns are treated as re-includes after base filtering.
+    const szIgnore = await loadSecureZipIgnore(root);
+
     const patterns = ['**/*', '**/.*'];
+    const baseIgnore = [...ignoreDefaults, ...additionalExcludes, ...szIgnore.excludes];
     const files = await globby(patterns, {
         cwd: root,
         dot: true,
         gitignore: true,
-        ignore: [...ignoreDefaults, ...additionalExcludes],
+        ignore: baseIgnore,
         onlyFiles: true,
         followSymbolicLinks: false,
         absolute: true,
     });
+
+    // Re-include patterns from .securezipignore (does not override .gitignore or hard ignores like .git/**)
+    let finalFiles = files;
+    if (szIgnore.includes.length > 0) {
+        const reincluded = await globby(szIgnore.includes, {
+            cwd: root,
+            dot: true,
+            gitignore: true,
+            // Keep hard ignores; do NOT apply .securezipignore excludes here
+            ignore: ignoreDefaults,
+            onlyFiles: true,
+            followSymbolicLinks: false,
+            absolute: true,
+        });
+        const set = new Set<string>(files);
+        for (const f of reincluded) set.add(f);
+        finalFiles = Array.from(set.values());
+    }
 
     if (files.length === 0) {
         throw new Error('アーカイブ対象のファイルが見つかりません');
@@ -148,7 +171,7 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
 
     // ZIP作成
     progress.report({ message: 'ZIP を作成中…' });
-    await createZip(root, files, targetUri.fsPath);
+    await createZip(root, finalFiles, targetUri.fsPath);
 
     vscode.window.showInformationMessage(`SecureZip 完了: ${path.basename(targetUri.fsPath)}`);
 }
