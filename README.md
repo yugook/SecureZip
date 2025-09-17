@@ -8,7 +8,6 @@ Unlike simple “zipper” tools, SecureZip is designed for developers who need 
 - 🔄 **Auto Commit (optional)** – Automatically commit untracked changes before export.
 - 🏷 **Auto Tagging** – Tag the repository with the export date for easy traceability.
 - 🧹 **Secure Clean** – Exclude sensitive and unnecessary files (e.g. `.git`, `.env`, SSH keys, logs).
-- 🗂 **Manifest File** – Embed an `__export_manifest.json` with commit ID, tag, and export metadata.
 
 ## 🛡 Ignore Rules
 SecureZip respects the following when selecting files to include:
@@ -67,5 +66,6 @@ Example `settings.json` override:
 - Support for multiple archive formats (`.tar.gz`, `.7z`)
 - Custom exclude profiles (`audit`, `distribution`, etc.)
 - Optional password-protected archives
+- 🗂 **Manifest File** – Embed an `__export_manifest.json` with commit ID, tag, and export metadata（将来的な候補）
 
 ---
