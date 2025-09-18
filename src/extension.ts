@@ -75,31 +75,67 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         if (isRepo) {
             const status = await git.status();
             branch = status.current || branch;
-            if (!status.isClean()) {
-                progress.report({ message: 'Git: 変更をコミット中…' });
-                await git.add(['-A']);
-                const commitMessage = renderTemplate(commitTemplate, {
-                    date: fmt.date,
-                    time: fmt.time,
-                    datetime: fmt.datetime,
-                    branch,
-                    tag,
-                });
+
+            const hasPendingChanges = !status.isClean();
+            let shouldAutoCommit = false;
+            let allowTagging = !hasPendingChanges;
+
+            if (hasPendingChanges) {
+                const AUTO_COMMIT_OPTION = '自動コミットして続行';
+                const SKIP_GIT_OPTION = 'Git操作をスキップ';
+                const CANCEL_OPTION = 'キャンセル';
+                const choice = await vscode.window.showWarningMessage(
+                    'Git に未コミットの変更があります。自動コミットを実行しますか？',
+                    { modal: true },
+                    AUTO_COMMIT_OPTION,
+                    SKIP_GIT_OPTION,
+                    CANCEL_OPTION,
+                );
+
+                if (!choice || choice === CANCEL_OPTION) {
+                    vscode.window.showInformationMessage('SecureZip をキャンセルしました。');
+                    return;
+                }
+
+                if (choice === AUTO_COMMIT_OPTION) {
+                    shouldAutoCommit = true;
+                }
+            }
+
+            if (shouldAutoCommit) {
+                progress.report({ message: 'Git: 自動コミットを準備中…' });
                 try {
-                    await git.commit(commitMessage);
+                    await git.add(['--update']);
+                    const stagedDiff = await git.diff(['--cached']);
+                    if (!stagedDiff.trim()) {
+                        vscode.window.showWarningMessage('自動コミット対象の変更が見つかりませんでした。既存ファイルの変更のみがコミット対象です。');
+                    } else {
+                        const commitMessage = renderTemplate(commitTemplate, {
+                            date: fmt.date,
+                            time: fmt.time,
+                            datetime: fmt.datetime,
+                            branch,
+                            tag,
+                        });
+                        await git.commit(commitMessage);
+                        allowTagging = true;
+                    }
                 } catch (e) {
                     console.warn('[SecureZip] commit failed, continue without auto-commit', e);
                     vscode.window.showWarningMessage('自動コミットに失敗しました（署名設定などを確認）。コミットなしで続行します。');
                 }
             }
 
-            // タグ作成（常に試みる）
-            progress.report({ message: 'Git: タグを作成中…' });
-            try {
-                await git.addAnnotatedTag(tag, `SecureZip エクスポート: ${fmt.datetime}`);
-            } catch (e) {
-                console.warn('[SecureZip] tag failed, continue without tag', e);
-                vscode.window.showWarningMessage('タグ作成に失敗しました。タグなしで続行します。');
+            if (allowTagging) {
+                progress.report({ message: 'Git: タグを作成中…' });
+                try {
+                    await git.addAnnotatedTag(tag, `SecureZip エクスポート: ${fmt.datetime}`);
+                } catch (e) {
+                    console.warn('[SecureZip] tag failed, continue without tag', e);
+                    vscode.window.showWarningMessage('タグ作成に失敗しました。タグなしで続行します。');
+                }
+            } else {
+                console.log('[SecureZip] skip tagging because working tree remains dirty');
             }
         }
     } catch (e) {
