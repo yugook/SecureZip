@@ -11,6 +11,9 @@
   ],
   "activationEvents": [
     "onCommand:securezip.export",
+    "onCommand:securezip.addToIgnore",
+    "onCommand:securezip.addPattern",
+    "onCommand:securezip.openIgnoreFile",
     "onStartupFinished",
     "onView:securezip.view"
   ],
@@ -20,6 +23,21 @@
       {
         "command": "securezip.export",
         "title": "SecureZip: Export Project"
+      },
+      {
+        "command": "securezip.addToIgnore",
+        "title": "SecureZip: .securezipignore に追加",
+        "category": "SecureZip"
+      },
+      {
+        "command": "securezip.addPattern",
+        "title": "SecureZip: パターンを追加",
+        "category": "SecureZip"
+      },
+      {
+        "command": "securezip.openIgnoreFile",
+        "title": "SecureZip: .securezipignore を開く",
+        "category": "SecureZip"
       }
     ],
     "views": {
@@ -37,11 +55,30 @@
       }
     ],
     "menus": {
+      "explorer/context": [
+        {
+          "command": "securezip.addToIgnore",
+          "when": "resourceScheme == file",
+          "group": "securezip@1"
+        }
+      ],
       "view/title": [
         {
           "command": "securezip.export",
           "when": "view == securezip.view",
           "group": "navigation@1"
+        },
+        {
+          "command": "securezip.openIgnoreFile",
+          "when": "view == securezip.view",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "securezip.addPattern",
+          "when": "view == securezip.view && viewItem == securezip.suggestion",
+          "group": "inline"
         }
       ]
     },

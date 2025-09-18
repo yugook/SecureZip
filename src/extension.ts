@@ -6,11 +6,13 @@ import * as path from 'path';
 import archiver from 'archiver';
 import simpleGit, { SimpleGit } from 'simple-git';
 import { resolveFlags } from './flags';
-import { loadSecureZipIgnore } from './ignore';
+import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } from './ignore';
+import { SecureZipViewProvider, ensureSecureZipIgnoreFile } from './view';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+    extensionContext = context;
     console.log('[SecureZip] activated.');
 
     const disposable = vscode.commands.registerCommand('securezip.export', async () => {
@@ -22,6 +24,52 @@ export function activate(context: vscode.ExtensionContext) {
         } catch (err: any) {
             console.error('[SecureZip] export failed', err);
             vscode.window.showErrorMessage(`SecureZip 失敗: ${err?.message ?? err}`);
+        }
+    });
+
+    const addToIgnore = vscode.commands.registerCommand('securezip.addToIgnore', async (target?: vscode.Uri) => {
+        try {
+            await handleAddToIgnore(target);
+        } catch (err: any) {
+            console.error('[SecureZip] addToIgnore failed', err);
+            vscode.window.showErrorMessage(`.securezipignore への追加に失敗しました: ${err?.message ?? err}`);
+        }
+    });
+
+    const addPattern = vscode.commands.registerCommand('securezip.addPattern', async (pattern: string, root?: string) => {
+        try {
+            if (typeof pattern !== 'string') {
+                vscode.window.showWarningMessage('パターンを解決できませんでした');
+                return;
+            }
+            const result = await applyIgnorePatterns([pattern], root);
+            if (result) {
+                showAddResult(result);
+            }
+        } catch (err: any) {
+            console.error('[SecureZip] addPattern failed', err);
+            vscode.window.showErrorMessage(`パターン追加に失敗しました: ${err?.message ?? err}`);
+        }
+    });
+
+    const openIgnore = vscode.commands.registerCommand('securezip.openIgnoreFile', async (target?: vscode.Uri) => {
+        const ws = vscode.workspace.workspaceFolders?.[0];
+        if (!ws) {
+            vscode.window.showErrorMessage('ワークスペースが開かれていません');
+            return;
+        }
+        const root = ws.uri.fsPath;
+        try {
+            await ensureSecureZipIgnoreFile(root);
+            const documentUri = target?.fsPath
+                ? target
+                : vscode.Uri.file(path.join(root, '.securezipignore'));
+            const doc = await vscode.workspace.openTextDocument(documentUri);
+            await vscode.window.showTextDocument(doc, { preview: false });
+            treeProvider?.refresh();
+        } catch (err: any) {
+            console.error('[SecureZip] openIgnoreFile failed', err);
+            vscode.window.showErrorMessage(`.securezipignore を開けませんでした: ${err?.message ?? err}`);
         }
     });
 
@@ -44,11 +92,17 @@ export function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(statusBar);
     }
 
-    context.subscriptions.push(disposable);
+    treeProvider = new SecureZipViewProvider(context);
+    const treeRegistration = vscode.window.registerTreeDataProvider('securezip.view', treeProvider);
+
+    context.subscriptions.push(disposable, addToIgnore, addPattern, openIgnore, treeProvider, treeRegistration);
 }
 
 // This method is called when your extension is deactivated
 export function deactivate() {}
+
+let extensionContext: vscode.ExtensionContext | undefined;
+let treeProvider: SecureZipViewProvider | undefined;
 
 async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     const ws = vscode.workspace.workspaceFolders?.[0];
@@ -168,6 +222,8 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         '**/*.pfx',
     ].filter(Boolean) as string[];
 
+    void treeProvider?.recordLastExport(ignoreDefaults);
+
     // Load .securezipignore (root-level). Negated patterns are treated as re-includes after base filtering.
     const szIgnore = await loadSecureZipIgnore(root);
 
@@ -210,6 +266,163 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     await createZip(root, finalFiles, targetUri.fsPath);
 
     vscode.window.showInformationMessage(`SecureZip 完了: ${path.basename(targetUri.fsPath)}`);
+}
+
+async function handleAddToIgnore(target?: vscode.Uri) {
+    const ws = vscode.workspace.workspaceFolders?.[0];
+    if (!ws) {
+        vscode.window.showErrorMessage('ワークスペースが開かれていません');
+        return;
+    }
+
+    let resource = target;
+    if (!resource) {
+        const picked = await vscode.window.showOpenDialog({
+            canSelectFiles: true,
+            canSelectFolders: true,
+            canSelectMany: false,
+            title: '.securezipignore に追加するリソースを選択',
+            openLabel: '追加',
+        });
+        if (!picked || picked.length === 0) {
+            return;
+        }
+        resource = picked[0];
+    }
+
+    if (resource.scheme !== 'file') {
+        vscode.window.showWarningMessage('ファイルシステム上の項目のみ追加できます');
+        return;
+    }
+
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(resource);
+    if (!workspaceFolder) {
+        vscode.window.showWarningMessage('ワークスペース外の項目は追加できません');
+        return;
+    }
+
+    const stat = await fs.promises.stat(resource.fsPath);
+    const relativeRaw = vscode.workspace.asRelativePath(resource, false);
+    if (!relativeRaw) {
+        vscode.window.showWarningMessage('相対パスを解決できませんでした');
+        return;
+    }
+
+    const relative = relativeRaw.replace(/\\+/g, '/');
+    if (!relative || relative.startsWith('..')) {
+        vscode.window.showWarningMessage('ワークスペース配下のリソースを選択してください');
+        return;
+    }
+
+    const suggestions = new Map<string, vscode.QuickPickItem & { pattern: string }>();
+    const baseLabel = stat.isDirectory() ? `${relative.replace(/\/+$/g, '')}` : relative;
+
+    if (stat.isDirectory()) {
+        suggestions.set(`${baseLabel}/`, {
+            label: `${baseLabel}/`,
+            description: 'ディレクトリ全体を除外',
+            pattern: `${baseLabel}/`,
+        });
+        suggestions.set(`${baseLabel}/**`, {
+            label: `${baseLabel}/**`,
+            description: 'ディレクトリ以下を再帰的に除外',
+            pattern: `${baseLabel}/**`,
+        });
+    } else {
+        suggestions.set(baseLabel, {
+            label: baseLabel,
+            description: 'ファイルを除外',
+            pattern: baseLabel,
+        });
+    }
+
+    const segments = baseLabel.split('/');
+    if (segments.some((seg) => seg.startsWith('.'))) {
+        suggestions.set('**/.*', {
+            label: '**/.*',
+            description: '隠しファイル全体を除外',
+            pattern: '**/.*',
+        });
+    }
+
+    const pickItems: (vscode.QuickPickItem & { pattern?: string; custom?: boolean })[] = Array.from(suggestions.values());
+    pickItems.push({
+        label: 'パターンを手動で入力…',
+        description: '.securezipignore に追加するパターンを入力します',
+        alwaysShow: true,
+        custom: true,
+    });
+
+    const selected = await vscode.window.showQuickPick(pickItems, {
+        placeHolder: `${relative} を .securezipignore に追加`,
+    });
+
+    if (!selected) {
+        return;
+    }
+
+    let patternValue = selected.pattern;
+    if (selected.custom) {
+        const firstSuggestion = suggestions.values().next().value;
+        patternValue = await vscode.window.showInputBox({
+            prompt: '.securezipignore に書き込むパターンを入力してください',
+            value: firstSuggestion?.pattern ?? baseLabel,
+            validateInput: (value) => {
+                if (!value.trim()) {
+                    return 'パターンを入力してください';
+                }
+                return undefined;
+            },
+        });
+    }
+
+    const pattern = patternValue?.trim();
+    if (!pattern) {
+        return;
+    }
+
+    const result = await applyIgnorePatterns([pattern], workspaceFolder.uri.fsPath);
+    if (result) {
+        showAddResult(result);
+    }
+}
+
+async function applyIgnorePatterns(patterns: string[], rootOverride?: string): Promise<AddPatternResult | undefined> {
+    let targetRoot = rootOverride;
+    if (!targetRoot) {
+        const ws = vscode.workspace.workspaceFolders?.[0];
+        if (!ws) {
+            vscode.window.showErrorMessage('ワークスペースが開かれていません');
+            return undefined;
+        }
+        targetRoot = ws.uri.fsPath;
+    }
+
+    const result = await addPatternsToSecureZipIgnore(targetRoot, patterns);
+    if (result.added.length > 0) {
+        treeProvider?.refresh();
+    }
+    return result;
+}
+
+function showAddResult(result: AddPatternResult) {
+    if (result.added.length === 1) {
+        vscode.window.showInformationMessage(`${result.added[0]} を .securezipignore に追加しました`);
+    } else if (result.added.length > 1) {
+        vscode.window.showInformationMessage(`${result.added.length} 件のパターンを .securezipignore に追加しました`);
+    }
+
+    const duplicates = result.skipped.filter((s) => s.reason === 'duplicate');
+    if (duplicates.length > 0) {
+        const list = duplicates.map((d) => d.pattern).join(', ');
+        vscode.window.showWarningMessage(`${list} は既に登録されています`);
+    }
+
+    const invalids = result.skipped.filter((s) => s.reason === 'invalid');
+    if (invalids.length > 0) {
+        const list = invalids.map((d) => d.pattern).join(', ');
+        vscode.window.showWarningMessage(`${list} は無効なパターンです`);
+    }
 }
 
 function renderTemplate(tpl: string, vars: Record<string, string>): string {
