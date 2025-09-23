@@ -33,6 +33,13 @@
       "group": "build"
     },
     {
+      "label": "vsce: package",
+      "type": "shell",
+      "command": "npx",
+      "args": ["vsce", "package"],
+      "group": "build"
+    },
+    {
       "label": "pretest",
       "type": "npm",
       "script": "pretest",
