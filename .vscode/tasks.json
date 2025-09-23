@@ -27,6 +27,12 @@
       "group": "build"
     },
     {
+      "label": "package",
+      "type": "npm",
+      "script": "package",
+      "group": "build"
+    },
+    {
       "label": "pretest",
       "type": "npm",
       "script": "pretest",
