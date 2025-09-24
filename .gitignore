@@ -73,6 +73,7 @@ build/Release
 
 # npm pack output
 *.tgz
+*.vsix
 
 # Env
 .env
