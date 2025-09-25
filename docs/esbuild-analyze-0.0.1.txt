@@ -1,0 +1,2926 @@
+
+  extension.js ───────────────────────────────────────────────────────────────────────────────────────────── 1.8mb ─ 100.0%
+   ├ node_modules/simple-git/dist/esm/index.js ─────────────────────────────────────────────────────────── 129.4kb ─── 7.1%
+   │  └ src/extension.ts
+   ├ node_modules/async/dist/async.js ───────────────────────────────────────────────────────────────────── 61.6kb ─── 3.4%
+   │  └ node_modules/archiver/lib/core.js
+   │     └ node_modules/archiver/index.js
+   │        └ src/extension.ts
+   ├ node_modules/path-scurry/dist/commonjs/index.js ────────────────────────────────────────────────────── 55.9kb ─── 3.1%
+   │  └ node_modules/glob/dist/commonjs/glob.js
+   │     └ node_modules/glob/dist/commonjs/index.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lru-cache/dist/commonjs/index.js ──────────────────────────────────────────────────────── 46.5kb ─── 2.6%
+   │  └ node_modules/path-scurry/dist/commonjs/index.js
+   │     └ node_modules/glob/dist/commonjs/glob.js
+   │        └ node_modules/glob/dist/commonjs/index.js
+   │           └ node_modules/archiver-utils/file.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/streamx/index.js ──────────────────────────────────────────────────────────────────────── 34.9kb ─── 1.9%
+   │  └ node_modules/tar-stream/pack.js
+   │     └ node_modules/tar-stream/index.js
+   │        └ node_modules/archiver/lib/plugins/tar.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/readable.js ────────── 32.7kb ─── 1.8%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/readable.js ────────────── 32.7kb ─── 1.8%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/readable.js ────────────────── 32.7kb ─── 1.8%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/readable.js ──────────── 32.7kb ─── 1.8%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/minipass/dist/commonjs/index.js ───────────────────────────────────────────────────────── 29.3kb ─── 1.6%
+   │  └ node_modules/glob/dist/commonjs/walker.js
+   │     └ node_modules/glob/dist/commonjs/glob.js
+   │        └ node_modules/glob/dist/commonjs/index.js
+   │           └ node_modules/archiver-utils/file.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/minimatch/dist/commonjs/index.js ──────────────────────────────────────────────────────── 28.1kb ─── 1.5%
+   │  └ node_modules/glob/dist/commonjs/index.js
+   │     └ node_modules/archiver-utils/file.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/picomatch/lib/parse.js ────────────────────────────────────────────────────────────────── 27.0kb ─── 1.5%
+   │  └ node_modules/picomatch/lib/picomatch.js
+   │     └ node_modules/picomatch/index.js
+   │        └ node_modules/micromatch/index.js
+   │           └ node_modules/fast-glob/out/utils/pattern.js
+   │              └ node_modules/fast-glob/out/utils/index.js
+   │                 └ node_modules/fast-glob/out/index.js
+   │                    └ node_modules/globby/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/readable-stream/lib/_stream_readable.js ───────────────────────────────────────────────── 22.6kb ─── 1.2%
+   │  └ node_modules/readable-stream/readable.js
+   │     └ node_modules/readable-stream/passthrough.js
+   │        └ node_modules/lazystream/lib/lazystream.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/writable.js ────────── 20.5kb ─── 1.1%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/writable.js ────────────── 20.5kb ─── 1.1%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/writable.js ────────────────── 20.5kb ─── 1.1%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/writable.js ──────────── 20.5kb ─── 1.1%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ src/extension.ts ───────────────────────────────────────────────────────────────────────────────────── 19.4kb ─── 1.1%
+   ├ node_modules/readdir-glob/node_modules/minimatch/minimatch.js ──────────────────────────────────────── 19.3kb ─── 1.1%
+   │  └ node_modules/readdir-glob/index.js
+   │     └ node_modules/archiver/lib/core.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ src/view.ts ────────────────────────────────────────────────────────────────────────────────────────── 19.0kb ─── 1.0%
+   │  └ src/extension.ts
+   ├ node_modules/minimatch/dist/commonjs/ast.js ────────────────────────────────────────────────────────── 17.4kb ─── 1.0%
+   │  └ node_modules/minimatch/dist/commonjs/index.js
+   │     └ node_modules/glob/dist/commonjs/index.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/archiver/lib/core.js ──────────────────────────────────────────────────────────────────── 16.9kb ─── 0.9%
+   │  └ node_modules/archiver/index.js
+   │     └ src/extension.ts
+   ├ node_modules/event-target-shim/dist/event-target-shim.js ───────────────────────────────────────────── 16.8kb ─── 0.9%
+   │  └ node_modules/abort-controller/dist/abort-controller.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/pipeline.js
+   │        └ node_modules/archiver/node_modules/readable-stream/lib/stream/promises.js
+   │           └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/ignore/index.js ───────────────────────────────────────────────────────────────────────── 15.1kb ─── 0.8%
+   │  └ node_modules/globby/ignore.js
+   │     └ node_modules/globby/index.js
+   │        └ src/extension.ts
+   ├ node_modules/readable-stream/lib/_stream_writable.js ───────────────────────────────────────────────── 14.7kb ─── 0.8%
+   │  └ node_modules/readable-stream/readable.js
+   │     └ node_modules/readable-stream/passthrough.js
+   │        └ node_modules/lazystream/lib/lazystream.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/operators.js ───────── 13.5kb ─── 0.7%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/operators.js ───────────── 13.4kb ─── 0.7%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/operators.js ───────────────── 13.4kb ─── 0.7%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/operators.js ─────────── 13.4kb ─── 0.7%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/pipeline.js ────────── 12.6kb ─── 0.7%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/pipeline.js ────────────── 12.6kb ─── 0.7%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/pipeline.js ────────────────── 12.6kb ─── 0.7%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/pipeline.js ──────────── 12.6kb ─── 0.7%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/graceful-fs/graceful-fs.js ────────────────────────────────────────────────────────────── 12.2kb ─── 0.7%
+   │  └ node_modules/archiver-utils/index.js
+   │     └ node_modules/archiver/lib/plugins/json.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js ───────────────────────── 11.3kb ─── 0.6%
+   │  └ node_modules/compress-commons/lib/compress-commons.js
+   │     └ node_modules/zip-stream/index.js
+   │        └ node_modules/archiver/lib/plugins/zip.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/glob/dist/commonjs/walker.js ──────────────────────────────────────────────────────────── 11.1kb ─── 0.6%
+   │  └ node_modules/glob/dist/commonjs/glob.js
+   │     └ node_modules/glob/dist/commonjs/index.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/utils.js ───────────── 10.9kb ─── 0.6%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/utils.js ─────────────── 10.9kb ─── 0.6%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/utils.js ───────────────── 10.9kb ─── 0.6%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/utils.js ───────────────────── 10.9kb ─── 0.6%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/ours/errors.js ──────────────────────── 10.6kb ─── 0.6%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/errors.js ──────────────────────────── 10.6kb ─── 0.6%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/errors.js ────────────────────────── 10.6kb ─── 0.6%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/ours/errors.js ──────────────────────────────── 10.6kb ─── 0.6%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/tar-stream/extract.js ─────────────────────────────────────────────────────────────────── 10.4kb ─── 0.6%
+   │  └ node_modules/tar-stream/index.js
+   │     └ node_modules/archiver/lib/plugins/tar.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/validators.js ──────────────── 10.1kb ─── 0.6%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/end-of-stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/stream/promises.js
+   │        └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │              └ node_modules/compress-commons/lib/compress-commons.js
+   │                 └ node_modules/zip-stream/index.js
+   │                    └ node_modules/archiver/lib/plugins/zip.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/validators.js ──────────────────── 10.1kb ─── 0.6%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/end-of-stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream/promises.js
+   │        └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/crc32-stream/lib/crc32-stream.js
+   │              └ node_modules/crc32-stream/lib/index.js
+   │                 └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                    └ node_modules/compress-commons/lib/compress-commons.js
+   │                       └ node_modules/zip-stream/index.js
+   │                          └ node_modules/archiver/lib/plugins/zip.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/validators.js ────────────────── 10.1kb ─── 0.6%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/end-of-stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream/promises.js
+   │        └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/validators.js ──────────────────────── 10.1kb ─── 0.6%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/end-of-stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/stream/promises.js
+   │        └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/duplexify.js ────────── 9.9kb ─── 0.5%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/duplex.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │              └ node_modules/compress-commons/lib/compress-commons.js
+   │                 └ node_modules/zip-stream/index.js
+   │                    └ node_modules/archiver/lib/plugins/zip.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/duplexify.js ────────────── 9.9kb ─── 0.5%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/duplex.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/crc32-stream/lib/crc32-stream.js
+   │              └ node_modules/crc32-stream/lib/index.js
+   │                 └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                    └ node_modules/compress-commons/lib/compress-commons.js
+   │                       └ node_modules/zip-stream/index.js
+   │                          └ node_modules/archiver/lib/plugins/zip.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/duplexify.js ────────────────── 9.9kb ─── 0.5%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/duplex.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/duplexify.js ──────────── 9.9kb ─── 0.5%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/duplex.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/picomatch/lib/scan.js ──────────────────────────────────────────────────────────────────── 9.5kb ─── 0.5%
+   │  └ node_modules/picomatch/lib/picomatch.js
+   │     └ node_modules/picomatch/index.js
+   │        └ node_modules/micromatch/index.js
+   │           └ node_modules/fast-glob/out/utils/pattern.js
+   │              └ node_modules/fast-glob/out/utils/index.js
+   │                 └ node_modules/fast-glob/out/index.js
+   │                    └ node_modules/globby/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/globby/index.js ────────────────────────────────────────────────────────────────────────── 9.3kb ─── 0.5%
+   │  └ src/extension.ts
+   ├ node_modules/graceful-fs/polyfills.js ───────────────────────────────────────────────────────────────── 9.2kb ─── 0.5%
+   │  └ node_modules/graceful-fs/graceful-fs.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/end-of-stream.js ────── 8.8kb ─── 0.5%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/end-of-stream.js ────────── 8.8kb ─── 0.5%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/end-of-stream.js ──────── 8.8kb ─── 0.5%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/end-of-stream.js ────────────── 8.8kb ─── 0.5%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/tar-stream/headers.js ──────────────────────────────────────────────────────────────────── 8.7kb ─── 0.5%
+   │  └ node_modules/tar-stream/pack.js
+   │     └ node_modules/tar-stream/index.js
+   │        └ node_modules/archiver/lib/plugins/tar.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/glob/dist/commonjs/processor.js ────────────────────────────────────────────────────────── 7.7kb ─── 0.4%
+   │  └ node_modules/glob/dist/commonjs/walker.js
+   │     └ node_modules/glob/dist/commonjs/glob.js
+   │        └ node_modules/glob/dist/commonjs/index.js
+   │           └ node_modules/archiver-utils/file.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/readdir-glob/index.js ──────────────────────────────────────────────────────────────────── 7.4kb ─── 0.4%
+   │  └ node_modules/archiver/lib/core.js
+   │     └ node_modules/archiver/index.js
+   │        └ src/extension.ts
+   ├ node_modules/glob/dist/commonjs/glob.js ─────────────────────────────────────────────────────────────── 7.3kb ─── 0.4%
+   │  └ node_modules/glob/dist/commonjs/index.js
+   │     └ node_modules/archiver-utils/file.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/tar-stream/pack.js ─────────────────────────────────────────────────────────────────────── 7.2kb ─── 0.4%
+   │  └ node_modules/tar-stream/index.js
+   │     └ node_modules/archiver/lib/plugins/tar.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/destroy.js ──────────── 7.2kb ─── 0.4%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/destroy.js ──────────────── 7.2kb ─── 0.4%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/destroy.js ────────────── 7.2kb ─── 0.4%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/destroy.js ──────────────────── 7.2kb ─── 0.4%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/fast-glob/out/utils/pattern.js ─────────────────────────────────────────────────────────── 7.1kb ─── 0.4%
+   │  └ node_modules/fast-glob/out/utils/index.js
+   │     └ node_modules/fast-glob/out/index.js
+   │        └ node_modules/globby/index.js
+   │           └ src/extension.ts
+   ├ node_modules/braces/lib/parse.js ────────────────────────────────────────────────────────────────────── 7.0kb ─── 0.4%
+   │  └ node_modules/braces/index.js
+   │     └ node_modules/micromatch/index.js
+   │        └ node_modules/fast-glob/out/utils/pattern.js
+   │           └ node_modules/fast-glob/out/utils/index.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/string_decoder/lib/string_decoder.js ─────────────────────── 7.0kb ─── 0.4%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │              └ node_modules/compress-commons/lib/compress-commons.js
+   │                 └ node_modules/zip-stream/index.js
+   │                    └ node_modules/archiver/lib/plugins/zip.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/string_decoder/lib/string_decoder.js ───────────────────────── 7.0kb ─── 0.4%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/string_decoder/lib/string_decoder.js ─────────────────────────── 7.0kb ─── 0.4%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/crc32-stream/lib/crc32-stream.js
+   │              └ node_modules/crc32-stream/lib/index.js
+   │                 └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                    └ node_modules/compress-commons/lib/compress-commons.js
+   │                       └ node_modules/zip-stream/index.js
+   │                          └ node_modules/archiver/lib/plugins/zip.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/archiver/node_modules/string_decoder/lib/string_decoder.js ─────────────────────────────── 7.0kb ─── 0.4%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/string_decoder/lib/string_decoder.js ───────────────────────────────────────────────────── 7.0kb ─── 0.4%
+   │  └ node_modules/readable-stream/lib/_stream_readable.js
+   │     └ node_modules/readable-stream/readable.js
+   │        └ node_modules/readable-stream/passthrough.js
+   │           └ node_modules/lazystream/lib/lazystream.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/fastq/queue.js ─────────────────────────────────────────────────────────────────────────── 6.9kb ─── 0.4%
+   │  └ node_modules/@nodelib/fs.walk/out/readers/async.js
+   │     └ node_modules/@nodelib/fs.walk/out/providers/stream.js
+   │        └ node_modules/@nodelib/fs.walk/out/index.js
+   │           └ node_modules/fast-glob/out/readers/sync.js
+   │              └ node_modules/fast-glob/out/providers/sync.js
+   │                 └ node_modules/fast-glob/out/index.js
+   │                    └ node_modules/globby/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/fill-range/index.js ────────────────────────────────────────────────────────────────────── 6.8kb ─── 0.4%
+   │  └ node_modules/braces/lib/expand.js
+   │     └ node_modules/braces/index.js
+   │        └ node_modules/micromatch/index.js
+   │           └ node_modules/fast-glob/out/utils/pattern.js
+   │              └ node_modules/fast-glob/out/utils/index.js
+   │                 └ node_modules/fast-glob/out/index.js
+   │                    └ node_modules/globby/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/to-regex-range/index.js ────────────────────────────────────────────────────────────────── 6.8kb ─── 0.4%
+   │  └ node_modules/fill-range/index.js
+   │     └ node_modules/braces/lib/expand.js
+   │        └ node_modules/braces/index.js
+   │           └ node_modules/micromatch/index.js
+   │              └ node_modules/fast-glob/out/utils/pattern.js
+   │                 └ node_modules/fast-glob/out/utils/index.js
+   │                    └ node_modules/fast-glob/out/index.js
+   │                       └ node_modules/globby/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/@sindresorhus/merge-streams/index.js ───────────────────────────────────────────────────── 6.5kb ─── 0.4%
+   │  └ node_modules/globby/index.js
+   │     └ src/extension.ts
+   ├ node_modules/glob/dist/commonjs/pattern.js ──────────────────────────────────────────────────────────── 6.1kb ─── 0.3%
+   │  └ node_modules/glob/dist/commonjs/ignore.js
+   │     └ node_modules/glob/dist/commonjs/index.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/compress-commons/lib/archivers/zip/zip-archive-entry.js ────────────────────────────────── 6.0kb ─── 0.3%
+   │  └ node_modules/compress-commons/lib/compress-commons.js
+   │     └ node_modules/zip-stream/index.js
+   │        └ node_modules/archiver/lib/plugins/zip.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/buffer-crc32/dist/index.cjs ────────────────────────────────────────────────────────────── 5.9kb ─── 0.3%
+   │  └ node_modules/archiver/lib/plugins/json.js
+   │     └ node_modules/archiver/index.js
+   │        └ src/extension.ts
+   ├ node_modules/micromatch/index.js ────────────────────────────────────────────────────────────────────── 5.8kb ─── 0.3%
+   │  └ node_modules/fast-glob/out/utils/pattern.js
+   │     └ node_modules/fast-glob/out/utils/index.js
+   │        └ node_modules/fast-glob/out/index.js
+   │           └ node_modules/globby/index.js
+   │              └ src/extension.ts
+   ├ node_modules/debug/src/common.js ────────────────────────────────────────────────────────────────────── 5.8kb ─── 0.3%
+   │  └ node_modules/debug/src/node.js
+   │     └ node_modules/debug/src/index.js
+   │        └ node_modules/simple-git/dist/esm/index.js
+   │           └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/compose.js ──────────── 5.8kb ─── 0.3%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/compose.js ──────────────── 5.8kb ─── 0.3%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/compose.js ────────────── 5.8kb ─── 0.3%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/compose.js ──────────────────── 5.8kb ─── 0.3%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/picomatch/lib/picomatch.js ─────────────────────────────────────────────────────────────── 5.3kb ─── 0.3%
+   │  └ node_modules/picomatch/index.js
+   │     └ node_modules/micromatch/index.js
+   │        └ node_modules/fast-glob/out/utils/pattern.js
+   │           └ node_modules/fast-glob/out/utils/index.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/picomatch/lib/constants.js ─────────────────────────────────────────────────────────────── 5.1kb ─── 0.3%
+   │  └ node_modules/picomatch/lib/utils.js
+   │     └ node_modules/micromatch/index.js
+   │        └ node_modules/fast-glob/out/utils/pattern.js
+   │           └ node_modules/fast-glob/out/utils/index.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/archiver-utils/file.js ─────────────────────────────────────────────────────────────────── 4.7kb ─── 0.3%
+   │  └ node_modules/archiver-utils/index.js
+   │     └ node_modules/archiver/lib/plugins/json.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/brace-expansion/index.js ───────────────────────────────────────────────────────────────── 4.7kb ─── 0.3%
+   │  └ node_modules/readdir-glob/node_modules/minimatch/minimatch.js
+   │     └ node_modules/readdir-glob/index.js
+   │        └ node_modules/archiver/lib/core.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/b4a/index.js ───────────────────────────────────────────────────────────────────────────── 4.6kb ─── 0.3%
+   │  └ node_modules/tar-stream/pack.js
+   │     └ node_modules/tar-stream/index.js
+   │        └ node_modules/archiver/lib/plugins/tar.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/debug/src/browser.js ───────────────────────────────────────────────────────────────────── 4.6kb ─── 0.3%
+   │  └ node_modules/debug/src/index.js
+   │     └ node_modules/simple-git/dist/esm/index.js
+   │        └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/buffer_list.js ──────── 4.5kb ─── 0.2%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │              └ node_modules/compress-commons/lib/compress-commons.js
+   │                 └ node_modules/zip-stream/index.js
+   │                    └ node_modules/archiver/lib/plugins/zip.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/buffer_list.js ────────── 4.5kb ─── 0.2%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/buffer_list.js ──────────── 4.5kb ─── 0.2%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/crc32-stream/lib/crc32-stream.js
+   │              └ node_modules/crc32-stream/lib/index.js
+   │                 └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                    └ node_modules/compress-commons/lib/compress-commons.js
+   │                       └ node_modules/zip-stream/index.js
+   │                          └ node_modules/archiver/lib/plugins/zip.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/buffer_list.js ──────────────── 4.5kb ─── 0.2%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/debug/src/node.js ──────────────────────────────────────────────────────────────────────── 4.3kb ─── 0.2%
+   │  └ node_modules/debug/src/index.js
+   │     └ node_modules/simple-git/dist/esm/index.js
+   │        └ src/extension.ts
+   ├ node_modules/fast-glob/out/managers/tasks.js ────────────────────────────────────────────────────────── 4.3kb ─── 0.2%
+   │  └ node_modules/fast-glob/out/index.js
+   │     └ node_modules/globby/index.js
+   │        └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/ours/util.js ─────────────────────────── 4.2kb ─── 0.2%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/util.js ─────────────────────────────── 4.2kb ─── 0.2%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/util.js ───────────────────────────── 4.2kb ─── 0.2%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/ours/util.js ─────────────────────────────────── 4.2kb ─── 0.2%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/supports-color/index.js ────────────────────────────────────────────────────────────────── 4.0kb ─── 0.2%
+   │  └ node_modules/debug/src/node.js
+   │     └ node_modules/debug/src/index.js
+   │        └ node_modules/simple-git/dist/esm/index.js
+   │           └ src/extension.ts
+   ├ node_modules/is-glob/index.js ───────────────────────────────────────────────────────────────────────── 3.9kb ─── 0.2%
+   │  └ node_modules/glob-parent/index.js
+   │     └ node_modules/fast-glob/out/utils/pattern.js
+   │        └ node_modules/fast-glob/out/utils/index.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/globby/ignore.js ───────────────────────────────────────────────────────────────────────── 3.9kb ─── 0.2%
+   │  └ node_modules/globby/index.js
+   │     └ src/extension.ts
+   ├ node_modules/crc-32/crc32.js ────────────────────────────────────────────────────────────────────────── 3.9kb ─── 0.2%
+   │  └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │     └ node_modules/compress-commons/lib/compress-commons.js
+   │        └ node_modules/zip-stream/index.js
+   │           └ node_modules/archiver/lib/plugins/zip.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/duplex.js ───────────── 3.8kb ─── 0.2%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/duplex.js ───────────────── 3.8kb ─── 0.2%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/duplex.js ─────────────── 3.8kb ─── 0.2%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/duplex.js ───────────────────── 3.8kb ─── 0.2%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/fast-glob/out/index.js ─────────────────────────────────────────────────────────────────── 3.8kb ─── 0.2%
+   │  └ node_modules/globby/index.js
+   │     └ src/extension.ts
+   ├ node_modules/minimatch/dist/commonjs/brace-expressions.js ───────────────────────────────────────────── 3.8kb ─── 0.2%
+   │  └ node_modules/minimatch/dist/commonjs/ast.js
+   │     └ node_modules/minimatch/dist/commonjs/index.js
+   │        └ node_modules/glob/dist/commonjs/index.js
+   │           └ node_modules/archiver-utils/file.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js ────────────────────────────── 3.8kb ─── 0.2%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │     └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │        └ node_modules/compress-commons/lib/compress-commons.js
+   │           └ node_modules/zip-stream/index.js
+   │              └ node_modules/archiver/lib/plugins/zip.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js ────────────────────────────────── 3.8kb ─── 0.2%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │     └ node_modules/crc32-stream/lib/crc32-stream.js
+   │        └ node_modules/crc32-stream/lib/index.js
+   │           └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │              └ node_modules/compress-commons/lib/compress-commons.js
+   │                 └ node_modules/zip-stream/index.js
+   │                    └ node_modules/archiver/lib/plugins/zip.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/stream.js ────────────────────────────────────── 3.8kb ─── 0.2%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │     └ node_modules/archiver/lib/plugins/json.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js ──────────────────────────────── 3.8kb ─── 0.2%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/@nodelib/fs.scandir/out/providers/async.js ─────────────────────────────────────────────── 3.6kb ─── 0.2%
+   │  └ node_modules/@nodelib/fs.scandir/out/index.js
+   │     └ node_modules/@nodelib/fs.walk/out/settings.js
+   │        └ node_modules/@nodelib/fs.walk/out/index.js
+   │           └ node_modules/fast-glob/out/readers/sync.js
+   │              └ node_modules/fast-glob/out/providers/sync.js
+   │                 └ node_modules/fast-glob/out/index.js
+   │                    └ node_modules/globby/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/archiver-utils/index.js ────────────────────────────────────────────────────────────────── 3.6kb ─── 0.2%
+   │  └ node_modules/archiver/lib/plugins/json.js
+   │     └ node_modules/archiver/index.js
+   │        └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/ours/primordials.js ──────────────────── 3.6kb ─── 0.2%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/zip-stream/index.js ────────────────────────────────────────────────────────────────────── 3.6kb ─── 0.2%
+   │  └ node_modules/archiver/lib/plugins/zip.js
+   │     └ node_modules/archiver/index.js
+   │        └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/primordials.js ────────────────────── 3.6kb ─── 0.2%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/primordials.js ──────────────────────── 3.6kb ─── 0.2%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/ours/primordials.js ──────────────────────────── 3.6kb ─── 0.2%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream/promises.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/fast-glob/out/providers/filters/entry.js ───────────────────────────────────────────────── 3.4kb ─── 0.2%
+   │  └ node_modules/fast-glob/out/providers/provider.js
+   │     └ node_modules/fast-glob/out/providers/sync.js
+   │        └ node_modules/fast-glob/out/index.js
+   │           └ node_modules/globby/index.js
+   │              └ src/extension.ts
+   ├ node_modules/merge2/index.js ────────────────────────────────────────────────────────────────────────── 3.4kb ─── 0.2%
+   │  └ node_modules/fast-glob/out/utils/stream.js
+   │     └ node_modules/fast-glob/out/utils/index.js
+   │        └ node_modules/fast-glob/out/index.js
+   │           └ node_modules/globby/index.js
+   │              └ src/extension.ts
+   ├ node_modules/readable-stream/lib/_stream_transform.js ───────────────────────────────────────────────── 3.4kb ─── 0.2%
+   │  └ node_modules/readable-stream/readable.js
+   │     └ node_modules/readable-stream/passthrough.js
+   │        └ node_modules/lazystream/lib/lazystream.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/transform.js ────────── 3.3kb ─── 0.2%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/abort-controller/dist/abort-controller.js ──────────────────────────────────────────────── 3.3kb ─── 0.2%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/pipeline.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/stream/promises.js
+   │        └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/transform.js ────────────── 3.3kb ─── 0.2%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/transform.js ──────────── 3.2kb ─── 0.2%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/transform.js ────────────────── 3.2kb ─── 0.2%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/@nodelib/fs.walk/out/readers/async.js ──────────────────────────────────────────────────── 3.2kb ─── 0.2%
+   │  └ node_modules/@nodelib/fs.walk/out/providers/stream.js
+   │     └ node_modules/@nodelib/fs.walk/out/index.js
+   │        └ node_modules/fast-glob/out/readers/sync.js
+   │           └ node_modules/fast-glob/out/providers/sync.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/braces/lib/expand.js ───────────────────────────────────────────────────────────────────── 3.1kb ─── 0.2%
+   │  └ node_modules/braces/index.js
+   │     └ node_modules/micromatch/index.js
+   │        └ node_modules/fast-glob/out/utils/pattern.js
+   │           └ node_modules/fast-glob/out/utils/index.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/glob/dist/commonjs/index.js ────────────────────────────────────────────────────────────── 3.1kb ─── 0.2%
+   │  └ node_modules/archiver-utils/file.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/glob/dist/commonjs/ignore.js ───────────────────────────────────────────────────────────── 3.0kb ─── 0.2%
+   │  └ node_modules/glob/dist/commonjs/index.js
+   │     └ node_modules/archiver-utils/file.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/compress-commons/lib/archivers/zip/general-purpose-bit.js ──────────────────────────────── 3.0kb ─── 0.2%
+   │  └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │     └ node_modules/compress-commons/lib/compress-commons.js
+   │        └ node_modules/zip-stream/index.js
+   │           └ node_modules/archiver/lib/plugins/zip.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/graceful-fs/legacy-streams.js ──────────────────────────────────────────────────────────── 2.9kb ─── 0.2%
+   │  └ node_modules/graceful-fs/graceful-fs.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/from.js ─────────────── 2.9kb ─── 0.2%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │              └ node_modules/compress-commons/lib/compress-commons.js
+   │                 └ node_modules/zip-stream/index.js
+   │                    └ node_modules/archiver/lib/plugins/zip.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/from.js ─────────────────── 2.9kb ─── 0.2%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/crc32-stream/lib/crc32-stream.js
+   │              └ node_modules/crc32-stream/lib/index.js
+   │                 └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                    └ node_modules/compress-commons/lib/compress-commons.js
+   │                       └ node_modules/zip-stream/index.js
+   │                          └ node_modules/archiver/lib/plugins/zip.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/from.js ───────────────── 2.9kb ─── 0.2%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/from.js ─────────────────────── 2.9kb ─── 0.2%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/readable.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ src/ignore.ts ───────────────────────────────────────────────────────────────────────────────────────── 2.9kb ─── 0.2%
+   │  └ src/extension.ts
+   ├ node_modules/compress-commons/lib/archivers/archive-output-stream.js ────────────────────────────────── 2.9kb ─── 0.2%
+   │  └ node_modules/compress-commons/lib/compress-commons.js
+   │     └ node_modules/zip-stream/index.js
+   │        └ node_modules/archiver/lib/plugins/zip.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/ms/index.js ────────────────────────────────────────────────────────────────────────────── 2.8kb ─── 0.2%
+   │  └ node_modules/debug/src/common.js
+   │     └ node_modules/debug/src/node.js
+   │        └ node_modules/debug/src/index.js
+   │           └ node_modules/simple-git/dist/esm/index.js
+   │              └ src/extension.ts
+   ├ node_modules/text-decoder/lib/utf8-decoder.js ───────────────────────────────────────────────────────── 2.8kb ─── 0.2%
+   │  └ node_modules/text-decoder/index.js
+   │     └ node_modules/streamx/index.js
+   │        └ node_modules/tar-stream/pack.js
+   │           └ node_modules/tar-stream/index.js
+   │              └ node_modules/archiver/lib/plugins/tar.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js ────────────────────────── 2.7kb ─── 0.1%
+   │  └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │     └ node_modules/compress-commons/lib/compress-commons.js
+   │        └ node_modules/zip-stream/index.js
+   │           └ node_modules/archiver/lib/plugins/zip.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/fast-glob/out/settings.js ──────────────────────────────────────────────────────────────── 2.7kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/index.js
+   │     └ node_modules/globby/index.js
+   │        └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js ──────────────────────────── 2.7kb ─── 0.1%
+   │  └ node_modules/archiver-utils/index.js
+   │     └ node_modules/archiver/lib/plugins/json.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js ────────────────────────────── 2.7kb ─── 0.1%
+   │  └ node_modules/crc32-stream/lib/crc32-stream.js
+   │     └ node_modules/crc32-stream/lib/index.js
+   │        └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js ────────────────────────────────── 2.7kb ─── 0.1%
+   │  └ node_modules/archiver/lib/plugins/json.js
+   │     └ node_modules/archiver/index.js
+   │        └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/legacy.js ───────────── 2.6kb ─── 0.1%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/legacy.js ─────────────── 2.6kb ─── 0.1%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/legacy.js ───────────────── 2.6kb ─── 0.1%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/legacy.js ───────────────────── 2.6kb ─── 0.1%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/fast-glob/out/providers/filters/deep.js ────────────────────────────────────────────────── 2.5kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/providers/provider.js
+   │     └ node_modules/fast-glob/out/providers/sync.js
+   │        └ node_modules/fast-glob/out/index.js
+   │           └ node_modules/globby/index.js
+   │              └ src/extension.ts
+   ├ node_modules/readable-stream/lib/_stream_duplex.js ──────────────────────────────────────────────────── 2.4kb ─── 0.1%
+   │  └ node_modules/readable-stream/readable.js
+   │     └ node_modules/readable-stream/passthrough.js
+   │        └ node_modules/lazystream/lib/lazystream.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/braces/lib/utils.js ────────────────────────────────────────────────────────────────────── 2.4kb ─── 0.1%
+   │  └ node_modules/braces/lib/expand.js
+   │     └ node_modules/braces/index.js
+   │        └ node_modules/micromatch/index.js
+   │           └ node_modules/fast-glob/out/utils/pattern.js
+   │              └ node_modules/fast-glob/out/utils/index.js
+   │                 └ node_modules/fast-glob/out/index.js
+   │                    └ node_modules/globby/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/fast-glob/out/utils/path.js ────────────────────────────────────────────────────────────── 2.4kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/utils/index.js
+   │     └ node_modules/fast-glob/out/index.js
+   │        └ node_modules/globby/index.js
+   │           └ src/extension.ts
+   ├ node_modules/readable-stream/lib/internal/streams/BufferList.js ─────────────────────────────────────── 2.4kb ─── 0.1%
+   │  └ node_modules/readable-stream/lib/_stream_readable.js
+   │     └ node_modules/readable-stream/readable.js
+   │        └ node_modules/readable-stream/passthrough.js
+   │           └ node_modules/lazystream/lib/lazystream.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/archiver/lib/plugins/tar.js ────────────────────────────────────────────────────────────── 2.4kb ─── 0.1%
+   │  └ node_modules/archiver/index.js
+   │     └ src/extension.ts
+   ├ node_modules/picomatch/lib/utils.js ─────────────────────────────────────────────────────────────────── 2.2kb ─── 0.1%
+   │  └ node_modules/micromatch/index.js
+   │     └ node_modules/fast-glob/out/utils/pattern.js
+   │        └ node_modules/fast-glob/out/utils/index.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/readable-stream/lib/internal/streams/destroy.js ────────────────────────────────────────── 2.2kb ─── 0.1%
+   │  └ node_modules/readable-stream/lib/_stream_writable.js
+   │     └ node_modules/readable-stream/readable.js
+   │        └ node_modules/readable-stream/passthrough.js
+   │           └ node_modules/lazystream/lib/lazystream.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/compress-commons/lib/archivers/zip/constants.js ────────────────────────────────────────── 2.1kb ─── 0.1%
+   │  └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │     └ node_modules/compress-commons/lib/compress-commons.js
+   │        └ node_modules/zip-stream/index.js
+   │           └ node_modules/archiver/lib/plugins/zip.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/braces/lib/constants.js ────────────────────────────────────────────────────────────────── 2.1kb ─── 0.1%
+   │  └ node_modules/braces/lib/parse.js
+   │     └ node_modules/braces/index.js
+   │        └ node_modules/micromatch/index.js
+   │           └ node_modules/fast-glob/out/utils/pattern.js
+   │              └ node_modules/fast-glob/out/utils/index.js
+   │                 └ node_modules/fast-glob/out/index.js
+   │                    └ node_modules/globby/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/lodash/_baseIsTypedArray.js ────────────────────────────────────────────────────────────── 2.1kb ─── 0.1%
+   │  └ node_modules/lodash/isTypedArray.js
+   │     └ node_modules/lodash/_arrayLikeKeys.js
+   │        └ node_modules/lodash/keysIn.js
+   │           └ node_modules/lodash/defaults.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/@nodelib/fs.scandir/out/providers/sync.js ──────────────────────────────────────────────── 2.1kb ─── 0.1%
+   │  └ node_modules/@nodelib/fs.scandir/out/index.js
+   │     └ node_modules/@nodelib/fs.walk/out/settings.js
+   │        └ node_modules/@nodelib/fs.walk/out/index.js
+   │           └ node_modules/fast-glob/out/readers/sync.js
+   │              └ node_modules/fast-glob/out/providers/sync.js
+   │                 └ node_modules/fast-glob/out/index.js
+   │                    └ node_modules/globby/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/fast-glob/out/providers/provider.js ────────────────────────────────────────────────────── 2.0kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/providers/sync.js
+   │     └ node_modules/fast-glob/out/index.js
+   │        └ node_modules/globby/index.js
+   │           └ src/extension.ts
+   ├ node_modules/core-util-is/lib/util.js ───────────────────────────────────────────────────────────────── 2.0kb ─── 0.1%
+   │  └ node_modules/readable-stream/lib/_stream_passthrough.js
+   │     └ node_modules/readable-stream/readable.js
+   │        └ node_modules/readable-stream/passthrough.js
+   │           └ node_modules/lazystream/lib/lazystream.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/@nodelib/fs.walk/out/readers/sync.js ───────────────────────────────────────────────────── 2.0kb ─── 0.1%
+   │  └ node_modules/@nodelib/fs.walk/out/providers/sync.js
+   │     └ node_modules/@nodelib/fs.walk/out/index.js
+   │        └ node_modules/fast-glob/out/readers/sync.js
+   │           └ node_modules/fast-glob/out/providers/sync.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/compress-commons/lib/archivers/zip/util.js ─────────────────────────────────────────────── 2.0kb ─── 0.1%
+   │  └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │     └ node_modules/compress-commons/lib/compress-commons.js
+   │        └ node_modules/zip-stream/index.js
+   │           └ node_modules/archiver/lib/plugins/zip.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/braces/index.js ────────────────────────────────────────────────────────────────────────── 1.9kb ─── 0.1%
+   │  └ node_modules/micromatch/index.js
+   │     └ node_modules/fast-glob/out/utils/pattern.js
+   │        └ node_modules/fast-glob/out/utils/index.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/fast-glob/out/readers/stream.js ────────────────────────────────────────────────────────── 1.8kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/providers/stream.js
+   │     └ node_modules/fast-glob/out/index.js
+   │        └ node_modules/globby/index.js
+   │           └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/add-abort-signal.js ─── 1.8kb ─── 0.1%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/add-abort-signal.js ─────── 1.8kb ─── 0.1%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/add-abort-signal.js ───── 1.8kb ─── 0.1%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/add-abort-signal.js ─────────── 1.8kb ─── 0.1%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/safe-buffer/index.js ─────────────────────────────────────── 1.7kb ─── 0.1%
+   │  └ node_modules/compress-commons/node_modules/string_decoder/lib/string_decoder.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/readable.js
+   │        └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │           └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │              └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/safe-buffer/index.js ───────────────────────────────────────── 1.7kb ─── 0.1%
+   │  └ node_modules/archiver-utils/node_modules/string_decoder/lib/string_decoder.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/readable.js
+   │        └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │           └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/safe-buffer/index.js ─────────────────────────────────────────── 1.7kb ─── 0.1%
+   │  └ node_modules/crc32-stream/node_modules/string_decoder/lib/string_decoder.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/readable.js
+   │        └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │           └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │              └ node_modules/crc32-stream/lib/crc32-stream.js
+   │                 └ node_modules/crc32-stream/lib/index.js
+   │                    └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                       └ node_modules/compress-commons/lib/compress-commons.js
+   │                          └ node_modules/zip-stream/index.js
+   │                             └ node_modules/archiver/lib/plugins/zip.js
+   │                                └ node_modules/archiver/index.js
+   │                                   └ src/extension.ts
+   ├ node_modules/archiver/node_modules/safe-buffer/index.js ─────────────────────────────────────────────── 1.7kb ─── 0.1%
+   │  └ node_modules/archiver/node_modules/string_decoder/lib/string_decoder.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/readable.js
+   │        └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │           └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/braces/lib/compile.js ──────────────────────────────────────────────────────────────────── 1.7kb ─── 0.1%
+   │  └ node_modules/braces/index.js
+   │     └ node_modules/micromatch/index.js
+   │        └ node_modules/fast-glob/out/utils/pattern.js
+   │           └ node_modules/fast-glob/out/utils/index.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_baseUniq.js ────────────────────────────────────────────────────────────────────── 1.7kb ─── 0.1%
+   │  └ node_modules/lodash/union.js
+   │     └ node_modules/archiver-utils/file.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/text-decoder/index.js ──────────────────────────────────────────────────────────────────── 1.7kb ─── 0.1%
+   │  └ node_modules/streamx/index.js
+   │     └ node_modules/tar-stream/pack.js
+   │        └ node_modules/tar-stream/index.js
+   │           └ node_modules/archiver/lib/plugins/tar.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/safe-buffer/index.js ───────────────────────────────────────────────────────────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/readable-stream/lib/_stream_writable.js
+   │     └ node_modules/readable-stream/readable.js
+   │        └ node_modules/readable-stream/passthrough.js
+   │           └ node_modules/lazystream/lib/lazystream.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/fast-glob/out/providers/matchers/matcher.js ────────────────────────────────────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/providers/matchers/partial.js
+   │     └ node_modules/fast-glob/out/providers/filters/deep.js
+   │        └ node_modules/fast-glob/out/providers/provider.js
+   │           └ node_modules/fast-glob/out/providers/sync.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_baseDifference.js ──────────────────────────────────────────────────────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/lodash/difference.js
+   │     └ node_modules/archiver-utils/file.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/ours/util/inspect.js ─────────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/errors.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │              └ node_modules/compress-commons/lib/compress-commons.js
+   │                 └ node_modules/zip-stream/index.js
+   │                    └ node_modules/archiver/lib/plugins/zip.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/util/inspect.js ───────────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/errors.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/util/inspect.js ─────────────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/errors.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/crc32-stream/lib/crc32-stream.js
+   │              └ node_modules/crc32-stream/lib/index.js
+   │                 └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                    └ node_modules/compress-commons/lib/compress-commons.js
+   │                       └ node_modules/zip-stream/index.js
+   │                          └ node_modules/archiver/lib/plugins/zip.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/ours/util/inspect.js ─────────────────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/ours/errors.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │        └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/state.js ────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/state.js ────────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/state.js ──────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/state.js ────────────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/archiver/lib/error.js ──────────────────────────────────────────────────────────────────── 1.6kb ─── 0.1%
+   │  └ node_modules/archiver/lib/core.js
+   │     └ node_modules/archiver/index.js
+   │        └ src/extension.ts
+   ├ node_modules/archiver/lib/plugins/json.js ───────────────────────────────────────────────────────────── 1.5kb ─── 0.1%
+   │  └ node_modules/archiver/index.js
+   │     └ src/extension.ts
+   ├ node_modules/@nodelib/fs.walk/out/index.js ──────────────────────────────────────────────────────────── 1.5kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/readers/sync.js
+   │     └ node_modules/fast-glob/out/providers/sync.js
+   │        └ node_modules/fast-glob/out/index.js
+   │           └ node_modules/globby/index.js
+   │              └ src/extension.ts
+   ├ node_modules/balanced-match/index.js ────────────────────────────────────────────────────────────────── 1.5kb ─── 0.1%
+   │  └ node_modules/brace-expansion/index.js
+   │     └ node_modules/readdir-glob/node_modules/minimatch/minimatch.js
+   │        └ node_modules/readdir-glob/index.js
+   │           └ node_modules/archiver/lib/core.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/globby/node_modules/path-type/index.js ─────────────────────────────────────────────────── 1.4kb ─── 0.1%
+   │  └ node_modules/globby/index.js
+   │     └ src/extension.ts
+   ├ node_modules/archiver/index.js ──────────────────────────────────────────────────────────────────────── 1.4kb ─── 0.1%
+   │  └ src/extension.ts
+   ├ node_modules/@kwsites/file-exists/dist/src/index.js ─────────────────────────────────────────────────── 1.4kb ─── 0.1%
+   │  └ node_modules/@kwsites/file-exists/dist/index.js
+   │     └ node_modules/simple-git/dist/esm/index.js
+   │        └ src/extension.ts
+   ├ node_modules/lodash/_arrayLikeKeys.js ───────────────────────────────────────────────────────────────── 1.4kb ─── 0.1%
+   │  └ node_modules/lodash/keysIn.js
+   │     └ node_modules/lodash/defaults.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/fast-glob/out/readers/sync.js ──────────────────────────────────────────────────────────── 1.4kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/providers/sync.js
+   │     └ node_modules/fast-glob/out/index.js
+   │        └ node_modules/globby/index.js
+   │           └ src/extension.ts
+   ├ node_modules/lazystream/lib/lazystream.js ───────────────────────────────────────────────────────────── 1.4kb ─── 0.1%
+   │  └ node_modules/archiver-utils/index.js
+   │     └ node_modules/archiver/lib/plugins/json.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/process-nextick-args/index.js ──────────────────────────────────────────────────────────── 1.4kb ─── 0.1%
+   │  └ node_modules/readable-stream/lib/_stream_duplex.js
+   │     └ node_modules/readable-stream/readable.js
+   │        └ node_modules/readable-stream/passthrough.js
+   │           └ node_modules/lazystream/lib/lazystream.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/crc32-stream/lib/deflate-crc32-stream.js ───────────────────────────────────────────────── 1.3kb ─── 0.1%
+   │  └ node_modules/crc32-stream/lib/index.js
+   │     └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │        └ node_modules/compress-commons/lib/compress-commons.js
+   │           └ node_modules/zip-stream/index.js
+   │              └ node_modules/archiver/lib/plugins/zip.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/@nodelib/fs.walk/out/settings.js ───────────────────────────────────────────────────────── 1.3kb ─── 0.1%
+   │  └ node_modules/@nodelib/fs.walk/out/index.js
+   │     └ node_modules/fast-glob/out/readers/sync.js
+   │        └ node_modules/fast-glob/out/providers/sync.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/fast-glob/out/providers/stream.js ──────────────────────────────────────────────────────── 1.3kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/index.js
+   │     └ node_modules/globby/index.js
+   │        └ src/extension.ts
+   ├ node_modules/@nodelib/fs.stat/out/providers/async.js ────────────────────────────────────────────────── 1.3kb ─── 0.1%
+   │  └ node_modules/@nodelib/fs.stat/out/index.js
+   │     └ node_modules/fast-glob/out/readers/sync.js
+   │        └ node_modules/fast-glob/out/providers/sync.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/fast-fifo/index.js ─────────────────────────────────────────────────────────────────────── 1.2kb ─── 0.1%
+   │  └ node_modules/tar-stream/extract.js
+   │     └ node_modules/tar-stream/index.js
+   │        └ node_modules/archiver/lib/plugins/tar.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/compress-commons/lib/archivers/zip/unix-stat.js ────────────────────────────────────────── 1.2kb ─── 0.1%
+   │  └ node_modules/compress-commons/lib/archivers/zip/zip-archive-entry.js
+   │     └ node_modules/compress-commons/lib/compress-commons.js
+   │        └ node_modules/zip-stream/index.js
+   │           └ node_modules/archiver/lib/plugins/zip.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/fast-glob/out/readers/async.js ─────────────────────────────────────────────────────────── 1.2kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/providers/async.js
+   │     └ node_modules/fast-glob/out/index.js
+   │        └ node_modules/globby/index.js
+   │           └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/stream/promises.js ───────────────────── 1.2kb ─── 0.1%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │     └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │        └ node_modules/compress-commons/lib/compress-commons.js
+   │           └ node_modules/zip-stream/index.js
+   │              └ node_modules/archiver/lib/plugins/zip.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/run-parallel/index.js ──────────────────────────────────────────────────────────────────── 1.2kb ─── 0.1%
+   │  └ node_modules/@nodelib/fs.scandir/out/providers/async.js
+   │     └ node_modules/@nodelib/fs.scandir/out/index.js
+   │        └ node_modules/@nodelib/fs.walk/out/settings.js
+   │           └ node_modules/@nodelib/fs.walk/out/index.js
+   │              └ node_modules/fast-glob/out/readers/sync.js
+   │                 └ node_modules/fast-glob/out/providers/sync.js
+   │                    └ node_modules/fast-glob/out/index.js
+   │                       └ node_modules/globby/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/stream/promises.js ───────────────────────── 1.2kb ─── 0.1%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │     └ node_modules/crc32-stream/lib/crc32-stream.js
+   │        └ node_modules/crc32-stream/lib/index.js
+   │           └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │              └ node_modules/compress-commons/lib/compress-commons.js
+   │                 └ node_modules/zip-stream/index.js
+   │                    └ node_modules/archiver/lib/plugins/zip.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/stream/promises.js ─────────────────────── 1.2kb ─── 0.1%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/stream/promises.js ───────────────────────────── 1.2kb ─── 0.1%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │     └ node_modules/archiver/lib/plugins/json.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/fast-glob/out/providers/matchers/partial.js ────────────────────────────────────────────── 1.2kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/providers/filters/deep.js
+   │     └ node_modules/fast-glob/out/providers/provider.js
+   │        └ node_modules/fast-glob/out/providers/sync.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/@nodelib/fs.scandir/out/settings.js ────────────────────────────────────────────────────── 1.2kb ─── 0.1%
+   │  └ node_modules/@nodelib/fs.scandir/out/index.js
+   │     └ node_modules/@nodelib/fs.walk/out/settings.js
+   │        └ node_modules/@nodelib/fs.walk/out/index.js
+   │           └ node_modules/fast-glob/out/readers/sync.js
+   │              └ node_modules/fast-glob/out/providers/sync.js
+   │                 └ node_modules/fast-glob/out/index.js
+   │                    └ node_modules/globby/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/fast-glob/out/readers/reader.js ────────────────────────────────────────────────────────── 1.2kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/readers/sync.js
+   │     └ node_modules/fast-glob/out/providers/sync.js
+   │        └ node_modules/fast-glob/out/index.js
+   │           └ node_modules/globby/index.js
+   │              └ src/extension.ts
+   ├ node_modules/@nodelib/fs.scandir/out/index.js ───────────────────────────────────────────────────────── 1.1kb ─── 0.1%
+   │  └ node_modules/@nodelib/fs.walk/out/settings.js
+   │     └ node_modules/@nodelib/fs.walk/out/index.js
+   │        └ node_modules/fast-glob/out/readers/sync.js
+   │           └ node_modules/fast-glob/out/providers/sync.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/defaults.js ─────────────────────────────────────────────────────────────────────── 1.1kb ─── 0.1%
+   │  └ node_modules/archiver-utils/index.js
+   │     └ node_modules/archiver/lib/plugins/json.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/@nodelib/fs.walk/out/providers/stream.js ───────────────────────────────────────────────── 1.1kb ─── 0.1%
+   │  └ node_modules/@nodelib/fs.walk/out/index.js
+   │     └ node_modules/fast-glob/out/readers/sync.js
+   │        └ node_modules/fast-glob/out/providers/sync.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/@nodelib/fs.stat/out/index.js ──────────────────────────────────────────────────────────── 1.1kb ─── 0.1%
+   │  └ node_modules/fast-glob/out/readers/sync.js
+   │     └ node_modules/fast-glob/out/providers/sync.js
+   │        └ node_modules/fast-glob/out/index.js
+   │           └ node_modules/globby/index.js
+   │              └ src/extension.ts
+   ├ node_modules/archiver/lib/plugins/zip.js ────────────────────────────────────────────────────────────── 1.1kb ─── 0.1%
+   │  └ node_modules/archiver/index.js
+   │     └ src/extension.ts
+   ├ node_modules/@nodelib/fs.walk/out/readers/common.js ─────────────────────────────────────────────────── 1.1kb ─── 0.1%
+   │  └ node_modules/@nodelib/fs.walk/out/readers/sync.js
+   │     └ node_modules/@nodelib/fs.walk/out/providers/sync.js
+   │        └ node_modules/@nodelib/fs.walk/out/index.js
+   │           └ node_modules/fast-glob/out/readers/sync.js
+   │              └ node_modules/fast-glob/out/providers/sync.js
+   │                 └ node_modules/fast-glob/out/index.js
+   │                    └ node_modules/globby/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/fast-fifo/fixed-size.js ────────────────────────────────────────────────────────────────── 1.1kb ─── 0.1%
+   │  └ node_modules/fast-fifo/index.js
+   │     └ node_modules/tar-stream/extract.js
+   │        └ node_modules/tar-stream/index.js
+   │           └ node_modules/archiver/lib/plugins/tar.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/@nodelib/fs.scandir/out/constants.js ───────────────────────────────────────────────────── 1.1kb ─── 0.1%
+   │  └ node_modules/@nodelib/fs.scandir/out/providers/sync.js
+   │     └ node_modules/@nodelib/fs.scandir/out/index.js
+   │        └ node_modules/@nodelib/fs.walk/out/settings.js
+   │           └ node_modules/@nodelib/fs.walk/out/index.js
+   │              └ node_modules/fast-glob/out/readers/sync.js
+   │                 └ node_modules/fast-glob/out/providers/sync.js
+   │                    └ node_modules/fast-glob/out/index.js
+   │                       └ node_modules/globby/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/@nodelib/fs.walk/out/providers/async.js ────────────────────────────────────────────────── 1.0kb ─── 0.1%
+   │  └ node_modules/@nodelib/fs.walk/out/index.js
+   │     └ node_modules/fast-glob/out/readers/sync.js
+   │        └ node_modules/fast-glob/out/providers/sync.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/@kwsites/promise-deferred/dist/index.js ────────────────────────────────────────────────── 1.0kb ─── 0.1%
+   │  └ node_modules/simple-git/dist/esm/index.js
+   │     └ src/extension.ts
+   ├ node_modules/crc32-stream/lib/crc32-stream.js ───────────────────────────────────────────────────────── 1.0kb ─── 0.1%
+   │  └ node_modules/crc32-stream/lib/index.js
+   │     └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │        └ node_modules/compress-commons/lib/compress-commons.js
+   │           └ node_modules/zip-stream/index.js
+   │              └ node_modules/archiver/lib/plugins/zip.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_baseIsNative.js ───────────────────────────────────────────────────────────────── 1006b ──── 0.1%
+   │  └ node_modules/lodash/_getNative.js
+   │     └ node_modules/lodash/_Set.js
+   │        └ node_modules/lodash/_createSet.js
+   │           └ node_modules/lodash/_baseUniq.js
+   │              └ node_modules/lodash/union.js
+   │                 └ node_modules/archiver-utils/file.js
+   │                    └ node_modules/archiver-utils/index.js
+   │                       └ node_modules/archiver/lib/plugins/json.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/fast-glob/out/providers/transformers/entry.js ──────────────────────────────────────────── 991b ──── 0.1%
+   │  └ node_modules/fast-glob/out/providers/provider.js
+   │     └ node_modules/fast-glob/out/providers/sync.js
+   │        └ node_modules/fast-glob/out/index.js
+   │           └ node_modules/globby/index.js
+   │              └ src/extension.ts
+   ├ node_modules/lodash/isPlainObject.js ────────────────────────────────────────────────────────────────── 982b ──── 0.1%
+   │  └ node_modules/archiver-utils/file.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/fast-glob/out/providers/async.js ───────────────────────────────────────────────────────── 947b ──── 0.1%
+   │  └ node_modules/fast-glob/out/index.js
+   │     └ node_modules/globby/index.js
+   │        └ src/extension.ts
+   ├ node_modules/glob-parent/index.js ───────────────────────────────────────────────────────────────────── 940b ──── 0.1%
+   │  └ node_modules/fast-glob/out/utils/pattern.js
+   │     └ node_modules/fast-glob/out/utils/index.js
+   │        └ node_modules/fast-glob/out/index.js
+   │           └ node_modules/globby/index.js
+   │              └ src/extension.ts
+   ├ node_modules/readable-stream/readable.js ────────────────────────────────────────────────────────────── 921b ──── 0.0%
+   │  └ node_modules/readable-stream/passthrough.js
+   │     └ node_modules/lazystream/lib/lazystream.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/fast-glob/out/providers/sync.js ────────────────────────────────────────────────────────── 910b ──── 0.0%
+   │  └ node_modules/fast-glob/out/index.js
+   │     └ node_modules/globby/index.js
+   │        └ src/extension.ts
+   ├ node_modules/@nodelib/fs.scandir/out/utils/fs.js ────────────────────────────────────────────────────── 908b ──── 0.0%
+   │  └ node_modules/@nodelib/fs.scandir/out/utils/index.js
+   │     └ node_modules/@nodelib/fs.scandir/out/providers/sync.js
+   │        └ node_modules/@nodelib/fs.scandir/out/index.js
+   │           └ node_modules/@nodelib/fs.walk/out/settings.js
+   │              └ node_modules/@nodelib/fs.walk/out/index.js
+   │                 └ node_modules/fast-glob/out/readers/sync.js
+   │                    └ node_modules/fast-glob/out/providers/sync.js
+   │                       └ node_modules/fast-glob/out/index.js
+   │                          └ node_modules/globby/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/braces/lib/stringify.js ────────────────────────────────────────────────────────────────── 905b ──── 0.0%
+   │  └ node_modules/braces/index.js
+   │     └ node_modules/micromatch/index.js
+   │        └ node_modules/fast-glob/out/utils/pattern.js
+   │           └ node_modules/fast-glob/out/utils/index.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/inherits/inherits_browser.js ───────────────────────────────────────────────────────────── 898b ──── 0.0%
+   │  └ node_modules/inherits/inherits.js
+   │     └ node_modules/readable-stream/lib/_stream_passthrough.js
+   │        └ node_modules/readable-stream/readable.js
+   │           └ node_modules/readable-stream/passthrough.js
+   │              └ node_modules/lazystream/lib/lazystream.js
+   │                 └ node_modules/archiver-utils/index.js
+   │                    └ node_modules/archiver/lib/plugins/json.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/fast-glob/out/utils/fs.js ──────────────────────────────────────────────────────────────── 897b ──── 0.0%
+   │  └ node_modules/fast-glob/out/utils/index.js
+   │     └ node_modules/fast-glob/out/index.js
+   │        └ node_modules/globby/index.js
+   │           └ src/extension.ts
+   ├ node_modules/lodash/_ListCache.js ───────────────────────────────────────────────────────────────────── 859b ──── 0.0%
+   │  └ node_modules/lodash/_mapCacheClear.js
+   │     └ node_modules/lodash/_MapCache.js
+   │        └ node_modules/lodash/_SetCache.js
+   │           └ node_modules/lodash/_baseUniq.js
+   │              └ node_modules/lodash/union.js
+   │                 └ node_modules/archiver-utils/file.js
+   │                    └ node_modules/archiver-utils/index.js
+   │                       └ node_modules/archiver/lib/plugins/json.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/lodash/_getRawTag.js ───────────────────────────────────────────────────────────────────── 853b ──── 0.0%
+   │  └ node_modules/lodash/_baseGetTag.js
+   │     └ node_modules/lodash/isPlainObject.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_MapCache.js ────────────────────────────────────────────────────────────────────── 835b ──── 0.0%
+   │  └ node_modules/lodash/_SetCache.js
+   │     └ node_modules/lodash/_baseUniq.js
+   │        └ node_modules/lodash/union.js
+   │           └ node_modules/archiver-utils/file.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/@nodelib/fs.stat/out/settings.js ───────────────────────────────────────────────────────── 832b ──── 0.0%
+   │  └ node_modules/@nodelib/fs.stat/out/index.js
+   │     └ node_modules/fast-glob/out/readers/sync.js
+   │        └ node_modules/fast-glob/out/providers/sync.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/_baseFlatten.js ─────────────────────────────────────────────────────────────────── 825b ──── 0.0%
+   │  └ node_modules/lodash/union.js
+   │     └ node_modules/archiver-utils/file.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/_nodeUtil.js ────────────────────────────────────────────────────────────────────── 824b ──── 0.0%
+   │  └ node_modules/lodash/isTypedArray.js
+   │     └ node_modules/lodash/_arrayLikeKeys.js
+   │        └ node_modules/lodash/keysIn.js
+   │           └ node_modules/lodash/defaults.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/normalize-path/index.js ────────────────────────────────────────────────────────────────── 819b ──── 0.0%
+   │  └ node_modules/archiver-utils/index.js
+   │     └ node_modules/archiver/lib/plugins/json.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/@nodelib/fs.scandir/out/adapters/fs.js ─────────────────────────────────────────────────── 810b ──── 0.0%
+   │  └ node_modules/@nodelib/fs.scandir/out/settings.js
+   │     └ node_modules/@nodelib/fs.scandir/out/index.js
+   │        └ node_modules/@nodelib/fs.walk/out/settings.js
+   │           └ node_modules/@nodelib/fs.walk/out/index.js
+   │              └ node_modules/fast-glob/out/readers/sync.js
+   │                 └ node_modules/fast-glob/out/providers/sync.js
+   │                    └ node_modules/fast-glob/out/index.js
+   │                       └ node_modules/globby/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/lodash/_overRest.js ────────────────────────────────────────────────────────────────────── 796b ──── 0.0%
+   │  └ node_modules/lodash/_baseRest.js
+   │     └ node_modules/lodash/defaults.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/is-stream/index.js ─────────────────────────────────────────────────────────────────────── 795b ──── 0.0%
+   │  └ node_modules/archiver-utils/index.js
+   │     └ node_modules/archiver/lib/plugins/json.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/fast-glob/out/utils/stream.js ──────────────────────────────────────────────────────────── 781b ──── 0.0%
+   │  └ node_modules/fast-glob/out/utils/index.js
+   │     └ node_modules/fast-glob/out/index.js
+   │        └ node_modules/globby/index.js
+   │           └ src/extension.ts
+   ├ node_modules/@nodelib/fs.stat/out/providers/sync.js ─────────────────────────────────────────────────── 761b ──── 0.0%
+   │  └ node_modules/@nodelib/fs.stat/out/index.js
+   │     └ node_modules/fast-glob/out/readers/sync.js
+   │        └ node_modules/fast-glob/out/providers/sync.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/fast-glob/out/utils/index.js ───────────────────────────────────────────────────────────── 751b ──── 0.0%
+   │  └ node_modules/fast-glob/out/index.js
+   │     └ node_modules/globby/index.js
+   │        └ src/extension.ts
+   ├ node_modules/fast-glob/out/utils/array.js ───────────────────────────────────────────────────────────── 746b ──── 0.0%
+   │  └ node_modules/fast-glob/out/utils/index.js
+   │     └ node_modules/fast-glob/out/index.js
+   │        └ node_modules/globby/index.js
+   │           └ src/extension.ts
+   ├ node_modules/@nodelib/fs.stat/out/adapters/fs.js ────────────────────────────────────────────────────── 743b ──── 0.0%
+   │  └ node_modules/@nodelib/fs.stat/out/settings.js
+   │     └ node_modules/@nodelib/fs.stat/out/index.js
+   │        └ node_modules/fast-glob/out/readers/sync.js
+   │           └ node_modules/fast-glob/out/providers/sync.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_Hash.js ────────────────────────────────────────────────────────────────────────── 739b ──── 0.0%
+   │  └ node_modules/lodash/_mapCacheClear.js
+   │     └ node_modules/lodash/_MapCache.js
+   │        └ node_modules/lodash/_SetCache.js
+   │           └ node_modules/lodash/_baseUniq.js
+   │              └ node_modules/lodash/union.js
+   │                 └ node_modules/archiver-utils/file.js
+   │                    └ node_modules/archiver-utils/index.js
+   │                       └ node_modules/archiver/lib/plugins/json.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/lodash/_baseKeysIn.js ──────────────────────────────────────────────────────────────────── 722b ──── 0.0%
+   │  └ node_modules/lodash/keysIn.js
+   │     └ node_modules/lodash/defaults.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/compress-commons/node_modules/readable-stream/lib/internal/streams/passthrough.js ──────── 697b ──── 0.0%
+   │  └ node_modules/compress-commons/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/compress-commons/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/compress-commons/lib/archivers/archive-output-stream.js
+   │           └ node_modules/compress-commons/lib/compress-commons.js
+   │              └ node_modules/zip-stream/index.js
+   │                 └ node_modules/archiver/lib/plugins/zip.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/archiver-utils/node_modules/readable-stream/lib/internal/streams/passthrough.js ────────── 693b ──── 0.0%
+   │  └ node_modules/archiver-utils/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver-utils/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/crc32-stream/node_modules/readable-stream/lib/internal/streams/passthrough.js ──────────── 693b ──── 0.0%
+   │  └ node_modules/crc32-stream/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/crc32-stream/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/crc32-stream/lib/crc32-stream.js
+   │           └ node_modules/crc32-stream/lib/index.js
+   │              └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │                 └ node_modules/compress-commons/lib/compress-commons.js
+   │                    └ node_modules/zip-stream/index.js
+   │                       └ node_modules/archiver/lib/plugins/zip.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/passthrough.js ──────────────── 689b ──── 0.0%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/compress-commons/lib/util/index.js ─────────────────────────────────────────────────────── 683b ──── 0.0%
+   │  └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │     └ node_modules/compress-commons/lib/compress-commons.js
+   │        └ node_modules/zip-stream/index.js
+   │           └ node_modules/archiver/lib/plugins/zip.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/graceful-fs/clone.js ───────────────────────────────────────────────────────────────────── 682b ──── 0.0%
+   │  └ node_modules/graceful-fs/graceful-fs.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/lodash/isArguments.js ──────────────────────────────────────────────────────────────────── 668b ──── 0.0%
+   │  └ node_modules/lodash/_arrayLikeKeys.js
+   │     └ node_modules/lodash/keysIn.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ src/flags.ts ────────────────────────────────────────────────────────────────────────────────────────── 658b ──── 0.0%
+   │  └ src/extension.ts
+   ├ node_modules/lodash/_baseGetTag.js ──────────────────────────────────────────────────────────────────── 654b ──── 0.0%
+   │  └ node_modules/lodash/isPlainObject.js
+   │     └ node_modules/archiver-utils/file.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/isBuffer.js ─────────────────────────────────────────────────────────────────────── 649b ──── 0.0%
+   │  └ node_modules/lodash/_arrayLikeKeys.js
+   │     └ node_modules/lodash/keysIn.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_isIterateeCall.js ──────────────────────────────────────────────────────────────── 644b ──── 0.0%
+   │  └ node_modules/lodash/defaults.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/reusify/reusify.js ─────────────────────────────────────────────────────────────────────── 643b ──── 0.0%
+   │  └ node_modules/fastq/queue.js
+   │     └ node_modules/@nodelib/fs.walk/out/readers/async.js
+   │        └ node_modules/@nodelib/fs.walk/out/providers/stream.js
+   │           └ node_modules/@nodelib/fs.walk/out/index.js
+   │              └ node_modules/fast-glob/out/readers/sync.js
+   │                 └ node_modules/fast-glob/out/providers/sync.js
+   │                    └ node_modules/fast-glob/out/index.js
+   │                       └ node_modules/globby/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/lodash/_shortOut.js ────────────────────────────────────────────────────────────────────── 632b ──── 0.0%
+   │  └ node_modules/lodash/_setToString.js
+   │     └ node_modules/lodash/_baseRest.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_listCacheDelete.js ─────────────────────────────────────────────────────────────── 625b ──── 0.0%
+   │  └ node_modules/lodash/_ListCache.js
+   │     └ node_modules/lodash/_mapCacheClear.js
+   │        └ node_modules/lodash/_MapCache.js
+   │           └ node_modules/lodash/_SetCache.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/readable-stream/lib/_stream_passthrough.js ─────────────────────────────────────────────── 620b ──── 0.0%
+   │  └ node_modules/readable-stream/readable.js
+   │     └ node_modules/readable-stream/passthrough.js
+   │        └ node_modules/lazystream/lib/lazystream.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/unicorn-magic/node.js ──────────────────────────────────────────────────────────────────── 619b ──── 0.0%
+   │  └ node_modules/globby/index.js
+   │     └ src/extension.ts
+   ├ node_modules/minimatch/dist/commonjs/assert-valid-pattern.js ────────────────────────────────────────── 612b ──── 0.0%
+   │  └ node_modules/minimatch/dist/commonjs/index.js
+   │     └ node_modules/glob/dist/commonjs/index.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/isFunction.js ───────────────────────────────────────────────────────────────────── 607b ──── 0.0%
+   │  └ node_modules/lodash/isArrayLike.js
+   │     └ node_modules/lodash/keysIn.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/fast-glob/out/providers/filters/error.js ───────────────────────────────────────────────── 590b ──── 0.0%
+   │  └ node_modules/fast-glob/out/providers/provider.js
+   │     └ node_modules/fast-glob/out/providers/sync.js
+   │        └ node_modules/fast-glob/out/index.js
+   │           └ node_modules/globby/index.js
+   │              └ src/extension.ts
+   ├ node_modules/lodash/_SetCache.js ────────────────────────────────────────────────────────────────────── 590b ──── 0.0%
+   │  └ node_modules/lodash/_baseUniq.js
+   │     └ node_modules/lodash/union.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_hashGet.js ─────────────────────────────────────────────────────────────────────── 583b ──── 0.0%
+   │  └ node_modules/lodash/_Hash.js
+   │     └ node_modules/lodash/_mapCacheClear.js
+   │        └ node_modules/lodash/_MapCache.js
+   │           └ node_modules/lodash/_SetCache.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/glob/dist/commonjs/has-magic.js ────────────────────────────────────────────────────────── 575b ──── 0.0%
+   │  └ node_modules/glob/dist/commonjs/index.js
+   │     └ node_modules/archiver-utils/file.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/_baseSetToString.js ─────────────────────────────────────────────────────────────── 548b ──── 0.0%
+   │  └ node_modules/lodash/_setToString.js
+   │     └ node_modules/lodash/_baseRest.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/@nodelib/fs.walk/out/providers/sync.js ─────────────────────────────────────────────────── 544b ──── 0.0%
+   │  └ node_modules/@nodelib/fs.walk/out/index.js
+   │     └ node_modules/fast-glob/out/readers/sync.js
+   │        └ node_modules/fast-glob/out/providers/sync.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/_apply.js ───────────────────────────────────────────────────────────────────────── 516b ──── 0.0%
+   │  └ node_modules/lodash/_overRest.js
+   │     └ node_modules/lodash/_baseRest.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/difference.js ───────────────────────────────────────────────────────────────────── 512b ──── 0.0%
+   │  └ node_modules/archiver-utils/file.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/@nodelib/fs.walk/out/readers/reader.js ─────────────────────────────────────────────────── 501b ──── 0.0%
+   │  └ node_modules/@nodelib/fs.walk/out/readers/sync.js
+   │     └ node_modules/@nodelib/fs.walk/out/providers/sync.js
+   │        └ node_modules/@nodelib/fs.walk/out/index.js
+   │           └ node_modules/fast-glob/out/readers/sync.js
+   │              └ node_modules/fast-glob/out/providers/sync.js
+   │                 └ node_modules/fast-glob/out/index.js
+   │                    └ node_modules/globby/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/lodash/_isFlattenable.js ───────────────────────────────────────────────────────────────── 494b ──── 0.0%
+   │  └ node_modules/lodash/_baseFlatten.js
+   │     └ node_modules/lodash/union.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_isIndex.js ─────────────────────────────────────────────────────────────────────── 490b ──── 0.0%
+   │  └ node_modules/lodash/_isIterateeCall.js
+   │     └ node_modules/lodash/defaults.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/minimatch/dist/commonjs/unescape.js ────────────────────────────────────────────────────── 483b ──── 0.0%
+   │  └ node_modules/minimatch/dist/commonjs/index.js
+   │     └ node_modules/glob/dist/commonjs/index.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_baseFindIndex.js ───────────────────────────────────────────────────────────────── 466b ──── 0.0%
+   │  └ node_modules/lodash/_baseIndexOf.js
+   │     └ node_modules/lodash/_arrayIncludes.js
+   │        └ node_modules/lodash/_baseUniq.js
+   │           └ node_modules/lodash/union.js
+   │              └ node_modules/archiver-utils/file.js
+   │                 └ node_modules/archiver-utils/index.js
+   │                    └ node_modules/archiver/lib/plugins/json.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/lodash/_toSource.js ────────────────────────────────────────────────────────────────────── 466b ──── 0.0%
+   │  └ node_modules/lodash/_baseIsNative.js
+   │     └ node_modules/lodash/_getNative.js
+   │        └ node_modules/lodash/_Set.js
+   │           └ node_modules/lodash/_createSet.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/text-decoder/lib/pass-through-decoder.js ───────────────────────────────────────────────── 464b ──── 0.0%
+   │  └ node_modules/text-decoder/index.js
+   │     └ node_modules/streamx/index.js
+   │        └ node_modules/tar-stream/pack.js
+   │           └ node_modules/tar-stream/index.js
+   │              └ node_modules/archiver/lib/plugins/tar.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_baseIndexOf.js ─────────────────────────────────────────────────────────────────── 456b ──── 0.0%
+   │  └ node_modules/lodash/_arrayIncludes.js
+   │     └ node_modules/lodash/_baseUniq.js
+   │        └ node_modules/lodash/union.js
+   │           └ node_modules/archiver-utils/file.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/lodash/_listCacheSet.js ────────────────────────────────────────────────────────────────── 455b ──── 0.0%
+   │  └ node_modules/lodash/_ListCache.js
+   │     └ node_modules/lodash/_mapCacheClear.js
+   │        └ node_modules/lodash/_MapCache.js
+   │           └ node_modules/lodash/_SetCache.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/lodash/_isMasked.js ────────────────────────────────────────────────────────────────────── 451b ──── 0.0%
+   │  └ node_modules/lodash/_baseIsNative.js
+   │     └ node_modules/lodash/_getNative.js
+   │        └ node_modules/lodash/_Set.js
+   │           └ node_modules/lodash/_createSet.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/@nodelib/fs.scandir/out/providers/common.js ────────────────────────────────────────────── 444b ──── 0.0%
+   │  └ node_modules/@nodelib/fs.scandir/out/providers/sync.js
+   │     └ node_modules/@nodelib/fs.scandir/out/index.js
+   │        └ node_modules/@nodelib/fs.walk/out/settings.js
+   │           └ node_modules/@nodelib/fs.walk/out/index.js
+   │              └ node_modules/fast-glob/out/readers/sync.js
+   │                 └ node_modules/fast-glob/out/providers/sync.js
+   │                    └ node_modules/fast-glob/out/index.js
+   │                       └ node_modules/globby/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/fast-glob/out/utils/string.js ──────────────────────────────────────────────────────────── 444b ──── 0.0%
+   │  └ node_modules/fast-glob/out/utils/index.js
+   │     └ node_modules/fast-glob/out/index.js
+   │        └ node_modules/globby/index.js
+   │           └ src/extension.ts
+   ├ node_modules/lodash/_hashSet.js ─────────────────────────────────────────────────────────────────────── 443b ──── 0.0%
+   │  └ node_modules/lodash/_Hash.js
+   │     └ node_modules/lodash/_mapCacheClear.js
+   │        └ node_modules/lodash/_MapCache.js
+   │           └ node_modules/lodash/_SetCache.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/lodash/_mapCacheClear.js ───────────────────────────────────────────────────────────────── 441b ──── 0.0%
+   │  └ node_modules/lodash/_MapCache.js
+   │     └ node_modules/lodash/_SetCache.js
+   │        └ node_modules/lodash/_baseUniq.js
+   │           └ node_modules/lodash/union.js
+   │              └ node_modules/archiver-utils/file.js
+   │                 └ node_modules/archiver-utils/index.js
+   │                    └ node_modules/archiver/lib/plugins/json.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/compress-commons/lib/archivers/archive-entry.js ────────────────────────────────────────── 440b ──── 0.0%
+   │  └ node_modules/compress-commons/lib/compress-commons.js
+   │     └ node_modules/zip-stream/index.js
+   │        └ node_modules/archiver/lib/plugins/zip.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/is-extglob/index.js ────────────────────────────────────────────────────────────────────── 435b ──── 0.0%
+   │  └ node_modules/is-glob/index.js
+   │     └ node_modules/glob-parent/index.js
+   │        └ node_modules/fast-glob/out/utils/pattern.js
+   │           └ node_modules/fast-glob/out/utils/index.js
+   │              └ node_modules/fast-glob/out/index.js
+   │                 └ node_modules/globby/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_arrayIncludesWith.js ───────────────────────────────────────────────────────────── 432b ──── 0.0%
+   │  └ node_modules/lodash/_baseUniq.js
+   │     └ node_modules/lodash/union.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/isTypedArray.js ─────────────────────────────────────────────────────────────────── 432b ──── 0.0%
+   │  └ node_modules/lodash/_arrayLikeKeys.js
+   │     └ node_modules/lodash/keysIn.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/tar-stream/constants.js ────────────────────────────────────────────────────────────────── 429b ──── 0.0%
+   │  └ node_modules/tar-stream/pack.js
+   │     └ node_modules/tar-stream/index.js
+   │        └ node_modules/archiver/lib/plugins/tar.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/lodash/union.js ────────────────────────────────────────────────────────────────────────── 428b ──── 0.0%
+   │  └ node_modules/archiver-utils/file.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/minimatch/dist/commonjs/escape.js ──────────────────────────────────────────────────────── 428b ──── 0.0%
+   │  └ node_modules/minimatch/dist/commonjs/index.js
+   │     └ node_modules/glob/dist/commonjs/index.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_hashHas.js ─────────────────────────────────────────────────────────────────────── 420b ──── 0.0%
+   │  └ node_modules/lodash/_Hash.js
+   │     └ node_modules/lodash/_mapCacheClear.js
+   │        └ node_modules/lodash/_MapCache.js
+   │           └ node_modules/lodash/_SetCache.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/lodash/_createSet.js ───────────────────────────────────────────────────────────────────── 414b ──── 0.0%
+   │  └ node_modules/lodash/_baseUniq.js
+   │     └ node_modules/lodash/union.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/is-number/index.js ─────────────────────────────────────────────────────────────────────── 401b ──── 0.0%
+   │  └ node_modules/to-regex-range/index.js
+   │     └ node_modules/fill-range/index.js
+   │        └ node_modules/braces/lib/expand.js
+   │           └ node_modules/braces/index.js
+   │              └ node_modules/micromatch/index.js
+   │                 └ node_modules/fast-glob/out/utils/pattern.js
+   │                    └ node_modules/fast-glob/out/utils/index.js
+   │                       └ node_modules/fast-glob/out/index.js
+   │                          └ node_modules/globby/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/lodash/_baseIsArguments.js ─────────────────────────────────────────────────────────────── 395b ──── 0.0%
+   │  └ node_modules/lodash/isArguments.js
+   │     └ node_modules/lodash/_arrayLikeKeys.js
+   │        └ node_modules/lodash/keysIn.js
+   │           └ node_modules/lodash/defaults.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/lodash/_strictIndexOf.js ───────────────────────────────────────────────────────────────── 395b ──── 0.0%
+   │  └ node_modules/lodash/_baseIndexOf.js
+   │     └ node_modules/lodash/_arrayIncludes.js
+   │        └ node_modules/lodash/_baseUniq.js
+   │           └ node_modules/lodash/union.js
+   │              └ node_modules/archiver-utils/file.js
+   │                 └ node_modules/archiver-utils/index.js
+   │                    └ node_modules/archiver/lib/plugins/json.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/lodash/_arrayMap.js ────────────────────────────────────────────────────────────────────── 394b ──── 0.0%
+   │  └ node_modules/lodash/_baseDifference.js
+   │     └ node_modules/lodash/difference.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/keysIn.js ───────────────────────────────────────────────────────────────────────── 387b ──── 0.0%
+   │  └ node_modules/lodash/defaults.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/queue-microtask/index.js ───────────────────────────────────────────────────────────────── 386b ──── 0.0%
+   │  └ node_modules/run-parallel/index.js
+   │     └ node_modules/@nodelib/fs.scandir/out/providers/async.js
+   │        └ node_modules/@nodelib/fs.scandir/out/index.js
+   │           └ node_modules/@nodelib/fs.walk/out/settings.js
+   │              └ node_modules/@nodelib/fs.walk/out/index.js
+   │                 └ node_modules/fast-glob/out/readers/sync.js
+   │                    └ node_modules/fast-glob/out/providers/sync.js
+   │                       └ node_modules/fast-glob/out/index.js
+   │                          └ node_modules/globby/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/compress-commons/lib/compress-commons.js ───────────────────────────────────────────────── 385b ──── 0.0%
+   │  └ node_modules/zip-stream/index.js
+   │     └ node_modules/archiver/lib/plugins/zip.js
+   │        └ node_modules/archiver/index.js
+   │           └ src/extension.ts
+   ├ node_modules/lodash/_defineProperty.js ──────────────────────────────────────────────────────────────── 385b ──── 0.0%
+   │  └ node_modules/lodash/_baseSetToString.js
+   │     └ node_modules/lodash/_setToString.js
+   │        └ node_modules/lodash/_baseRest.js
+   │           └ node_modules/lodash/defaults.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/lodash/_mapCacheSet.js ─────────────────────────────────────────────────────────────────── 382b ──── 0.0%
+   │  └ node_modules/lodash/_MapCache.js
+   │     └ node_modules/lodash/_SetCache.js
+   │        └ node_modules/lodash/_baseUniq.js
+   │           └ node_modules/lodash/union.js
+   │              └ node_modules/archiver-utils/file.js
+   │                 └ node_modules/archiver-utils/index.js
+   │                    └ node_modules/archiver/lib/plugins/json.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/lodash/_assocIndexOf.js ────────────────────────────────────────────────────────────────── 378b ──── 0.0%
+   │  └ node_modules/lodash/_listCacheSet.js
+   │     └ node_modules/lodash/_ListCache.js
+   │        └ node_modules/lodash/_mapCacheClear.js
+   │           └ node_modules/lodash/_MapCache.js
+   │              └ node_modules/lodash/_SetCache.js
+   │                 └ node_modules/lodash/_baseUniq.js
+   │                    └ node_modules/lodash/union.js
+   │                       └ node_modules/archiver-utils/file.js
+   │                          └ node_modules/archiver-utils/index.js
+   │                             └ node_modules/archiver/lib/plugins/json.js
+   │                                └ node_modules/archiver/index.js
+   │                                   └ src/extension.ts
+   ├ node_modules/lodash/_baseRest.js ────────────────────────────────────────────────────────────────────── 370b ──── 0.0%
+   │  └ node_modules/lodash/defaults.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/lodash/_isPrototype.js ─────────────────────────────────────────────────────────────────── 366b ──── 0.0%
+   │  └ node_modules/lodash/_baseKeysIn.js
+   │     └ node_modules/lodash/keysIn.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/fast-glob/out/utils/errno.js ───────────────────────────────────────────────────────────── 362b ──── 0.0%
+   │  └ node_modules/fast-glob/out/utils/index.js
+   │     └ node_modules/fast-glob/out/index.js
+   │        └ node_modules/globby/index.js
+   │           └ src/extension.ts
+   ├ node_modules/lodash/_arrayPush.js ───────────────────────────────────────────────────────────────────── 360b ──── 0.0%
+   │  └ node_modules/lodash/_baseFlatten.js
+   │     └ node_modules/lodash/union.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_getNative.js ───────────────────────────────────────────────────────────────────── 359b ──── 0.0%
+   │  └ node_modules/lodash/_Set.js
+   │     └ node_modules/lodash/_createSet.js
+   │        └ node_modules/lodash/_baseUniq.js
+   │           └ node_modules/lodash/union.js
+   │              └ node_modules/archiver-utils/file.js
+   │                 └ node_modules/archiver-utils/index.js
+   │                    └ node_modules/archiver/lib/plugins/json.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/lodash/_arrayIncludes.js ───────────────────────────────────────────────────────────────── 356b ──── 0.0%
+   │  └ node_modules/lodash/_baseUniq.js
+   │     └ node_modules/lodash/union.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/isArrayLikeObject.js ────────────────────────────────────────────────────────────── 356b ──── 0.0%
+   │  └ node_modules/lodash/union.js
+   │     └ node_modules/archiver-utils/file.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/_mapCacheDelete.js ──────────────────────────────────────────────────────────────── 349b ──── 0.0%
+   │  └ node_modules/lodash/_MapCache.js
+   │     └ node_modules/lodash/_SetCache.js
+   │        └ node_modules/lodash/_baseUniq.js
+   │           └ node_modules/lodash/union.js
+   │              └ node_modules/archiver-utils/file.js
+   │                 └ node_modules/archiver-utils/index.js
+   │                    └ node_modules/archiver/lib/plugins/json.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/lodash/_nativeKeysIn.js ────────────────────────────────────────────────────────────────── 348b ──── 0.0%
+   │  └ node_modules/lodash/_baseKeysIn.js
+   │     └ node_modules/lodash/keysIn.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_listCacheGet.js ────────────────────────────────────────────────────────────────── 347b ──── 0.0%
+   │  └ node_modules/lodash/_ListCache.js
+   │     └ node_modules/lodash/_mapCacheClear.js
+   │        └ node_modules/lodash/_MapCache.js
+   │           └ node_modules/lodash/_SetCache.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/lodash/_getMapData.js ──────────────────────────────────────────────────────────────────── 345b ──── 0.0%
+   │  └ node_modules/lodash/_mapCacheSet.js
+   │     └ node_modules/lodash/_MapCache.js
+   │        └ node_modules/lodash/_SetCache.js
+   │           └ node_modules/lodash/_baseUniq.js
+   │              └ node_modules/lodash/union.js
+   │                 └ node_modules/archiver-utils/file.js
+   │                    └ node_modules/archiver-utils/index.js
+   │                       └ node_modules/archiver/lib/plugins/json.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/lodash/isArrayLike.js ──────────────────────────────────────────────────────────────────── 342b ──── 0.0%
+   │  └ node_modules/lodash/keysIn.js
+   │     └ node_modules/lodash/defaults.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/_isKeyable.js ───────────────────────────────────────────────────────────────────── 339b ──── 0.0%
+   │  └ node_modules/lodash/_getMapData.js
+   │     └ node_modules/lodash/_mapCacheSet.js
+   │        └ node_modules/lodash/_MapCache.js
+   │           └ node_modules/lodash/_SetCache.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/lodash/_objectToString.js ──────────────────────────────────────────────────────────────── 337b ──── 0.0%
+   │  └ node_modules/lodash/_baseGetTag.js
+   │     └ node_modules/lodash/isPlainObject.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/@kwsites/file-exists/dist/index.js ─────────────────────────────────────────────────────── 332b ──── 0.0%
+   │  └ node_modules/simple-git/dist/esm/index.js
+   │     └ src/extension.ts
+   ├ node_modules/inherits/inherits.js ───────────────────────────────────────────────────────────────────── 329b ──── 0.0%
+   │  └ node_modules/readable-stream/lib/_stream_passthrough.js
+   │     └ node_modules/readable-stream/readable.js
+   │        └ node_modules/readable-stream/passthrough.js
+   │           └ node_modules/lazystream/lib/lazystream.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/lodash/_setToArray.js ──────────────────────────────────────────────────────────────────── 325b ──── 0.0%
+   │  └ node_modules/lodash/_baseUniq.js
+   │     └ node_modules/lodash/union.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_baseTimes.js ───────────────────────────────────────────────────────────────────── 320b ──── 0.0%
+   │  └ node_modules/lodash/_arrayLikeKeys.js
+   │     └ node_modules/lodash/keysIn.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_root.js ────────────────────────────────────────────────────────────────────────── 319b ──── 0.0%
+   │  └ node_modules/lodash/_Symbol.js
+   │     └ node_modules/lodash/_baseGetTag.js
+   │        └ node_modules/lodash/isPlainObject.js
+   │           └ node_modules/archiver-utils/file.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/debug/src/index.js ─────────────────────────────────────────────────────────────────────── 318b ──── 0.0%
+   │  └ node_modules/simple-git/dist/esm/index.js
+   │     └ src/extension.ts
+   ├ node_modules/lodash/isLength.js ─────────────────────────────────────────────────────────────────────── 315b ──── 0.0%
+   │  └ node_modules/lodash/isArrayLike.js
+   │     └ node_modules/lodash/keysIn.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/flatten.js ──────────────────────────────────────────────────────────────────────── 314b ──── 0.0%
+   │  └ node_modules/archiver-utils/file.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/lodash/_setCacheAdd.js ─────────────────────────────────────────────────────────────────── 304b ──── 0.0%
+   │  └ node_modules/lodash/_SetCache.js
+   │     └ node_modules/lodash/_baseUniq.js
+   │        └ node_modules/lodash/union.js
+   │           └ node_modules/archiver-utils/file.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/lodash/_hashClear.js ───────────────────────────────────────────────────────────────────── 300b ──── 0.0%
+   │  └ node_modules/lodash/_Hash.js
+   │     └ node_modules/lodash/_mapCacheClear.js
+   │        └ node_modules/lodash/_MapCache.js
+   │           └ node_modules/lodash/_SetCache.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/lodash/_hashDelete.js ──────────────────────────────────────────────────────────────────── 296b ──── 0.0%
+   │  └ node_modules/lodash/_Hash.js
+   │     └ node_modules/lodash/_mapCacheClear.js
+   │        └ node_modules/lodash/_MapCache.js
+   │           └ node_modules/lodash/_SetCache.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/lodash/_listCacheHas.js ────────────────────────────────────────────────────────────────── 284b ──── 0.0%
+   │  └ node_modules/lodash/_ListCache.js
+   │     └ node_modules/lodash/_mapCacheClear.js
+   │        └ node_modules/lodash/_MapCache.js
+   │           └ node_modules/lodash/_SetCache.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/lodash/_setToString.js ─────────────────────────────────────────────────────────────────── 284b ──── 0.0%
+   │  └ node_modules/lodash/_baseRest.js
+   │     └ node_modules/lodash/defaults.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/readdir-glob/node_modules/minimatch/lib/path.js ────────────────────────────────────────── 282b ──── 0.0%
+   │  └ node_modules/readdir-glob/node_modules/minimatch/minimatch.js
+   │     └ node_modules/readdir-glob/index.js
+   │        └ node_modules/archiver/lib/core.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/@nodelib/fs.scandir/out/utils/index.js ─────────────────────────────────────────────────── 274b ──── 0.0%
+   │  └ node_modules/@nodelib/fs.scandir/out/providers/sync.js
+   │     └ node_modules/@nodelib/fs.scandir/out/index.js
+   │        └ node_modules/@nodelib/fs.walk/out/settings.js
+   │           └ node_modules/@nodelib/fs.walk/out/index.js
+   │              └ node_modules/fast-glob/out/readers/sync.js
+   │                 └ node_modules/fast-glob/out/providers/sync.js
+   │                    └ node_modules/fast-glob/out/index.js
+   │                       └ node_modules/globby/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/lodash/isObject.js ─────────────────────────────────────────────────────────────────────── 273b ──── 0.0%
+   │  └ node_modules/lodash/_isIterateeCall.js
+   │     └ node_modules/lodash/defaults.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/_mapCacheGet.js ─────────────────────────────────────────────────────────────────── 269b ──── 0.0%
+   │  └ node_modules/lodash/_MapCache.js
+   │     └ node_modules/lodash/_SetCache.js
+   │        └ node_modules/lodash/_baseUniq.js
+   │           └ node_modules/lodash/union.js
+   │              └ node_modules/archiver-utils/file.js
+   │                 └ node_modules/archiver-utils/index.js
+   │                    └ node_modules/archiver/lib/plugins/json.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/lodash/_mapCacheHas.js ─────────────────────────────────────────────────────────────────── 269b ──── 0.0%
+   │  └ node_modules/lodash/_MapCache.js
+   │     └ node_modules/lodash/_SetCache.js
+   │        └ node_modules/lodash/_baseUniq.js
+   │           └ node_modules/lodash/union.js
+   │              └ node_modules/archiver-utils/file.js
+   │                 └ node_modules/archiver-utils/index.js
+   │                    └ node_modules/archiver/lib/plugins/json.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/crc32-stream/lib/index.js ──────────────────────────────────────────────────────────────── 252b ──── 0.0%
+   │  └ node_modules/compress-commons/lib/archivers/zip/zip-archive-output-stream.js
+   │     └ node_modules/compress-commons/lib/compress-commons.js
+   │        └ node_modules/zip-stream/index.js
+   │           └ node_modules/archiver/lib/plugins/zip.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/_overArg.js ─────────────────────────────────────────────────────────────────────── 252b ──── 0.0%
+   │  └ node_modules/lodash/_getPrototype.js
+   │     └ node_modules/lodash/isPlainObject.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_getPrototype.js ────────────────────────────────────────────────────────────────── 246b ──── 0.0%
+   │  └ node_modules/lodash/isPlainObject.js
+   │     └ node_modules/archiver-utils/file.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/isarray/index.js ───────────────────────────────────────────────────────────────────────── 245b ──── 0.0%
+   │  └ node_modules/readable-stream/lib/_stream_readable.js
+   │     └ node_modules/readable-stream/readable.js
+   │        └ node_modules/readable-stream/passthrough.js
+   │           └ node_modules/lazystream/lib/lazystream.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/slash/index.js ─────────────────────────────────────────────────────────────────────────── 243b ──── 0.0%
+   │  └ node_modules/globby/ignore.js
+   │     └ node_modules/globby/index.js
+   │        └ src/extension.ts
+   ├ node_modules/lodash/_baseUnary.js ───────────────────────────────────────────────────────────────────── 242b ──── 0.0%
+   │  └ node_modules/lodash/_baseDifference.js
+   │     └ node_modules/lodash/difference.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/isObjectLike.js ─────────────────────────────────────────────────────────────────── 242b ──── 0.0%
+   │  └ node_modules/lodash/isPlainObject.js
+   │     └ node_modules/archiver-utils/file.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/_nativeCreate.js ────────────────────────────────────────────────────────────────── 239b ──── 0.0%
+   │  └ node_modules/lodash/_hashSet.js
+   │     └ node_modules/lodash/_Hash.js
+   │        └ node_modules/lodash/_mapCacheClear.js
+   │           └ node_modules/lodash/_MapCache.js
+   │              └ node_modules/lodash/_SetCache.js
+   │                 └ node_modules/lodash/_baseUniq.js
+   │                    └ node_modules/lodash/union.js
+   │                       └ node_modules/archiver-utils/file.js
+   │                          └ node_modules/archiver-utils/index.js
+   │                             └ node_modules/archiver/lib/plugins/json.js
+   │                                └ node_modules/archiver/index.js
+   │                                   └ src/extension.ts
+   ├ node_modules/lodash/_listCacheClear.js ──────────────────────────────────────────────────────────────── 237b ──── 0.0%
+   │  └ node_modules/lodash/_ListCache.js
+   │     └ node_modules/lodash/_mapCacheClear.js
+   │        └ node_modules/lodash/_MapCache.js
+   │           └ node_modules/lodash/_SetCache.js
+   │              └ node_modules/lodash/_baseUniq.js
+   │                 └ node_modules/lodash/union.js
+   │                    └ node_modules/archiver-utils/file.js
+   │                       └ node_modules/archiver-utils/index.js
+   │                          └ node_modules/archiver/lib/plugins/json.js
+   │                             └ node_modules/archiver/index.js
+   │                                └ src/extension.ts
+   ├ node_modules/lodash/_freeGlobal.js ──────────────────────────────────────────────────────────────────── 236b ──── 0.0%
+   │  └ node_modules/lodash/_root.js
+   │     └ node_modules/lodash/_Symbol.js
+   │        └ node_modules/lodash/_baseGetTag.js
+   │           └ node_modules/lodash/isPlainObject.js
+   │              └ node_modules/archiver-utils/file.js
+   │                 └ node_modules/archiver-utils/index.js
+   │                    └ node_modules/archiver/lib/plugins/json.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/lodash/_Map.js ─────────────────────────────────────────────────────────────────────────── 231b ──── 0.0%
+   │  └ node_modules/lodash/_mapCacheClear.js
+   │     └ node_modules/lodash/_MapCache.js
+   │        └ node_modules/lodash/_SetCache.js
+   │           └ node_modules/lodash/_baseUniq.js
+   │              └ node_modules/lodash/union.js
+   │                 └ node_modules/archiver-utils/file.js
+   │                    └ node_modules/archiver-utils/index.js
+   │                       └ node_modules/archiver/lib/plugins/json.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/lodash/_Set.js ─────────────────────────────────────────────────────────────────────────── 231b ──── 0.0%
+   │  └ node_modules/lodash/_createSet.js
+   │     └ node_modules/lodash/_baseUniq.js
+   │        └ node_modules/lodash/union.js
+   │           └ node_modules/archiver-utils/file.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/lodash/_getValue.js ────────────────────────────────────────────────────────────────────── 229b ──── 0.0%
+   │  └ node_modules/lodash/_getNative.js
+   │     └ node_modules/lodash/_Set.js
+   │        └ node_modules/lodash/_createSet.js
+   │           └ node_modules/lodash/_baseUniq.js
+   │              └ node_modules/lodash/union.js
+   │                 └ node_modules/archiver-utils/file.js
+   │                    └ node_modules/archiver-utils/index.js
+   │                       └ node_modules/archiver/lib/plugins/json.js
+   │                          └ node_modules/archiver/index.js
+   │                             └ src/extension.ts
+   ├ node_modules/lodash/constant.js ─────────────────────────────────────────────────────────────────────── 227b ──── 0.0%
+   │  └ node_modules/lodash/_baseSetToString.js
+   │     └ node_modules/lodash/_setToString.js
+   │        └ node_modules/lodash/_baseRest.js
+   │           └ node_modules/lodash/defaults.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/lodash/_setCacheHas.js ─────────────────────────────────────────────────────────────────── 222b ──── 0.0%
+   │  └ node_modules/lodash/_SetCache.js
+   │     └ node_modules/lodash/_baseUniq.js
+   │        └ node_modules/lodash/union.js
+   │           └ node_modules/archiver-utils/file.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/lodash/eq.js ───────────────────────────────────────────────────────────────────────────── 221b ──── 0.0%
+   │  └ node_modules/lodash/defaults.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/lodash/_coreJsData.js ──────────────────────────────────────────────────────────────────── 220b ──── 0.0%
+   │  └ node_modules/lodash/_isMasked.js
+   │     └ node_modules/lodash/_baseIsNative.js
+   │        └ node_modules/lodash/_getNative.js
+   │           └ node_modules/lodash/_Set.js
+   │              └ node_modules/lodash/_createSet.js
+   │                 └ node_modules/lodash/_baseUniq.js
+   │                    └ node_modules/lodash/union.js
+   │                       └ node_modules/archiver-utils/file.js
+   │                          └ node_modules/archiver-utils/index.js
+   │                             └ node_modules/archiver/lib/plugins/json.js
+   │                                └ node_modules/archiver/index.js
+   │                                   └ src/extension.ts
+   ├ node_modules/lodash/_cacheHas.js ────────────────────────────────────────────────────────────────────── 207b ──── 0.0%
+   │  └ node_modules/lodash/_baseUniq.js
+   │     └ node_modules/lodash/union.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/_baseIsNaN.js ───────────────────────────────────────────────────────────────────── 205b ──── 0.0%
+   │  └ node_modules/lodash/_baseIndexOf.js
+   │     └ node_modules/lodash/_arrayIncludes.js
+   │        └ node_modules/lodash/_baseUniq.js
+   │           └ node_modules/lodash/union.js
+   │              └ node_modules/archiver-utils/file.js
+   │                 └ node_modules/archiver-utils/index.js
+   │                    └ node_modules/archiver/lib/plugins/json.js
+   │                       └ node_modules/archiver/index.js
+   │                          └ src/extension.ts
+   ├ node_modules/lodash/_Symbol.js ──────────────────────────────────────────────────────────────────────── 191b ──── 0.0%
+   │  └ node_modules/lodash/_baseGetTag.js
+   │     └ node_modules/lodash/isPlainObject.js
+   │        └ node_modules/archiver-utils/file.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/lodash/identity.js ─────────────────────────────────────────────────────────────────────── 190b ──── 0.0%
+   │  └ node_modules/lodash/_baseRest.js
+   │     └ node_modules/lodash/defaults.js
+   │        └ node_modules/archiver-utils/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/stubFalse.js ────────────────────────────────────────────────────────────────────── 189b ──── 0.0%
+   │  └ node_modules/lodash/isBuffer.js
+   │     └ node_modules/lodash/_arrayLikeKeys.js
+   │        └ node_modules/lodash/keysIn.js
+   │           └ node_modules/lodash/defaults.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/tar-stream/index.js ────────────────────────────────────────────────────────────────────── 173b ──── 0.0%
+   │  └ node_modules/archiver/lib/plugins/tar.js
+   │     └ node_modules/archiver/index.js
+   │        └ src/extension.ts
+   ├ node_modules/readable-stream/passthrough.js ─────────────────────────────────────────────────────────── 170b ──── 0.0%
+   │  └ node_modules/lazystream/lib/lazystream.js
+   │     └ node_modules/archiver-utils/index.js
+   │        └ node_modules/archiver/lib/plugins/json.js
+   │           └ node_modules/archiver/index.js
+   │              └ src/extension.ts
+   ├ node_modules/readable-stream/lib/internal/streams/stream.js ─────────────────────────────────────────── 168b ──── 0.0%
+   │  └ node_modules/readable-stream/lib/_stream_writable.js
+   │     └ node_modules/readable-stream/readable.js
+   │        └ node_modules/readable-stream/passthrough.js
+   │           └ node_modules/lazystream/lib/lazystream.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/picomatch/index.js ─────────────────────────────────────────────────────────────────────── 164b ──── 0.0%
+   │  └ node_modules/micromatch/index.js
+   │     └ node_modules/fast-glob/out/utils/pattern.js
+   │        └ node_modules/fast-glob/out/utils/index.js
+   │           └ node_modules/fast-glob/out/index.js
+   │              └ node_modules/globby/index.js
+   │                 └ src/extension.ts
+   ├ node_modules/lodash/isArray.js ──────────────────────────────────────────────────────────────────────── 163b ──── 0.0%
+   │  └ node_modules/lodash/_arrayLikeKeys.js
+   │     └ node_modules/lodash/keysIn.js
+   │        └ node_modules/lodash/defaults.js
+   │           └ node_modules/archiver-utils/index.js
+   │              └ node_modules/archiver/lib/plugins/json.js
+   │                 └ node_modules/archiver/index.js
+   │                    └ src/extension.ts
+   ├ node_modules/globby/utilities.js ────────────────────────────────────────────────────────────────────── 158b ──── 0.0%
+   │  └ node_modules/globby/index.js
+   │     └ src/extension.ts
+   ├ node_modules/lodash/noop.js ─────────────────────────────────────────────────────────────────────────── 151b ──── 0.0%
+   │  └ node_modules/lodash/_createSet.js
+   │     └ node_modules/lodash/_baseUniq.js
+   │        └ node_modules/lodash/union.js
+   │           └ node_modules/archiver-utils/file.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/util-deprecate/node.js ─────────────────────────────────────────────────────────────────── 150b ──── 0.0%
+   │  └ node_modules/readable-stream/lib/_stream_writable.js
+   │     └ node_modules/readable-stream/readable.js
+   │        └ node_modules/readable-stream/passthrough.js
+   │           └ node_modules/lazystream/lib/lazystream.js
+   │              └ node_modules/archiver-utils/index.js
+   │                 └ node_modules/archiver/lib/plugins/json.js
+   │                    └ node_modules/archiver/index.js
+   │                       └ src/extension.ts
+   ├ node_modules/process/index.js ───────────────────────────────────────────────────────────────────────── 136b ──── 0.0%
+   │  └ node_modules/archiver/node_modules/readable-stream/lib/internal/streams/end-of-stream.js
+   │     └ node_modules/archiver/node_modules/readable-stream/lib/stream/promises.js
+   │        └ node_modules/archiver/node_modules/readable-stream/lib/ours/index.js
+   │           └ node_modules/archiver/lib/plugins/json.js
+   │              └ node_modules/archiver/index.js
+   │                 └ src/extension.ts
+   └ node_modules/unicorn-magic/default.js ────────────────────────────────────────────────────────────────── 81b ──── 0.0%
+      └ node_modules/unicorn-magic/node.js
+         └ node_modules/globby/index.js
+            └ src/extension.ts
