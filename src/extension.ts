@@ -320,7 +320,7 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
             absolute: true,
         });
         const set = new Set<string>(files);
-        for (const f of reincluded) set.add(f);
+        for (const f of reincluded) {set.add(f);}
         finalFiles = Array.from(set.values());
     }
 
