@@ -3,6 +3,8 @@
 **SecureZip** is a Visual Studio Code extension that lets you securely export your project as a clean ZIP archive.  
 Unlike simple “zipper” tools, SecureZip is designed for developers who need safe and reproducible distributions.
 
+> Preview release 0.0.1 – core export and ignore tooling are ready for early feedback.
+
 ## ✨ Features
 - 📦 **Export to ZIP** – Create a ZIP of your project with one click.
 - 🔄 **Auto Commit (optional)** – Automatically commit untracked changes before export.
@@ -76,6 +78,8 @@ Example `settings.json` override:
 
 **SecureZip** は、プロジェクトを安全かつクリーンな ZIP アーカイブとしてエクスポートできる Visual Studio Code 拡張機能です。  
 単なる「zipper」ツールとは異なり、SecureZip は安全で再現性のある配布物を求める開発者向けに設計されています。
+
+> プレビューリリース 0.0.1 – エクスポートと ignore 周りの基本機能を先行公開中です。
 
 ## ✨ 機能
 - 📦 **Export to ZIP** – プロジェクトをワンクリックで ZIP アーカイブとしてエクスポートします。
