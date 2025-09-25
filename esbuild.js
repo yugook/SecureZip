@@ -34,15 +34,18 @@ async function main() {
 		sourcemap: !production,
 		sourcesContent: false,
 		platform: 'node',
+		target: 'node20',
 		outfile: 'dist/extension.js',
 		external: ['vscode'],
 		define: {
 			// Build-time flags injected for tree-shaking and defaults.
 			__BUILD_FLAGS__: JSON.stringify({
 				// You can flip defaults per build here if needed.
-			})
+			}),
+			'process.env.NODE_ENV': production ? '"production"' : '"development"',
 		},
 		logLevel: 'silent',
+		...(production ? { legalComments: 'none' } : {}),
 	};
 
 	if (watch) {
