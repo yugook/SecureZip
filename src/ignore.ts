@@ -39,7 +39,9 @@ export async function loadSecureZipIgnore(root: string, filename = DEFAULT_FILEN
     const raw = await fs.promises.readFile(file, 'utf8');
     for (const lineRaw of raw.split(/\r?\n/)) {
         const normalized = normalizeIgnorePattern(lineRaw);
-        if (!normalized) {continue;}
+        if (!normalized) {
+            continue;
+        }
 
         if (normalized.negated) {
             result.includes.push(normalized.pattern);
@@ -52,14 +54,20 @@ export async function loadSecureZipIgnore(root: string, filename = DEFAULT_FILEN
 
 export function normalizeIgnorePattern(lineRaw: string): NormalizedPattern | undefined {
     let line = lineRaw.trim();
-    if (!line) {return undefined;}
-    if (line.startsWith('#')) {return undefined;}
+    if (!line) {
+        return undefined;
+    }
+    if (line.startsWith('#')) {
+        return undefined;
+    }
 
     let negated = false;
     if (line.startsWith('!')) {
         negated = true;
         line = line.slice(1).trim();
-        if (!line) {return undefined;}
+        if (!line) {
+            return undefined;
+        }
     }
 
     line = line.replace(/\\+/g, '/');
@@ -72,7 +80,9 @@ export function normalizeIgnorePattern(lineRaw: string): NormalizedPattern | und
         line = line.replace(/\/+$/g, '/') + '**';
     }
 
-    if (!line) {return undefined;}
+    if (!line) {
+        return undefined;
+    }
 
     return { pattern: line, negated };
 }

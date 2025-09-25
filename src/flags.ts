@@ -7,7 +7,7 @@ export type Flags = {
 
 // Build-time injected flags via esbuild `define`.
 // This symbol is replaced at build time; at runtime in dev it may be undefined.
- 
+
 declare const __BUILD_FLAGS__: Partial<Flags> | undefined;
 
 export const defaultFlags: Flags = {
@@ -55,4 +55,3 @@ export function resolveFlags(opts: {
 
   return merged;
 }
-
