@@ -18,6 +18,9 @@
     "onCommand:securezip.addToIgnore",
     "onCommand:securezip.addPattern",
     "onCommand:securezip.openIgnoreFile",
+    "onCommand:securezip.applySuggestedPatterns",
+    "onCommand:securezip.createIgnoreFile",
+    "onCommand:securezip.showPreview",
     "onStartupFinished",
     "onView:securezip.view"
   ],
@@ -39,13 +42,37 @@
         "category": "SecureZip"
       },
       {
+        "command": "securezip.applySuggestedPatterns",
+        "title": "SecureZip: 推奨パターンを一括追加",
+        "category": "SecureZip"
+      },
+      {
         "command": "securezip.openIgnoreFile",
         "title": "SecureZip: .securezipignore を開く",
         "category": "SecureZip"
+      },
+      {
+        "command": "securezip.createIgnoreFile",
+        "title": "SecureZip: .securezipignore を作成",
+        "category": "SecureZip"
+      },
+      {
+        "command": "securezip.showPreview",
+        "title": "SecureZip: プレビューを表示",
+        "category": "SecureZip"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "securezip",
+          "title": "SecureZip",
+          "icon": "resources/securezip.svg"
+        }
+      ]
+    },
     "views": {
-      "explorer": [
+      "securezip": [
         {
           "id": "securezip.view",
           "name": "SecureZip"
@@ -67,6 +94,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "securezip.showPreview",
+          "when": "view == securezip.view",
+          "group": "navigation@0"
+        },
         {
           "command": "securezip.export",
           "when": "view == securezip.view",

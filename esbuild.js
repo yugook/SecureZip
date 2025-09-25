@@ -6,8 +6,8 @@ const watch = process.argv.includes('--watch');
 /**
  * @type {import('esbuild').Plugin}
  */
-const esbuildProblemMatcherPlugin = {
-	name: 'esbuild-problem-matcher',
+const watchLoggerPlugin = {
+	name: 'esbuild-watch-logger',
 
 	setup(build) {
 		build.onStart(() => {
@@ -24,7 +24,7 @@ const esbuildProblemMatcherPlugin = {
 };
 
 async function main() {
-	const ctx = await esbuild.context({
+	const baseOptions = {
 		entryPoints: [
 			'src/extension.ts'
 		],
@@ -34,26 +34,30 @@ async function main() {
 		sourcemap: !production,
 		sourcesContent: false,
 		platform: 'node',
+		target: 'node20',
 		outfile: 'dist/extension.js',
 		external: ['vscode'],
 		define: {
 			// Build-time flags injected for tree-shaking and defaults.
 			__BUILD_FLAGS__: JSON.stringify({
 				// You can flip defaults per build here if needed.
-			})
+			}),
+			'process.env.NODE_ENV': production ? '"production"' : '"development"',
 		},
 		logLevel: 'silent',
-		plugins: [
-			/* add to the end of plugins array */
-			esbuildProblemMatcherPlugin,
-		],
-	});
+		...(production ? { legalComments: 'none' } : {}),
+	};
+
 	if (watch) {
+		const ctx = await esbuild.context({
+			...baseOptions,
+			plugins: [watchLoggerPlugin],
+		});
 		await ctx.watch();
-	} else {
-		await ctx.rebuild();
-		await ctx.dispose();
+		return;
 	}
+
+	await esbuild.build(baseOptions);
 }
 
 main().catch(e => {

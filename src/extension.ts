@@ -52,6 +52,25 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    const applySuggested = vscode.commands.registerCommand('securezip.applySuggestedPatterns', async (patterns?: unknown, root?: unknown) => {
+        try {
+            const list = Array.isArray(patterns)
+                ? patterns.map((p) => (typeof p === 'string' ? p.trim() : '')).filter((p) => p.length > 0)
+                : [];
+            if (list.length === 0) {
+                vscode.window.showInformationMessage('追加できる推奨パターンはありません');
+                return;
+            }
+            const result = await applyIgnorePatterns(list, typeof root === 'string' ? root : undefined);
+            if (result) {
+                showAddResult(result);
+            }
+        } catch (err: any) {
+            console.error('[SecureZip] applySuggestedPatterns failed', err);
+            vscode.window.showErrorMessage(`推奨パターンの追加に失敗しました: ${err?.message ?? err}`);
+        }
+    });
+
     const openIgnore = vscode.commands.registerCommand('securezip.openIgnoreFile', async (target?: vscode.Uri) => {
         const ws = vscode.workspace.workspaceFolders?.[0];
         if (!ws) {
@@ -71,6 +90,43 @@ export function activate(context: vscode.ExtensionContext) {
             console.error('[SecureZip] openIgnoreFile failed', err);
             vscode.window.showErrorMessage(`.securezipignore を開けませんでした: ${err?.message ?? err}`);
         }
+    });
+
+    const createIgnore = vscode.commands.registerCommand('securezip.createIgnoreFile', async (rootOverride?: unknown) => {
+        const resolvedRoot = typeof rootOverride === 'string' ? rootOverride : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (!resolvedRoot) {
+            vscode.window.showErrorMessage('ワークスペースが開かれていません');
+            return;
+        }
+
+        const targetFile = path.join(resolvedRoot, '.securezipignore');
+        let existed = false;
+        try {
+            await fs.promises.access(targetFile, fs.constants.F_OK);
+            existed = true;
+        } catch {
+            existed = false;
+        }
+
+        try {
+            await ensureSecureZipIgnoreFile(resolvedRoot);
+            treeProvider?.refresh();
+            if (existed) {
+                vscode.window.showInformationMessage('.securezipignore は既に存在しています');
+            } else {
+                vscode.window.showInformationMessage('.securezipignore を作成しました');
+            }
+        } catch (err: any) {
+            console.error('[SecureZip] createIgnoreFile failed', err);
+            vscode.window.showErrorMessage(`.securezipignore の作成に失敗しました: ${err?.message ?? err}`);
+        }
+    });
+
+    const showPreview = vscode.commands.registerCommand('securezip.showPreview', () => {
+        if (!treeProvider) {
+            return;
+        }
+        treeProvider.revealSection('preview');
     });
 
     // Feature flags (build-time + settings), then gate the status bar button
@@ -93,9 +149,20 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     treeProvider = new SecureZipViewProvider(context);
-    const treeRegistration = vscode.window.registerTreeDataProvider('securezip.view', treeProvider);
+    const treeView = vscode.window.createTreeView('securezip.view', { treeDataProvider: treeProvider });
+    treeProvider.attachTreeView(treeView);
 
-    context.subscriptions.push(disposable, addToIgnore, addPattern, openIgnore, treeProvider, treeRegistration);
+    context.subscriptions.push(
+        disposable,
+        addToIgnore,
+        addPattern,
+        applySuggested,
+        openIgnore,
+        createIgnore,
+        showPreview,
+        treeProvider,
+        treeView,
+    );
 }
 
 // This method is called when your extension is deactivated
@@ -253,7 +320,9 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
             absolute: true,
         });
         const set = new Set<string>(files);
-        for (const f of reincluded) set.add(f);
+        for (const f of reincluded) {
+            set.add(f);
+        }
         finalFiles = Array.from(set.values());
     }
 

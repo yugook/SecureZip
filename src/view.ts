@@ -3,13 +3,13 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
 
-type SectionId = 'lastExport' | 'workspaceSuggestions' | 'preview' | 'actions';
+type SectionId = 'guide' | 'actions' | 'preview' | 'recentExports';
 
 const SECTION_DEFS: Record<SectionId, { label: string; icon: string }> = {
-    lastExport: { label: '直近の除外候補', icon: 'history' },
-    workspaceSuggestions: { label: 'ワークスペースの推奨', icon: 'lightbulb' },
+    guide: { label: '状態とガイド', icon: 'lightbulb' },
+    actions: { label: 'アクション', icon: 'rocket' },
     preview: { label: '.securezipignore プレビュー', icon: 'list-unordered' },
-    actions: { label: '操作', icon: 'gear' },
+    recentExports: { label: '最近のエクスポート', icon: 'history' },
 };
 
 type LastExportSnapshot = {
@@ -24,7 +24,7 @@ type TreeNode =
     | { kind: 'message'; label: string; tooltip?: string }
     | { kind: 'suggestion'; label: string; pattern: string; detail?: string; alreadyExists: boolean; root?: string }
     | { kind: 'preview'; label: string; status: PreviewStatus; tooltip?: string; description?: string }
-    | { kind: 'action'; label: string; command: vscode.Command; description?: string };
+    | { kind: 'action'; label: string; command: vscode.Command; description?: string; icon?: string; tooltip?: string };
 
 class SecureZipTreeItem extends vscode.TreeItem {
     constructor(public readonly node: TreeNode) {
@@ -80,7 +80,8 @@ class SecureZipTreeItem extends vscode.TreeItem {
                 super(node.label, vscode.TreeItemCollapsibleState.None);
                 this.command = node.command;
                 this.description = node.description;
-                this.iconPath = new vscode.ThemeIcon('go-to-file');
+                this.tooltip = node.tooltip;
+                this.iconPath = new vscode.ThemeIcon(node.icon ?? 'go-to-file');
                 this.contextValue = 'securezip.action';
                 break;
             }
@@ -132,6 +133,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
     private readonly disposables: vscode.Disposable[] = [];
     private ignoreCache: { root: string; context: IgnoreContext } | undefined;
+    private treeView: vscode.TreeView<SecureZipTreeItem> | undefined;
+    private readonly rootItems = new Map<SectionId, SecureZipTreeItem>();
 
     constructor(private readonly context: vscode.ExtensionContext) {
         const watcher = vscode.workspace.createFileSystemWatcher(WATCH_PATTERN);
@@ -149,11 +152,25 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             disposable.dispose();
         }
         this.onDidChangeTreeDataEmitter.dispose();
+        this.rootItems.clear();
     }
 
     refresh() {
         this.ignoreCache = undefined;
+        this.rootItems.clear();
         this.onDidChangeTreeDataEmitter.fire();
+    }
+
+    attachTreeView(view: vscode.TreeView<SecureZipTreeItem>) {
+        this.treeView = view;
+    }
+
+    revealSection(section: SectionId) {
+        const item = this.rootItems.get(section);
+        if (!item || !this.treeView) {
+            return;
+        }
+        void this.treeView.reveal(item, { expand: true, focus: true });
     }
 
     async recordLastExport(patterns: string[]) {
@@ -181,14 +198,14 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
 
         if (!element) {
-            const snapshot = this.context.workspaceState.get<LastExportSnapshot>(LAST_EXPORT_STATE_KEY);
-            const description = snapshot?.timestamp ? this.formatTimestamp(snapshot.timestamp) : undefined;
-            return [
-                new SecureZipTreeItem({ kind: 'section', section: 'lastExport', description }),
-                new SecureZipTreeItem({ kind: 'section', section: 'workspaceSuggestions' }),
-                new SecureZipTreeItem({ kind: 'section', section: 'preview' }),
-                new SecureZipTreeItem({ kind: 'section', section: 'actions' }),
-            ];
+            const sections: SectionId[] = ['guide', 'actions', 'preview', 'recentExports'];
+            const items = sections.map((section) => {
+                const node: TreeNode = { kind: 'section', section };
+                const item = new SecureZipTreeItem(node);
+                this.rootItems.set(section, item);
+                return item;
+            });
+            return items;
         }
 
         if (element.node.kind !== 'section') {
@@ -196,14 +213,14 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
 
         switch (element.node.section) {
-            case 'lastExport':
-                return this.buildLastExportItems(workspaceFolder);
-            case 'workspaceSuggestions':
-                return this.buildWorkspaceSuggestionItems(workspaceFolder);
-            case 'preview':
-                return this.buildPreviewItems(workspaceFolder);
+            case 'guide':
+                return this.buildGuideItems(workspaceFolder);
             case 'actions':
                 return this.buildActionItems(workspaceFolder);
+            case 'preview':
+                return this.buildPreviewItems(workspaceFolder);
+            case 'recentExports':
+                return this.buildRecentExportItems(workspaceFolder);
             default:
                 return [];
         }
@@ -248,9 +265,106 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         return context;
     }
 
-    private async buildLastExportItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
+    private async buildGuideItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
+        const root = workspaceFolder.uri.fsPath;
+        const context = await this.ensureIgnoreContext(root);
         const snapshot = this.context.workspaceState.get<LastExportSnapshot>(LAST_EXPORT_STATE_KEY);
-        if (!snapshot || snapshot.patterns.length === 0) {
+        const items: SecureZipTreeItem[] = [];
+        let pendingTasks = 0;
+
+        if (!context.exists) {
+            pendingTasks += 1;
+            items.push(
+                new SecureZipTreeItem({
+                    kind: 'action',
+                    label: '.securezipignore が見つかりません',
+                    description: 'いま作る',
+                    icon: 'new-file',
+                    command: {
+                        command: 'securezip.createIgnoreFile',
+                        title: '.securezipignore を作成',
+                        arguments: [root],
+                    },
+                }),
+            );
+        }
+
+        const suggestions = await this.collectArtifactSuggestions(root, context);
+        if (suggestions.length > 0) {
+            pendingTasks += 1;
+            const patterns = suggestions.map((candidate) => candidate.pattern);
+            items.push(
+                new SecureZipTreeItem({
+                    kind: 'action',
+                    label: `未除外の典型ファイルが ${suggestions.length} 件`,
+                    description: '一括除外',
+                    icon: 'lightbulb-autofix',
+                    tooltip: '推奨パターンをまとめて .securezipignore に追加',
+                    command: {
+                        command: 'securezip.applySuggestedPatterns',
+                        title: '未除外の典型ファイルを一括で除外',
+                        arguments: [patterns, root],
+                    },
+                }),
+            );
+
+            for (const candidate of suggestions) {
+                items.push(
+                    new SecureZipTreeItem({
+                        kind: 'suggestion',
+                        label: candidate.pattern,
+                        pattern: candidate.pattern,
+                        detail: candidate.description,
+                        alreadyExists: false,
+                        root,
+                    }),
+                );
+            }
+        }
+
+        if (snapshot) {
+            const diffCount = this.countIgnoreDiffSinceSnapshot(context, snapshot);
+            if (diffCount > 0) {
+                pendingTasks += 1;
+                items.push(
+                    new SecureZipTreeItem({
+                        kind: 'action',
+                        label: `前回のエクスポート以降に ${diffCount} 件変化しました`,
+                        description: 'プレビューで確認',
+                        icon: 'diff',
+                        command: {
+                            command: 'securezip.showPreview',
+                            title: 'プレビューを開く',
+                        },
+                    }),
+                );
+            }
+        }
+
+        if (items.length === 0) {
+            items.push(
+                new SecureZipTreeItem({
+                    kind: 'message',
+                    label: '特に対応が必要な項目はありません',
+                }),
+            );
+        }
+
+        const guideSection = this.rootItems.get('guide');
+        if (guideSection) {
+            guideSection.description = pendingTasks > 0 ? `${pendingTasks} 件のタスク` : 'ステータス良好';
+        }
+
+        return items;
+    }
+
+    private async buildRecentExportItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
+        const snapshot = this.context.workspaceState.get<LastExportSnapshot>(LAST_EXPORT_STATE_KEY);
+        if (!snapshot) {
+            const recentSection = this.rootItems.get('recentExports');
+            if (recentSection) {
+                recentSection.description = '履歴なし';
+            }
             return [
                 new SecureZipTreeItem({
                     kind: 'message',
@@ -259,44 +373,22 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             ];
         }
 
-        const context = await this.ensureIgnoreContext(workspaceFolder.uri.fsPath);
-        const items: SecureZipTreeItem[] = [];
-
-        for (const pattern of snapshot.patterns) {
-            const info = normalizeIgnorePattern(pattern);
-            if (!info) {
-                continue;
-            }
-            const targetSet = info.negated ? context.includes : context.excludes;
-            const alreadyExists = targetSet.has(info.pattern);
-            const detail = info.negated ? `再包含: ${info.pattern}` : `除外: ${info.pattern}`;
-            items.push(
-                new SecureZipTreeItem({
-                    kind: 'suggestion',
-                    label: pattern,
-                    pattern,
-                    detail,
-                    alreadyExists,
-                    root: workspaceFolder.uri.fsPath,
-                }),
-            );
+        const description = this.formatTimestamp(snapshot.timestamp);
+        const recentSection = this.rootItems.get('recentExports');
+        if (recentSection) {
+            recentSection.description = description;
         }
-
-        return items.length > 0
-            ? items
-            : [
-                  new SecureZipTreeItem({
-                      kind: 'message',
-                      label: '候補が見つかりませんでした',
-                  }),
-              ];
+        return [
+            new SecureZipTreeItem({
+                kind: 'message',
+                label: `最新エクスポート: ${description}`,
+                tooltip: snapshot.patterns.length > 0 ? snapshot.patterns.join('\n') : undefined,
+            }),
+        ];
     }
 
-    private async buildWorkspaceSuggestionItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
-        const root = workspaceFolder.uri.fsPath;
-        const context = await this.ensureIgnoreContext(root);
-        const results: SecureZipTreeItem[] = [];
-
+    private async collectArtifactSuggestions(root: string, context: IgnoreContext): Promise<ArtifactCandidate[]> {
+        const suggestions: ArtifactCandidate[] = [];
         for (const candidate of ARTIFACT_CANDIDATES) {
             const exists = await this.candidateExists(root, candidate);
             if (!exists) {
@@ -307,46 +399,71 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             if (!normalized) {
                 continue;
             }
+
             const targetSet = normalized.negated ? context.includes : context.excludes;
             const alreadyExists = targetSet.has(normalized.pattern);
-
             if (alreadyExists) {
                 continue;
             }
 
-            results.push(
-                new SecureZipTreeItem({
-                    kind: 'suggestion',
-                    label: candidate.pattern,
-                    pattern: candidate.pattern,
-                    detail: candidate.description,
-                    alreadyExists,
-                    root: root,
-                }),
-            );
+            suggestions.push(candidate);
+        }
+        return suggestions;
+    }
+
+    private countIgnoreDiffSinceSnapshot(context: IgnoreContext, snapshot: LastExportSnapshot): number {
+        const snapshotKeys = new Set<string>();
+        for (const pattern of snapshot.patterns) {
+            const info = normalizeIgnorePattern(pattern);
+            if (!info) {
+                continue;
+            }
+            const key = `${info.negated ? '!' : ''}${info.pattern}`;
+            snapshotKeys.add(key);
         }
 
-        if (results.length === 0) {
-            return [
-                new SecureZipTreeItem({
-                    kind: 'message',
-                    label: '新しい推奨パターンはありません',
-                }),
-            ];
+        const currentKeys = new Set<string>();
+        for (const line of context.rawLines) {
+            const info = normalizeIgnorePattern(line);
+            if (!info) {
+                continue;
+            }
+            const key = `${info.negated ? '!' : ''}${info.pattern}`;
+            currentKeys.add(key);
         }
 
-        return results;
+        let diffCount = 0;
+        for (const key of currentKeys) {
+            if (!snapshotKeys.has(key)) {
+                diffCount += 1;
+            }
+        }
+        for (const key of snapshotKeys) {
+            if (!currentKeys.has(key)) {
+                diffCount += 1;
+            }
+        }
+
+        return diffCount;
     }
 
     private async buildPreviewItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
         const context = await this.ensureIgnoreContext(workspaceFolder.uri.fsPath);
+        const previewSection = this.rootItems.get('preview');
         if (!context.exists) {
+            if (previewSection) {
+                previewSection.description = '未作成';
+            }
             return [
                 new SecureZipTreeItem({
                     kind: 'message',
                     label: '.securezipignore はまだ作成されていません',
                 }),
             ];
+        }
+
+        if (previewSection) {
+            previewSection.description = context.rawLines.length > 0 ? `${context.rawLines.length} 行` : '空';
         }
 
         const occurrences = new Map<string, number>();
@@ -420,20 +537,46 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
     private async buildActionItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
         const root = workspaceFolder.uri.fsPath;
-        const command: vscode.Command = {
+        const openIgnoreCommand: vscode.Command = {
             command: 'securezip.openIgnoreFile',
             title: '.securezipignore を開く',
             arguments: [vscode.Uri.file(path.join(root, '.securezipignore'))],
         };
 
-        return [
+        const items: SecureZipTreeItem[] = [
+            new SecureZipTreeItem({
+                kind: 'action',
+                label: 'プレビュー (ドライラン)',
+                description: '除外設定を確認',
+                icon: 'eye',
+                command: {
+                    command: 'securezip.showPreview',
+                    title: 'プレビューを表示',
+                },
+            }),
+            new SecureZipTreeItem({
+                kind: 'action',
+                label: 'エクスポート',
+                description: 'ZIP を作成',
+                icon: 'package',
+                command: {
+                    command: 'securezip.export',
+                    title: 'SecureZip: Export Project',
+                },
+            }),
             new SecureZipTreeItem({
                 kind: 'action',
                 label: '.securezipignore を開く',
-                command,
+                command: openIgnoreCommand,
                 description: 'エディタで直接編集',
             }),
+            new SecureZipTreeItem({
+                kind: 'message',
+                label: 'Git クリーンアップ（安全モード）は近日対応予定',
+            }),
         ];
+
+        return items;
     }
 
     private async candidateExists(root: string, candidate: ArtifactCandidate): Promise<boolean> {
