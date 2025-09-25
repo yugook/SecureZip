@@ -6,8 +6,8 @@ const watch = process.argv.includes('--watch');
 /**
  * @type {import('esbuild').Plugin}
  */
-const esbuildProblemMatcherPlugin = {
-	name: 'esbuild-problem-matcher',
+const watchLoggerPlugin = {
+	name: 'esbuild-watch-logger',
 
 	setup(build) {
 		build.onStart(() => {
@@ -24,7 +24,7 @@ const esbuildProblemMatcherPlugin = {
 };
 
 async function main() {
-	const ctx = await esbuild.context({
+	const baseOptions = {
 		entryPoints: [
 			'src/extension.ts'
 		],
@@ -43,17 +43,18 @@ async function main() {
 			})
 		},
 		logLevel: 'silent',
-		plugins: [
-			/* add to the end of plugins array */
-			esbuildProblemMatcherPlugin,
-		],
-	});
+	};
+
 	if (watch) {
+		const ctx = await esbuild.context({
+			...baseOptions,
+			plugins: [watchLoggerPlugin],
+		});
 		await ctx.watch();
-	} else {
-		await ctx.rebuild();
-		await ctx.dispose();
+		return;
 	}
+
+	await esbuild.build(baseOptions);
 }
 
 main().catch(e => {
