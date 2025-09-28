@@ -7,7 +7,6 @@ on:
 
 jobs:
   publish-release:
-    if: github.repository == 'yugookugawa/SecureZip'
     runs-on: ubuntu-latest
 
     steps:
