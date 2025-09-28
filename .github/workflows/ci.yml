@@ -29,3 +29,6 @@ jobs:
 
       - name: Build VSIX bundle
         run: npm run package
+
+      - name: Run tests
+        run: npm test
