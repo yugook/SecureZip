@@ -1,4 +1,5 @@
 const esbuild = require("esbuild");
+const { createNlsPlugin } = require('vscode-nls-dev/lib/esbuild');
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -24,6 +25,11 @@ const watchLoggerPlugin = {
 };
 
 async function main() {
+	const nlsPlugin = createNlsPlugin({
+		pseudo: !!process.env.VSCODE_NLS_PSEUDO,
+		outDir: 'dist/nls'
+	});
+
 	const baseOptions = {
 		entryPoints: [
 			'src/extension.ts'
@@ -45,13 +51,14 @@ async function main() {
 			'process.env.NODE_ENV': production ? '"production"' : '"development"',
 		},
 		logLevel: 'silent',
+		plugins: [nlsPlugin],
 		...(production ? { legalComments: 'none' } : {}),
 	};
 
 	if (watch) {
 		const ctx = await esbuild.context({
 			...baseOptions,
-			plugins: [watchLoggerPlugin],
+			plugins: [...baseOptions.plugins, watchLoggerPlugin],
 		});
 		await ctx.watch();
 		return;

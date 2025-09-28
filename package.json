@@ -29,31 +29,31 @@
     "commands": [
       {
         "command": "securezip.export",
-        "title": "SecureZip: Export Project"
+        "title": "%command.export.title%"
       },
       {
         "command": "securezip.addToIgnore",
-        "title": "SecureZip: .securezipignore に追加",
+        "title": "%command.addToIgnore.title%",
         "category": "SecureZip"
       },
       {
         "command": "securezip.addPattern",
-        "title": "SecureZip: パターンを追加",
+        "title": "%command.addPattern.title%",
         "category": "SecureZip"
       },
       {
         "command": "securezip.applySuggestedPatterns",
-        "title": "SecureZip: 推奨パターンを一括追加",
+        "title": "%command.applySuggestedPatterns.title%",
         "category": "SecureZip"
       },
       {
         "command": "securezip.openIgnoreFile",
-        "title": "SecureZip: .securezipignore を開く",
+        "title": "%command.openIgnoreFile.title%",
         "category": "SecureZip"
       },
       {
         "command": "securezip.createIgnoreFile",
-        "title": "SecureZip: .securezipignore を作成",
+        "title": "%command.createIgnoreFile.title%",
         "category": "SecureZip"
       }
     ],
@@ -77,7 +77,7 @@
     "viewsWelcome": [
       {
         "view": "securezip.view",
-        "contents": "プロジェクトを安全にZIP化します。\\n[エクスポートを実行](command:securezip.export)"
+        "contents": "%viewsWelcome.main%"
       }
     ],
     "menus": {
@@ -114,28 +114,28 @@
         "secureZip.flags.enableStatusBarButton": {
           "type": "boolean",
           "default": true,
-          "description": "ステータスバーの SecureZip ボタンを表示する"
+          "description": "%config.enableStatusBarButton.description%"
         },
         "secureZip.commitMessageTemplate": {
           "type": "string",
-          "default": "[SecureZip] エクスポート用の自動コミット: ${date} ${time} (ブランチ: ${branch}, タグ: ${tag})",
-          "description": "自動コミット時のメッセージテンプレート。利用可能変数: ${date}, ${time}, ${datetime}, ${branch}, ${tag}"
+          "default": "[SecureZip] Automated commit for export: ${date} ${time} (Branch: ${branch}, Tag: ${tag})",
+          "description": "%config.commitMessageTemplate.description%"
         },
         "secureZip.tagPrefix": {
           "type": "string",
           "default": "export",
-          "description": "自動作成するタグの接頭辞（例: export → export-YYYYMMDD-HHmmss）"
+          "description": "%config.tagPrefix.description%"
         },
         "secureZip.additionalExcludes": {
           "type": "array",
           "items": { "type": "string" },
           "default": [],
-          "description": "追加で除外したいglobパターン（.gitignoreは自動適用）"
+          "description": "%config.additionalExcludes.description%"
         },
         "secureZip.includeNodeModules": {
           "type": "boolean",
           "default": false,
-          "description": "node_modules を含めるか（既定では除外）"
+          "description": "%config.includeNodeModules.description%"
         }
       }
     }
@@ -143,7 +143,8 @@
   "dependencies": {
     "archiver": "^7.0.1",
     "globby": "^14.0.2",
-    "simple-git": "^3.27.0"
+    "simple-git": "^3.27.0",
+    "vscode-nls": "^5.2.0"
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -170,6 +171,7 @@
     "npm-run-all": "^4.1.5",
     "typescript": "^5.9.2",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "vscode-nls-dev": "^4.0.0"
   }
 }
