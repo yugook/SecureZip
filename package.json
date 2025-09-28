@@ -158,6 +158,7 @@
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "test:unit": "npm run compile-tests && npx mocha out/test/flags.test.js out/test/ignore.test.js",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vscode-test"

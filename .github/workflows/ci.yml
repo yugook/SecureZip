@@ -30,15 +30,5 @@ jobs:
       - name: Build VSIX bundle
         run: npm run package
 
-      - name: Run tests
-        env:
-          DISPLAY: ':99'
-          XDG_RUNTIME_DIR: /tmp/vscode-xdg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0 libgtk-3-0 libasound2t64
-          mkdir -p $XDG_RUNTIME_DIR
-          chmod 700 $XDG_RUNTIME_DIR
-          Xvfb :99 -screen 0 1280x1024x24 > /dev/null 2>&1 &
-          sleep 3
-          npm test
+      - name: Run unit tests
+        run: npm run test:unit
