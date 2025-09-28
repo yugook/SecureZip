@@ -2,7 +2,7 @@ name: Tag After Release
 
 on:
   workflow_run:
-    workflows: ["Publish Release"]
+    workflows: ["Publish Release", "Publish Preview"]
     types: [completed]
 
 jobs:
@@ -25,23 +25,37 @@ jobs:
 
       - name: Determine version
         id: version
+        env:
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
         run: |
           VERSION=$(jq -r '.version' package.json)
           if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
             echo "Version not found in package.json" >&2
             exit 1
           fi
-          echo "version=v${VERSION}" >> "$GITHUB_OUTPUT"
+          if [ "$WORKFLOW_NAME" = "Publish Preview" ]; then
+            TAG="v${VERSION}-preview"
+          else
+            TAG="v${VERSION}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Create tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
         run: |
-          TAG="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
           SHA="${{ github.event.workflow_run.head_sha }}"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists. Skipping."
           else
-            git tag -a "$TAG" "$SHA" -m "Release $TAG"
+            if [ "$WORKFLOW_NAME" = "Publish Preview" ]; then
+              MESSAGE="Preview $TAG"
+            else
+              MESSAGE="Release $TAG"
+            fi
+            git tag -a "$TAG" "$SHA" -m "$MESSAGE"
             git push origin "$TAG"
           fi
