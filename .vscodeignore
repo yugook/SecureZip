@@ -3,9 +3,13 @@
 out/**
 node_modules/**
 src/**
+.github/**
+docs/**
 .gitignore
 .yarnrc
 esbuild.js
+SecureZip.code-workspace
+*.vsix
 vsc-extension-quickstart.md
 **/tsconfig.json
 **/eslint.config.mjs
