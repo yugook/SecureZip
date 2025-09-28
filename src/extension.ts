@@ -122,13 +122,6 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    const showPreview = vscode.commands.registerCommand('securezip.showPreview', () => {
-        if (!treeProvider) {
-            return;
-        }
-        treeProvider.revealSection('preview');
-    });
-
     // Feature flags (build-time + settings), then gate the status bar button
     const cfg = vscode.workspace.getConfiguration('secureZip');
     const settingsFlags = {
@@ -159,7 +152,6 @@ export function activate(context: vscode.ExtensionContext) {
         applySuggested,
         openIgnore,
         createIgnore,
-        showPreview,
         treeProvider,
         treeView,
     );

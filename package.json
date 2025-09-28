@@ -21,7 +21,6 @@
     "onCommand:securezip.openIgnoreFile",
     "onCommand:securezip.applySuggestedPatterns",
     "onCommand:securezip.createIgnoreFile",
-    "onCommand:securezip.showPreview",
     "onStartupFinished",
     "onView:securezip.view"
   ],
@@ -55,11 +54,6 @@
       {
         "command": "securezip.createIgnoreFile",
         "title": "SecureZip: .securezipignore を作成",
-        "category": "SecureZip"
-      },
-      {
-        "command": "securezip.showPreview",
-        "title": "SecureZip: プレビューを表示",
         "category": "SecureZip"
       }
     ],
@@ -96,19 +90,14 @@
       ],
       "view/title": [
         {
-          "command": "securezip.showPreview",
+          "command": "securezip.export",
           "when": "view == securezip.view",
           "group": "navigation@0"
         },
         {
-          "command": "securezip.export",
-          "when": "view == securezip.view",
-          "group": "navigation@1"
-        },
-        {
           "command": "securezip.openIgnoreFile",
           "when": "view == securezip.view",
-          "group": "navigation@2"
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [

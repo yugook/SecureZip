@@ -328,14 +328,9 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 pendingTasks += 1;
                 items.push(
                     new SecureZipTreeItem({
-                        kind: 'action',
+                        kind: 'message',
                         label: `前回のエクスポート以降に ${diffCount} 件変化しました`,
-                        description: 'プレビューで確認',
-                        icon: 'diff',
-                        command: {
-                            command: 'securezip.showPreview',
-                            title: 'プレビューを開く',
-                        },
+                        tooltip: 'SecureZip ビュー内のプレビューセクションで変更内容を確認できます',
                     }),
                 );
             }
@@ -544,16 +539,6 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         };
 
         const items: SecureZipTreeItem[] = [
-            new SecureZipTreeItem({
-                kind: 'action',
-                label: 'プレビュー (ドライラン)',
-                description: '除外設定を確認',
-                icon: 'eye',
-                command: {
-                    command: 'securezip.showPreview',
-                    title: 'プレビューを表示',
-                },
-            }),
             new SecureZipTreeItem({
                 kind: 'action',
                 label: 'エクスポート',
