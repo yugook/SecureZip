@@ -204,16 +204,14 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
             if (hasPendingChanges) {
                 const AUTO_COMMIT_OPTION = localize('git.autoCommitOption', 'Commit changes automatically and continue');
                 const SKIP_GIT_OPTION = localize('git.skipOption', 'Proceed without Git actions');
-                const CANCEL_OPTION = localize('common.cancel', 'Cancel');
                 const choice = await vscode.window.showWarningMessage(
                     localize('git.uncommittedWarning', 'Uncommitted changes detected. Do you want to create an automatic commit before exporting?'),
                     { modal: true },
                     AUTO_COMMIT_OPTION,
                     SKIP_GIT_OPTION,
-                    CANCEL_OPTION,
                 );
 
-                if (!choice || choice === CANCEL_OPTION) {
+                if (!choice) {
                     vscode.window.showInformationMessage(localize('info.exportCancelled', 'SecureZip export was cancelled.'));
                     return;
                 }
