@@ -8,6 +8,14 @@ import simpleGit, { SimpleGit } from 'simple-git';
 import { resolveFlags } from './flags';
 import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } from './ignore';
 import { SecureZipViewProvider, ensureSecureZipIgnoreFile } from './view';
+import { localize } from './nls';
+
+function toErrorMessage(err: unknown): string {
+    if (err instanceof Error && err.message) {
+        return err.message;
+    }
+    return String(err);
+}
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -18,37 +26,37 @@ export function activate(context: vscode.ExtensionContext) {
     const disposable = vscode.commands.registerCommand('securezip.export', async () => {
         try {
             await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'SecureZip', cancellable: false }, async (progress) => {
-                progress.report({ message: '準備中…' });
+                progress.report({ message: localize('progress.preparing', 'Preparing...') });
                 await exportProject(progress);
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[SecureZip] export failed', err);
-            vscode.window.showErrorMessage(`SecureZip 失敗: ${err?.message ?? err}`);
+            vscode.window.showErrorMessage(localize('error.exportFailed', 'SecureZip failed: {0}', toErrorMessage(err)));
         }
     });
 
     const addToIgnore = vscode.commands.registerCommand('securezip.addToIgnore', async (target?: vscode.Uri) => {
         try {
             await handleAddToIgnore(target);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[SecureZip] addToIgnore failed', err);
-            vscode.window.showErrorMessage(`.securezipignore への追加に失敗しました: ${err?.message ?? err}`);
+            vscode.window.showErrorMessage(localize('error.addToIgnoreFailed', 'Failed to add item to .securezipignore: {0}', toErrorMessage(err)));
         }
     });
 
     const addPattern = vscode.commands.registerCommand('securezip.addPattern', async (pattern: string, root?: string) => {
         try {
             if (typeof pattern !== 'string') {
-                vscode.window.showWarningMessage('パターンを解決できませんでした');
+                vscode.window.showWarningMessage(localize('warning.patternNotResolved', 'Could not resolve the pattern.'));
                 return;
             }
             const result = await applyIgnorePatterns([pattern], root);
             if (result) {
                 showAddResult(result);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[SecureZip] addPattern failed', err);
-            vscode.window.showErrorMessage(`パターン追加に失敗しました: ${err?.message ?? err}`);
+            vscode.window.showErrorMessage(localize('error.addPatternFailed', 'Failed to add pattern: {0}', toErrorMessage(err)));
         }
     });
 
@@ -58,23 +66,23 @@ export function activate(context: vscode.ExtensionContext) {
                 ? patterns.map((p) => (typeof p === 'string' ? p.trim() : '')).filter((p) => p.length > 0)
                 : [];
             if (list.length === 0) {
-                vscode.window.showInformationMessage('追加できる推奨パターンはありません');
+                vscode.window.showInformationMessage(localize('info.noSuggestedPatterns', 'There are no suggested patterns to add.'));
                 return;
             }
             const result = await applyIgnorePatterns(list, typeof root === 'string' ? root : undefined);
             if (result) {
                 showAddResult(result);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[SecureZip] applySuggestedPatterns failed', err);
-            vscode.window.showErrorMessage(`推奨パターンの追加に失敗しました: ${err?.message ?? err}`);
+            vscode.window.showErrorMessage(localize('error.addSuggestedPatternsFailed', 'Failed to add suggested patterns: {0}', toErrorMessage(err)));
         }
     });
 
     const openIgnore = vscode.commands.registerCommand('securezip.openIgnoreFile', async (target?: vscode.Uri) => {
         const ws = vscode.workspace.workspaceFolders?.[0];
         if (!ws) {
-            vscode.window.showErrorMessage('ワークスペースが開かれていません');
+            vscode.window.showErrorMessage(localize('error.workspaceMissing', 'No workspace folder is open.'));
             return;
         }
         const root = ws.uri.fsPath;
@@ -86,16 +94,16 @@ export function activate(context: vscode.ExtensionContext) {
             const doc = await vscode.workspace.openTextDocument(documentUri);
             await vscode.window.showTextDocument(doc, { preview: false });
             treeProvider?.refresh();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[SecureZip] openIgnoreFile failed', err);
-            vscode.window.showErrorMessage(`.securezipignore を開けませんでした: ${err?.message ?? err}`);
+            vscode.window.showErrorMessage(localize('error.openIgnoreFailed', 'Failed to open .securezipignore: {0}', toErrorMessage(err)));
         }
     });
 
     const createIgnore = vscode.commands.registerCommand('securezip.createIgnoreFile', async (rootOverride?: unknown) => {
         const resolvedRoot = typeof rootOverride === 'string' ? rootOverride : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (!resolvedRoot) {
-            vscode.window.showErrorMessage('ワークスペースが開かれていません');
+            vscode.window.showErrorMessage(localize('error.workspaceMissing', 'No workspace folder is open.'));
             return;
         }
 
@@ -112,21 +120,14 @@ export function activate(context: vscode.ExtensionContext) {
             await ensureSecureZipIgnoreFile(resolvedRoot);
             treeProvider?.refresh();
             if (existed) {
-                vscode.window.showInformationMessage('.securezipignore は既に存在しています');
+                vscode.window.showInformationMessage(localize('info.ignoreAlreadyExists', '.securezipignore already exists.'));
             } else {
-                vscode.window.showInformationMessage('.securezipignore を作成しました');
+                vscode.window.showInformationMessage(localize('info.ignoreCreated', '.securezipignore has been created.'));
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[SecureZip] createIgnoreFile failed', err);
-            vscode.window.showErrorMessage(`.securezipignore の作成に失敗しました: ${err?.message ?? err}`);
+            vscode.window.showErrorMessage(localize('error.createIgnoreFailed', 'Failed to create .securezipignore: {0}', toErrorMessage(err)));
         }
-    });
-
-    const showPreview = vscode.commands.registerCommand('securezip.showPreview', () => {
-        if (!treeProvider) {
-            return;
-        }
-        treeProvider.revealSection('preview');
     });
 
     // Feature flags (build-time + settings), then gate the status bar button
@@ -142,7 +143,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (flags.enableStatusBarButton) {
         const statusBar = vscode.window.createStatusBarItem('securezip.status', vscode.StatusBarAlignment.Right, 100);
         statusBar.text = '$(package) SecureZip';
-        statusBar.tooltip = 'プロジェクトをZIPとしてエクスポート';
+        statusBar.tooltip = localize('statusBar.tooltip', 'Export the project as a ZIP archive');
         statusBar.command = 'securezip.export';
         statusBar.show();
         context.subscriptions.push(statusBar);
@@ -159,7 +160,6 @@ export function activate(context: vscode.ExtensionContext) {
         applySuggested,
         openIgnore,
         createIgnore,
-        showPreview,
         treeProvider,
         treeView,
     );
@@ -174,13 +174,13 @@ let treeProvider: SecureZipViewProvider | undefined;
 async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     const ws = vscode.workspace.workspaceFolders?.[0];
     if (!ws) {
-        throw new Error('ワークスペースが開かれていません');
+        throw new Error(localize('error.workspaceMissing', 'No workspace folder is open.'));
     }
     const root = ws.uri.fsPath;
 
     const cfg = vscode.workspace.getConfiguration('secureZip');
     const tagPrefix = (cfg.get<string>('tagPrefix') || 'export').trim();
-    const commitTemplate = cfg.get<string>('commitMessageTemplate') || '[SecureZip] エクスポート用の自動コミット: ${date} ${time} (ブランチ: ${branch}, タグ: ${tag})';
+    const commitTemplate = cfg.get<string>('commitMessageTemplate') || '[SecureZip] Automated commit for export: ${date} ${time} (Branch: ${branch}, Tag: ${tag})';
     const additionalExcludes = cfg.get<string[]>('additionalExcludes') || [];
     const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
 
@@ -188,7 +188,7 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     const fmt = formatDate(now);
     const tag = `${tagPrefix}-${fmt.compact}`; // e.g., export-20250102-153012
 
-    // Git 処理
+    // Git operations
     const git: SimpleGit = simpleGit({ baseDir: root });
     let branch = 'unknown';
     try {
@@ -202,11 +202,11 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
             let allowTagging = !hasPendingChanges;
 
             if (hasPendingChanges) {
-                const AUTO_COMMIT_OPTION = '自動コミットして続行';
-                const SKIP_GIT_OPTION = 'Git操作をスキップ';
-                const CANCEL_OPTION = 'キャンセル';
+                const AUTO_COMMIT_OPTION = localize('git.autoCommitOption', 'Commit changes automatically and continue');
+                const SKIP_GIT_OPTION = localize('git.skipOption', 'Proceed without Git actions');
+                const CANCEL_OPTION = localize('common.cancel', 'Cancel');
                 const choice = await vscode.window.showWarningMessage(
-                    'Git に未コミットの変更があります。自動コミットを実行しますか？',
+                    localize('git.uncommittedWarning', 'Uncommitted changes detected. Do you want to create an automatic commit before exporting?'),
                     { modal: true },
                     AUTO_COMMIT_OPTION,
                     SKIP_GIT_OPTION,
@@ -214,7 +214,7 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
                 );
 
                 if (!choice || choice === CANCEL_OPTION) {
-                    vscode.window.showInformationMessage('SecureZip をキャンセルしました。');
+                    vscode.window.showInformationMessage(localize('info.exportCancelled', 'SecureZip export was cancelled.'));
                     return;
                 }
 
@@ -224,12 +224,12 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
             }
 
             if (shouldAutoCommit) {
-                progress.report({ message: 'Git: 自動コミットを準備中…' });
+                progress.report({ message: localize('progress.gitPreparingCommit', 'Git: preparing automatic commit...') });
                 try {
                     await git.add(['--update']);
                     const stagedDiff = await git.diff(['--cached']);
                     if (!stagedDiff.trim()) {
-                        vscode.window.showWarningMessage('自動コミット対象の変更が見つかりませんでした。既存ファイルの変更のみがコミット対象です。');
+                        vscode.window.showWarningMessage(localize('warning.noChangesToCommit', 'No staged changes were found. Only modifications to tracked files can be committed automatically.'));
                     } else {
                         const commitMessage = renderTemplate(commitTemplate, {
                             date: fmt.date,
@@ -243,17 +243,17 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
                     }
                 } catch (e) {
                     console.warn('[SecureZip] commit failed, continue without auto-commit', e);
-                    vscode.window.showWarningMessage('自動コミットに失敗しました（署名設定などを確認）。コミットなしで続行します。');
+                    vscode.window.showWarningMessage(localize('warning.commitFailed', 'Automatic commit failed (check Git signing or configuration). Continuing without committing.'));
                 }
             }
 
             if (allowTagging) {
-                progress.report({ message: 'Git: タグを作成中…' });
+                progress.report({ message: localize('progress.gitTagging', 'Git: creating export tag...') });
                 try {
-                    await git.addAnnotatedTag(tag, `SecureZip エクスポート: ${fmt.datetime}`);
+                    await git.addAnnotatedTag(tag, localize('git.tagAnnotation', 'SecureZip export: {0}', fmt.datetime));
                 } catch (e) {
                     console.warn('[SecureZip] tag failed, continue without tag', e);
-                    vscode.window.showWarningMessage('タグ作成に失敗しました。タグなしで続行します。');
+                    vscode.window.showWarningMessage(localize('warning.tagFailed', 'Failed to create tag. Continuing without tagging.'));
                 }
             } else {
                 console.log('[SecureZip] skip tagging because working tree remains dirty');
@@ -263,19 +263,19 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         console.warn('[SecureZip] Git unavailable or failed, continue without Git ops', e);
     }
 
-    // 保存先ダイアログ
+    // Save target selection
     const defaultName = `${path.basename(root)}-${fmt.compact}.zip`;
     const targetUri = await vscode.window.showSaveDialog({
         defaultUri: vscode.Uri.file(path.join(root, defaultName)),
         filters: { 'ZIP Archive': ['zip'] },
-        saveLabel: 'エクスポート'
+        saveLabel: localize('saveDialog.label', 'Export')
     });
     if (!targetUri) {
-        return; // ユーザーキャンセル
+        return; // user cancelled
     }
 
-    // 収集するファイル
-    progress.report({ message: 'ファイルを収集中…' });
+    // Files to include
+    progress.report({ message: localize('progress.collectingFiles', 'Collecting files...') });
     const { globby } = await import('globby');
     const ignoreDefaults = [
         '.git',
@@ -327,20 +327,20 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     }
 
     if (files.length === 0) {
-        throw new Error('アーカイブ対象のファイルが見つかりません');
+        throw new Error(localize('error.noFilesToArchive', 'No files were found to include in the archive.'));
     }
 
-    // ZIP作成
-    progress.report({ message: 'ZIP を作成中…' });
+    // Create ZIP
+    progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
     await createZip(root, finalFiles, targetUri.fsPath);
 
-    vscode.window.showInformationMessage(`SecureZip 完了: ${path.basename(targetUri.fsPath)}`);
+    vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
 }
 
 async function handleAddToIgnore(target?: vscode.Uri) {
     const ws = vscode.workspace.workspaceFolders?.[0];
     if (!ws) {
-        vscode.window.showErrorMessage('ワークスペースが開かれていません');
+        vscode.window.showErrorMessage(localize('error.workspaceMissing', 'No workspace folder is open.'));
         return;
     }
 
@@ -350,8 +350,8 @@ async function handleAddToIgnore(target?: vscode.Uri) {
             canSelectFiles: true,
             canSelectFolders: true,
             canSelectMany: false,
-            title: '.securezipignore に追加するリソースを選択',
-            openLabel: '追加',
+            title: localize('dialog.addToIgnore.title', 'Select a resource to add to .securezipignore'),
+            openLabel: localize('dialog.addToIgnore.openLabel', 'Add'),
         });
         if (!picked || picked.length === 0) {
             return;
@@ -360,26 +360,26 @@ async function handleAddToIgnore(target?: vscode.Uri) {
     }
 
     if (resource.scheme !== 'file') {
-        vscode.window.showWarningMessage('ファイルシステム上の項目のみ追加できます');
+        vscode.window.showWarningMessage(localize('warning.fileSchemeOnly', 'Only file system resources can be added.'));
         return;
     }
 
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(resource);
     if (!workspaceFolder) {
-        vscode.window.showWarningMessage('ワークスペース外の項目は追加できません');
+        vscode.window.showWarningMessage(localize('warning.outsideWorkspace', 'Resources outside the workspace cannot be added.'));
         return;
     }
 
     const stat = await fs.promises.stat(resource.fsPath);
     const relativeRaw = vscode.workspace.asRelativePath(resource, false);
     if (!relativeRaw) {
-        vscode.window.showWarningMessage('相対パスを解決できませんでした');
+        vscode.window.showWarningMessage(localize('warning.relativePathMissing', 'Could not resolve a relative path.'));
         return;
     }
 
     const relative = relativeRaw.replace(/\\+/g, '/');
     if (!relative || relative.startsWith('..')) {
-        vscode.window.showWarningMessage('ワークスペース配下のリソースを選択してください');
+        vscode.window.showWarningMessage(localize('warning.outsideWorkspaceRelative', 'Select a resource located inside the workspace.'));
         return;
     }
 
@@ -389,18 +389,18 @@ async function handleAddToIgnore(target?: vscode.Uri) {
     if (stat.isDirectory()) {
         suggestions.set(`${baseLabel}/`, {
             label: `${baseLabel}/`,
-            description: 'ディレクトリ全体を除外',
+            description: localize('quickPick.excludeDirectory', 'Exclude directory'),
             pattern: `${baseLabel}/`,
         });
         suggestions.set(`${baseLabel}/**`, {
             label: `${baseLabel}/**`,
-            description: 'ディレクトリ以下を再帰的に除外',
+            description: localize('quickPick.excludeDirectoryRecursive', 'Exclude directory recursively'),
             pattern: `${baseLabel}/**`,
         });
     } else {
         suggestions.set(baseLabel, {
             label: baseLabel,
-            description: 'ファイルを除外',
+            description: localize('quickPick.excludeFile', 'Exclude file'),
             pattern: baseLabel,
         });
     }
@@ -409,21 +409,21 @@ async function handleAddToIgnore(target?: vscode.Uri) {
     if (segments.some((seg) => seg.startsWith('.'))) {
         suggestions.set('**/.*', {
             label: '**/.*',
-            description: '隠しファイル全体を除外',
+            description: localize('quickPick.excludeHidden', 'Exclude hidden files'),
             pattern: '**/.*',
         });
     }
 
     const pickItems: (vscode.QuickPickItem & { pattern?: string; custom?: boolean })[] = Array.from(suggestions.values());
     pickItems.push({
-        label: 'パターンを手動で入力…',
-        description: '.securezipignore に追加するパターンを入力します',
+        label: localize('quickPick.enterPattern', 'Enter pattern manually...'),
+        description: localize('quickPick.enterPattern.description', 'Provide a custom pattern to append to .securezipignore'),
         alwaysShow: true,
         custom: true,
     });
 
     const selected = await vscode.window.showQuickPick(pickItems, {
-        placeHolder: `${relative} を .securezipignore に追加`,
+        placeHolder: localize('quickPick.placeholder', 'Add {0} to .securezipignore', relative),
     });
 
     if (!selected) {
@@ -434,11 +434,11 @@ async function handleAddToIgnore(target?: vscode.Uri) {
     if (selected.custom) {
         const firstSuggestion = suggestions.values().next().value;
         patternValue = await vscode.window.showInputBox({
-            prompt: '.securezipignore に書き込むパターンを入力してください',
+            prompt: localize('input.enterPattern', 'Enter the pattern to write to .securezipignore'),
             value: firstSuggestion?.pattern ?? baseLabel,
             validateInput: (value) => {
                 if (!value.trim()) {
-                    return 'パターンを入力してください';
+                    return localize('validation.patternRequired', 'Enter a pattern.');
                 }
                 return undefined;
             },
@@ -461,7 +461,7 @@ async function applyIgnorePatterns(patterns: string[], rootOverride?: string): P
     if (!targetRoot) {
         const ws = vscode.workspace.workspaceFolders?.[0];
         if (!ws) {
-            vscode.window.showErrorMessage('ワークスペースが開かれていません');
+            vscode.window.showErrorMessage(localize('error.workspaceMissing', 'No workspace folder is open.'));
             return undefined;
         }
         targetRoot = ws.uri.fsPath;
@@ -476,21 +476,21 @@ async function applyIgnorePatterns(patterns: string[], rootOverride?: string): P
 
 function showAddResult(result: AddPatternResult) {
     if (result.added.length === 1) {
-        vscode.window.showInformationMessage(`${result.added[0]} を .securezipignore に追加しました`);
+        vscode.window.showInformationMessage(localize('info.patternAddedSingle', 'Added {0} to .securezipignore.', result.added[0]));
     } else if (result.added.length > 1) {
-        vscode.window.showInformationMessage(`${result.added.length} 件のパターンを .securezipignore に追加しました`);
+        vscode.window.showInformationMessage(localize('info.patternAddedMultiple', 'Added {0} patterns to .securezipignore.', result.added.length.toString()));
     }
 
     const duplicates = result.skipped.filter((s) => s.reason === 'duplicate');
     if (duplicates.length > 0) {
         const list = duplicates.map((d) => d.pattern).join(', ');
-        vscode.window.showWarningMessage(`${list} は既に登録されています`);
+        vscode.window.showWarningMessage(localize('warning.patternAlreadyExists', 'Already present in .securezipignore: {0}.', list));
     }
 
     const invalids = result.skipped.filter((s) => s.reason === 'invalid');
     if (invalids.length > 0) {
         const list = invalids.map((d) => d.pattern).join(', ');
-        vscode.window.showWarningMessage(`${list} は無効なパターンです`);
+        vscode.window.showWarningMessage(localize('warning.patternInvalid', 'Invalid patterns: {0}.', list));
     }
 }
 

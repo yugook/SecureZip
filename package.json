@@ -3,7 +3,8 @@
   "displayName": "SecureZip",
   "description": "Securely export your project as a clean ZIP.",
   "publisher": "yugook",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "icon": "resources/securezip.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/yugook/SecureZip.git"
@@ -21,7 +22,6 @@
     "onCommand:securezip.openIgnoreFile",
     "onCommand:securezip.applySuggestedPatterns",
     "onCommand:securezip.createIgnoreFile",
-    "onCommand:securezip.showPreview",
     "onStartupFinished",
     "onView:securezip.view"
   ],
@@ -30,36 +30,31 @@
     "commands": [
       {
         "command": "securezip.export",
-        "title": "SecureZip: Export Project"
+        "title": "%command.export.title%"
       },
       {
         "command": "securezip.addToIgnore",
-        "title": "SecureZip: .securezipignore に追加",
+        "title": "%command.addToIgnore.title%",
         "category": "SecureZip"
       },
       {
         "command": "securezip.addPattern",
-        "title": "SecureZip: パターンを追加",
+        "title": "%command.addPattern.title%",
         "category": "SecureZip"
       },
       {
         "command": "securezip.applySuggestedPatterns",
-        "title": "SecureZip: 推奨パターンを一括追加",
+        "title": "%command.applySuggestedPatterns.title%",
         "category": "SecureZip"
       },
       {
         "command": "securezip.openIgnoreFile",
-        "title": "SecureZip: .securezipignore を開く",
+        "title": "%command.openIgnoreFile.title%",
         "category": "SecureZip"
       },
       {
         "command": "securezip.createIgnoreFile",
-        "title": "SecureZip: .securezipignore を作成",
-        "category": "SecureZip"
-      },
-      {
-        "command": "securezip.showPreview",
-        "title": "SecureZip: プレビューを表示",
+        "title": "%command.createIgnoreFile.title%",
         "category": "SecureZip"
       }
     ],
@@ -83,7 +78,7 @@
     "viewsWelcome": [
       {
         "view": "securezip.view",
-        "contents": "プロジェクトを安全にZIP化します。\\n[エクスポートを実行](command:securezip.export)"
+        "contents": "%viewsWelcome.main%"
       }
     ],
     "menus": {
@@ -96,19 +91,14 @@
       ],
       "view/title": [
         {
-          "command": "securezip.showPreview",
+          "command": "securezip.export",
           "when": "view == securezip.view",
           "group": "navigation@0"
         },
         {
-          "command": "securezip.export",
-          "when": "view == securezip.view",
-          "group": "navigation@1"
-        },
-        {
           "command": "securezip.openIgnoreFile",
           "when": "view == securezip.view",
-          "group": "navigation@2"
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
@@ -125,28 +115,30 @@
         "secureZip.flags.enableStatusBarButton": {
           "type": "boolean",
           "default": true,
-          "description": "ステータスバーの SecureZip ボタンを表示する"
+          "description": "%config.enableStatusBarButton.description%"
         },
         "secureZip.commitMessageTemplate": {
           "type": "string",
-          "default": "[SecureZip] エクスポート用の自動コミット: ${date} ${time} (ブランチ: ${branch}, タグ: ${tag})",
-          "description": "自動コミット時のメッセージテンプレート。利用可能変数: ${date}, ${time}, ${datetime}, ${branch}, ${tag}"
+          "default": "[SecureZip] Automated commit for export: ${date} ${time} (Branch: ${branch}, Tag: ${tag})",
+          "description": "%config.commitMessageTemplate.description%"
         },
         "secureZip.tagPrefix": {
           "type": "string",
           "default": "export",
-          "description": "自動作成するタグの接頭辞（例: export → export-YYYYMMDD-HHmmss）"
+          "description": "%config.tagPrefix.description%"
         },
         "secureZip.additionalExcludes": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
-          "description": "追加で除外したいglobパターン（.gitignoreは自動適用）"
+          "description": "%config.additionalExcludes.description%"
         },
         "secureZip.includeNodeModules": {
           "type": "boolean",
           "default": false,
-          "description": "node_modules を含めるか（既定では除外）"
+          "description": "%config.includeNodeModules.description%"
         }
       }
     }
@@ -171,16 +163,16 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.103.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
+    "@types/vscode": "^1.103.0",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
-    "eslint": "^9.32.0",
-    "esbuild": "^0.25.8",
-    "npm-run-all": "^4.1.5",
-    "typescript": "^5.9.2",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.8",
+    "eslint": "^9.32.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.2"
   }
 }

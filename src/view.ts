@@ -2,14 +2,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
+import { localize } from './nls';
 
 type SectionId = 'guide' | 'actions' | 'preview' | 'recentExports';
 
 const SECTION_DEFS: Record<SectionId, { label: string; icon: string }> = {
-    guide: { label: '状態とガイド', icon: 'lightbulb' },
-    actions: { label: 'アクション', icon: 'rocket' },
-    preview: { label: '.securezipignore プレビュー', icon: 'list-unordered' },
-    recentExports: { label: '最近のエクスポート', icon: 'history' },
+    guide: { label: localize('section.guide', 'Status & Guidance'), icon: 'lightbulb' },
+    actions: { label: localize('section.actions', 'Actions'), icon: 'rocket' },
+    preview: { label: localize('section.preview', '.securezipignore Preview'), icon: 'list-unordered' },
+    recentExports: { label: localize('section.recentExports', 'Recent Exports'), icon: 'history' },
 };
 
 type LastExportSnapshot = {
@@ -50,11 +51,13 @@ class SecureZipTreeItem extends vscode.TreeItem {
                 this.tooltip = node.detail;
                 this.contextValue = node.alreadyExists ? 'securezip.suggestion.disabled' : 'securezip.suggestion';
                 this.iconPath = new vscode.ThemeIcon(node.alreadyExists ? 'pass-filled' : 'add');
-                this.description = node.alreadyExists ? '追加済み' : '追加';
+                this.description = node.alreadyExists
+                    ? localize('suggestion.description.added', 'Added')
+                    : localize('suggestion.description.add', 'Add');
                 if (!node.alreadyExists) {
                     this.command = {
                         command: 'securezip.addPattern',
-                        title: '.securezipignore に追加',
+                        title: localize('command.addPattern.tooltip', 'Add to .securezipignore'),
                         arguments: node.root ? [node.pattern, node.root] : [node.pattern],
                     };
                 }
@@ -108,19 +111,19 @@ type ArtifactCandidate = {
 };
 
 const ARTIFACT_CANDIDATES: ArtifactCandidate[] = [
-    { pattern: 'node_modules/', description: 'Node.js 依存モジュール', path: 'node_modules', type: 'dir' },
-    { pattern: 'dist/', description: 'ビルド成果物', path: 'dist', type: 'dir' },
-    { pattern: 'out/', description: 'ビルド成果物', path: 'out', type: 'dir' },
-    { pattern: 'build/', description: 'ビルド成果物', path: 'build', type: 'dir' },
-    { pattern: 'coverage/', description: 'テストカバレッジ', path: 'coverage', type: 'dir' },
-    { pattern: 'logs/', description: 'ログディレクトリ', path: 'logs', type: 'dir' },
-    { pattern: 'tmp/', description: '一時ファイル', path: 'tmp', type: 'dir' },
-    { pattern: '.env', description: '環境変数ファイル', path: '.env', type: 'file' },
-    { pattern: '.env.*', description: '環境変数ファイル群', glob: '.env.*', type: 'glob' },
-    { pattern: 'coverage-final.json', description: 'NYC カバレッジレポート', path: 'coverage-final.json', type: 'file' },
-    { pattern: '**/*.log', description: 'ログファイル', glob: '**/*.log', type: 'glob' },
-    { pattern: '**/*.pem', description: '証明書/秘密鍵', glob: '**/*.pem', type: 'glob' },
-    { pattern: '**/*.key', description: '秘密鍵', glob: '**/*.key', type: 'glob' },
+    { pattern: 'node_modules/', description: localize('artifact.nodeModules', 'Node.js dependencies'), path: 'node_modules', type: 'dir' },
+    { pattern: 'dist/', description: localize('artifact.dist', 'Build output'), path: 'dist', type: 'dir' },
+    { pattern: 'out/', description: localize('artifact.out', 'Build output'), path: 'out', type: 'dir' },
+    { pattern: 'build/', description: localize('artifact.build', 'Build output'), path: 'build', type: 'dir' },
+    { pattern: 'coverage/', description: localize('artifact.coverage', 'Test coverage reports'), path: 'coverage', type: 'dir' },
+    { pattern: 'logs/', description: localize('artifact.logs', 'Log directory'), path: 'logs', type: 'dir' },
+    { pattern: 'tmp/', description: localize('artifact.tmp', 'Temporary files'), path: 'tmp', type: 'dir' },
+    { pattern: '.env', description: localize('artifact.env', 'Environment variable file'), path: '.env', type: 'file' },
+    { pattern: '.env.*', description: localize('artifact.envGlob', 'Environment variable files'), glob: '.env.*', type: 'glob' },
+    { pattern: 'coverage-final.json', description: localize('artifact.coverageFinal', 'NYC coverage report'), path: 'coverage-final.json', type: 'file' },
+    { pattern: '**/*.log', description: localize('artifact.logsGlob', 'Log files'), glob: '**/*.log', type: 'glob' },
+    { pattern: '**/*.pem', description: localize('artifact.pem', 'Certificates or private keys'), glob: '**/*.pem', type: 'glob' },
+    { pattern: '**/*.key', description: localize('artifact.key', 'Private keys'), glob: '**/*.key', type: 'glob' },
 ];
 
 const WATCH_PATTERN = '**/.securezipignore';
@@ -192,7 +195,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             return [
                 new SecureZipTreeItem({
                     kind: 'message',
-                    label: 'ワークスペースが開かれていません',
+                    label: localize('view.noWorkspace', 'No workspace folder is open.'),
                 }),
             ];
         }
@@ -277,12 +280,12 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             items.push(
                 new SecureZipTreeItem({
                     kind: 'action',
-                    label: '.securezipignore が見つかりません',
-                    description: 'いま作る',
+                    label: localize('guide.missingIgnore', '.securezipignore not found'),
+                    description: localize('guide.missingIgnore.action', 'Create now'),
                     icon: 'new-file',
                     command: {
                         command: 'securezip.createIgnoreFile',
-                        title: '.securezipignore を作成',
+                        title: localize('guide.missingIgnore.commandTitle', 'Create .securezipignore'),
                         arguments: [root],
                     },
                 }),
@@ -296,13 +299,13 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             items.push(
                 new SecureZipTreeItem({
                     kind: 'action',
-                    label: `未除外の典型ファイルが ${suggestions.length} 件`,
-                    description: '一括除外',
+                    label: localize('guide.pendingSuggestions', '{0} recommended patterns are not excluded', suggestions.length.toString()),
+                    description: localize('guide.pendingSuggestions.action', 'Exclude all'),
                     icon: 'lightbulb-autofix',
-                    tooltip: '推奨パターンをまとめて .securezipignore に追加',
+                    tooltip: localize('guide.pendingSuggestions.tooltip', 'Add all recommended patterns to .securezipignore'),
                     command: {
                         command: 'securezip.applySuggestedPatterns',
-                        title: '未除外の典型ファイルを一括で除外',
+                        title: localize('guide.pendingSuggestions.commandTitle', 'Add recommended patterns to .securezipignore'),
                         arguments: [patterns, root],
                     },
                 }),
@@ -328,14 +331,9 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 pendingTasks += 1;
                 items.push(
                     new SecureZipTreeItem({
-                        kind: 'action',
-                        label: `前回のエクスポート以降に ${diffCount} 件変化しました`,
-                        description: 'プレビューで確認',
-                        icon: 'diff',
-                        command: {
-                            command: 'securezip.showPreview',
-                            title: 'プレビューを開く',
-                        },
+                        kind: 'message',
+                        label: localize('guide.diffSinceExport', '{0} changes since the last export', diffCount.toString()),
+                        tooltip: localize('guide.diffSinceExport.tooltip', 'Review the changes in the preview section of the SecureZip view.'),
                     }),
                 );
             }
@@ -345,14 +343,16 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             items.push(
                 new SecureZipTreeItem({
                     kind: 'message',
-                    label: '特に対応が必要な項目はありません',
+                    label: localize('guide.nothingPending', 'No follow-up actions required'),
                 }),
             );
         }
 
         const guideSection = this.rootItems.get('guide');
         if (guideSection) {
-            guideSection.description = pendingTasks > 0 ? `${pendingTasks} 件のタスク` : 'ステータス良好';
+            guideSection.description = pendingTasks > 0
+                ? localize('guide.summary.pending', '{0} tasks', pendingTasks.toString())
+                : localize('guide.summary.ok', 'All clear');
         }
 
         return items;
@@ -363,12 +363,12 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         if (!snapshot) {
             const recentSection = this.rootItems.get('recentExports');
             if (recentSection) {
-                recentSection.description = '履歴なし';
+                recentSection.description = localize('recent.none', 'No history');
             }
             return [
                 new SecureZipTreeItem({
                     kind: 'message',
-                    label: 'まだエクスポート履歴がありません',
+                    label: localize('recent.noneMessage', 'No export history yet'),
                 }),
             ];
         }
@@ -381,7 +381,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         return [
             new SecureZipTreeItem({
                 kind: 'message',
-                label: `最新エクスポート: ${description}`,
+                label: localize('recent.latest', 'Latest export: {0}', description),
                 tooltip: snapshot.patterns.length > 0 ? snapshot.patterns.join('\n') : undefined,
             }),
         ];
@@ -452,18 +452,20 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         const previewSection = this.rootItems.get('preview');
         if (!context.exists) {
             if (previewSection) {
-                previewSection.description = '未作成';
+                previewSection.description = localize('preview.status.notCreated', 'Not created');
             }
             return [
                 new SecureZipTreeItem({
                     kind: 'message',
-                    label: '.securezipignore はまだ作成されていません',
+                    label: localize('preview.message.notCreated', 'The .securezipignore file has not been created yet.'),
                 }),
             ];
         }
 
         if (previewSection) {
-            previewSection.description = context.rawLines.length > 0 ? `${context.rawLines.length} 行` : '空';
+            previewSection.description = context.rawLines.length > 0
+                ? localize('preview.status.lines', '{0} lines', context.rawLines.length.toString())
+                : localize('preview.status.empty', 'Empty');
         }
 
         const occurrences = new Map<string, number>();
@@ -492,7 +494,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                         kind: 'preview',
                         label: line,
                         status: 'comment',
-                        description: 'コメント/無視',
+                        description: localize('preview.comment', 'Comment / ignored'),
                     }),
                 );
                 continue;
@@ -505,13 +507,17 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
             const hasReinclude = !info.negated && context.includes.has(info.pattern);
 
-            let description = info.negated ? '再包含' : hasReinclude ? '除外 (再包含あり)' : '除外';
+            let description = info.negated
+                ? localize('preview.reinclude', 'Re-include')
+                : hasReinclude
+                    ? localize('preview.excludeWithInclude', 'Exclude (re-include present)')
+                    : localize('preview.exclude', 'Exclude');
             let tooltip = info.negated ? `!${info.pattern}` : info.pattern;
             let status: PreviewStatus = info.negated ? 'include' : 'exclude';
 
             if (duplicateCount > 1 && seenCount > 0) {
                 status = 'duplicate';
-                description = '重複';
+                description = localize('preview.duplicate', 'Duplicate');
             }
 
             items.push(
@@ -530,7 +536,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             : [
                   new SecureZipTreeItem({
                       kind: 'message',
-                      label: '.securezipignore は空です',
+                      label: localize('preview.message.empty', '.securezipignore is empty'),
                   }),
               ];
     }
@@ -539,25 +545,15 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         const root = workspaceFolder.uri.fsPath;
         const openIgnoreCommand: vscode.Command = {
             command: 'securezip.openIgnoreFile',
-            title: '.securezipignore を開く',
+            title: localize('actions.openIgnore.title', 'Open .securezipignore'),
             arguments: [vscode.Uri.file(path.join(root, '.securezipignore'))],
         };
 
         const items: SecureZipTreeItem[] = [
             new SecureZipTreeItem({
                 kind: 'action',
-                label: 'プレビュー (ドライラン)',
-                description: '除外設定を確認',
-                icon: 'eye',
-                command: {
-                    command: 'securezip.showPreview',
-                    title: 'プレビューを表示',
-                },
-            }),
-            new SecureZipTreeItem({
-                kind: 'action',
-                label: 'エクスポート',
-                description: 'ZIP を作成',
+                label: localize('actions.export.label', 'Export'),
+                description: localize('actions.export.description', 'Create ZIP archive'),
                 icon: 'package',
                 command: {
                     command: 'securezip.export',
@@ -566,13 +562,9 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             }),
             new SecureZipTreeItem({
                 kind: 'action',
-                label: '.securezipignore を開く',
+                label: localize('actions.openIgnore.label', 'Open .securezipignore'),
                 command: openIgnoreCommand,
-                description: 'エディタで直接編集',
-            }),
-            new SecureZipTreeItem({
-                kind: 'message',
-                label: 'Git クリーンアップ（安全モード）は近日対応予定',
+                description: localize('actions.openIgnore.description', 'Edit the file in the editor'),
             }),
         ];
 

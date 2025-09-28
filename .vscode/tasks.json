@@ -40,6 +40,13 @@
       "group": "build"
     },
     {
+      "label": "vsce: package (pre-release)",
+      "type": "shell",
+      "command": "npx",
+      "args": ["vsce", "package", "--pre-release"],
+      "group": "build"
+    },
+    {
       "label": "pretest",
       "type": "npm",
       "script": "pretest",

@@ -1,0 +1,14 @@
+{
+  "command.export.title": "SecureZip: Export Project",
+  "command.addToIgnore.title": "SecureZip: Add to .securezipignore",
+  "command.addPattern.title": "SecureZip: Add Pattern",
+  "command.applySuggestedPatterns.title": "SecureZip: Add Recommended Patterns",
+  "command.openIgnoreFile.title": "SecureZip: Open .securezipignore",
+  "command.createIgnoreFile.title": "SecureZip: Create .securezipignore",
+  "viewsWelcome.main": "Export your project as a clean ZIP.\\n[Run export](command:securezip.export)",
+  "config.enableStatusBarButton.description": "Show the SecureZip button in the status bar",
+  "config.commitMessageTemplate.description": "Template for automatic commits. Available variables: ${date}, ${time}, ${datetime}, ${branch}, ${tag}",
+  "config.tagPrefix.description": "Prefix for automatically created tags (for example, export becomes export-YYYYMMDD-HHmmss)",
+  "config.additionalExcludes.description": "Additional glob patterns to exclude (beyond .gitignore)",
+  "config.includeNodeModules.description": "Include node_modules in the export (excluded by default)"
+}
