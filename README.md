@@ -1,27 +1,26 @@
 # SecureZip
 
-**SecureZip** is a Visual Studio Code extension that lets you securely export your project as a clean ZIP archive.  
-Unlike simple “zipper” tools, SecureZip is designed for developers who need safe and reproducible distributions.
+**SecureZip** is a Visual Studio Code extension that lets you securely export your project as a clean ZIP archive.
 
-> Preview release 0.0.1 – core export and ignore tooling are ready for early feedback.
+> Release 1.0.0 – stable export workflow with ignore tooling, auto-commit, and tagging.
 
 ## ✨ Features
 - 📦 **Export to ZIP** – Create a ZIP of your project with one click.
-- 🔄 **Auto Commit (optional)** – Automatically commit untracked changes before export.
-- 🏷 **Auto Tagging** – Tag the repository with the export date for easy traceability.
-- 🧹 **Secure Clean** – Exclude sensitive and unnecessary files (e.g. `.git`, `.env`, SSH keys, logs).
+- 🔄 **Optional Auto Commit** – Offer to commit tracked changes before export.
+- 🏷 **Auto Tagging** – Tag the repository with the export timestamp for traceability.
+- 🧹 **Smart Ignore Support** – Respects `.gitignore` and project-specific `.securezipignore` to strip secrets and build artifacts.
 
 ## 🛡 Ignore Rules
 SecureZip respects the following when selecting files to include:
 
-- `.gitignore`: Automatically respected.
-- `.securezipignore`: Project-specific rules to exclude and re-include files for export.
+- `.gitignore` – Acknowledged automatically.
+- `.securezipignore` – Project rules to exclude and re-include files for export.
 
 `.securezipignore` syntax (gitignore-like subset):
 
 - `# comment` and empty lines are ignored.
 - `pattern` excludes matches.
-- `!pattern` re-includes matches (overrides only `.securezipignore` excludes; it does not bypass `.gitignore`).
+- `!pattern` re-includes matches (overrides only `.securezipignore` excludes).
 - `/path` is treated as workspace-root relative.
 - `dir/` matches a directory (expanded to `dir/**`).
 
@@ -47,7 +46,6 @@ SecureZip supports lightweight feature flags with both build-time defaults and r
 
 - Runtime setting (recommended for users):
   - `secureZip.flags.enableStatusBarButton` (default: true)
-  - Configure via Settings UI or `settings.json`.
 - Build-time defaults (for maintainers):
   - `esbuild.js` injects `__BUILD_FLAGS__` using `define`, allowing different defaults per build.
 - Rollout helpers:
@@ -67,65 +65,63 @@ Example `settings.json` override:
 - Archiving a clean, tagged version of your repository for audit or compliance.
 
 ## 📖 Roadmap
-- Support for multiple archive formats (`.tar.gz`, `.7z`)
+- Multiple archive formats (`.tar.gz`, `.7z`)
 - Custom exclude profiles (`audit`, `distribution`, etc.)
-- Optional password-protected archives
+- Password-protected archives
 - 🗂 **Manifest File** – Embed an `__export_manifest.json` with commit ID, tag, and export metadata (future candidate)
 
 ---
 
 # SecureZip（日本語）
 
-**SecureZip** は、プロジェクトを安全かつクリーンな ZIP アーカイブとしてエクスポートできる Visual Studio Code 拡張機能です。  
-単なる「zipper」ツールとは異なり、SecureZip は安全で再現性のある配布物を求める開発者向けに設計されています。
+**SecureZip** は、プロジェクトを安全かつクリーンな ZIP アーカイブとしてエクスポートできる Visual Studio Code 拡張機能です。
 
-> プレビューリリース 0.0.1 – エクスポートと ignore 周りの基本機能を先行公開中です。
+> リリース 1.0.0 – エクスポートの安定版フロー（ignore 対応、自動コミット、タグ付け）を提供します。
 
 ## ✨ 機能
 - 📦 **Export to ZIP** – プロジェクトをワンクリックで ZIP アーカイブとしてエクスポートします。
-- 🔄 **Auto Commit (optional)** – エクスポート前に未追跡の変更を自動コミットします（任意設定）。
-- 🏷 **Auto Tagging** – エクスポート日でリポジトリにタグを付け、追跡しやすくします。
-- 🧹 **Secure Clean** – `.git` や `.env`、SSH キー、ログなどの機密ファイルや不要なファイルを除外します。
+- 🔄 **Auto Commit（任意設定）** – エクスポート前に追跡済み変更をコミットするよう確認します。
+- 🏷 **Auto Tagging** – エクスポート時刻を利用してリポジトリにタグを付けます。
+- 🧹 **スマートな除外サポート** – `.gitignore` と `.securezipignore` を尊重し、機密情報やビルド成果物を除外します。
 
 ## 🛡 無視ルール
 SecureZip はアーカイブに含めるファイルを選ぶ際、次のルールを尊重します。
 
-- `.gitignore`: 自動的に適用されます。
-- `.securezipignore`: エクスポート時の除外や再包含を制御するプロジェクト固有のルールです。
+- `.gitignore` – 自動的に適用されます。
+- `.securezipignore` – エクスポート専用に除外や再包含を指定するプロジェクトルールです。
 
 `.securezipignore` の構文（gitignore 互換のサブセット）:
 
 - `# comment` や空行は無視されます。
-- `pattern` は一致したファイル・フォルダーを除外します。
-- `!pattern` は一致した項目を再包含します（`.securezipignore` による除外のみを上書きし、`.gitignore` は無効化しません）。
-- `/path` はワークスペースルートからの相対パスとして扱われます。
+- `pattern` は一致した項目を除外します。
+- `!pattern` は一致した項目を再包含します（`.securezipignore` の除外のみを上書き）。
+- `/path` はワークスペースルートからの相対パスです。
 - `dir/` はディレクトリに一致し、`dir/**` に展開されます。
 
 例:
 
 ```
-# Exclude all build outputs
+# ビルド成果物を除外
 dist/
 
 out/
 
-# Exclude all env files, but allow the example
+# env ファイルを除外（例外あり）
 .env*
 
 !.env.example
 
-# Keep a specific file inside an excluded folder
+# 除外ディレクトリ内の特定ファイルは残す
 !dist/manifest.json
 ```
 
 ## 🔧 機能フラグ
 SecureZip は、ビルド時のデフォルトと実行時の上書きを組み合わせた軽量な機能フラグをサポートしています。
 
-- ランタイム設定（ユーザー向け推奨）:
+- ランタイム設定（ユーザー向け）:
   - `secureZip.flags.enableStatusBarButton`（デフォルト: true）
-  - 設定 UI または `settings.json` から構成できます。
 - ビルド時デフォルト（メンテナー向け）:
-  - `esbuild.js` が `define` を使って `__BUILD_FLAGS__` を注入し、ビルドごとに異なるデフォルトを設定できます。
+  - `esbuild.js` が `define` で `__BUILD_FLAGS__` を注入し、ビルドごとに異なるデフォルトを設定できます。
 - 段階的ロールアウト支援:
   - `src/flags.ts` は `machineId` から決定的なバケットを算出するユーティリティを提供します。
 
@@ -138,14 +134,12 @@ SecureZip は、ビルド時のデフォルトと実行時の上書きを組み�
 ```
 
 ## 🚀 ユースケース
-- 機密情報を漏らさずにクライアントへソースコードを提供する。
+- クライアントへのソースコード提供時に機密情報流出を防ぐ。
 - 進行中の作業を再現可能な「リリーススナップショット」として保存する。
-- 監査・コンプライアンス対応のため、タグ付きのクリーンなリポジトリ状態をアーカイブする。
+- 監査・コンプライアンス対応でタグ付きのクリーンなリポジトリ状態をアーカイブする。
 
 ## 📖 ロードマップ
-- 複数のアーカイブ形式（`.tar.gz`、`.7z` など）への対応
+- 複数アーカイブ形式（`.tar.gz`、`.7z` など）への対応
 - `audit` や `distribution` などのカスタム除外プロファイル
-- パスワード保護付きアーカイブ（任意設定）
-- 🗂 **Manifest File** – コミット ID、タグ、エクスポートメタデータを含む `__export_manifest.json` を埋め込む機能（将来的な候補）
-
----
+- パスワード保護付きアーカイブ
+- 🗂 **Manifest File** – コミット ID、タグ、エクスポート情報を含む `__export_manifest.json` の埋め込み（将来的な候補）
