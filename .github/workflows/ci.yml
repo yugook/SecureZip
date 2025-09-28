@@ -31,4 +31,4 @@ jobs:
         run: npm run package
 
       - name: Run tests
-        run: npm test
+        run: xvfb-run -a npm test
