@@ -203,11 +203,13 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
 
             if (hasPendingChanges) {
                 const AUTO_COMMIT_OPTION = localize('git.autoCommitOption', 'Commit changes automatically and continue');
+                const TAG_ONLY_OPTION = localize('git.tagOnlyOption', 'Create tag only (use latest commit)');
                 const SKIP_GIT_OPTION = localize('git.skipOption', 'Proceed without Git actions');
                 const choice = await vscode.window.showWarningMessage(
                     localize('git.uncommittedWarning', 'Uncommitted changes detected. Do you want to create an automatic commit before exporting?'),
                     { modal: true },
                     AUTO_COMMIT_OPTION,
+                    TAG_ONLY_OPTION,
                     SKIP_GIT_OPTION,
                 );
 
@@ -218,6 +220,20 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
 
                 if (choice === AUTO_COMMIT_OPTION) {
                     shouldAutoCommit = true;
+                } else if (choice === TAG_ONLY_OPTION) {
+                    const CONFIRM_TAG_ONLY_OPTION = localize('git.tagOnlyConfirmContinue', 'Create tag');
+                    const confirmTagOnly = await vscode.window.showWarningMessage(
+                        localize('git.tagOnlyConfirm', 'The tag will point to the latest commit and will not include uncommitted changes. Continue?'),
+                        { modal: true },
+                        CONFIRM_TAG_ONLY_OPTION,
+                    );
+
+                    if (confirmTagOnly !== CONFIRM_TAG_ONLY_OPTION) {
+                        vscode.window.showInformationMessage(localize('info.exportCancelled', 'SecureZip export was cancelled.'));
+                        return;
+                    }
+
+                    allowTagging = true;
                 }
             }
 
