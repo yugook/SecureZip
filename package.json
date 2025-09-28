@@ -3,7 +3,7 @@
   "displayName": "SecureZip",
   "description": "Securely export your project as a clean ZIP.",
   "publisher": "yugook",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "icon": "resources/securezip.png",
   "repository": {
     "type": "git",
