@@ -555,10 +555,6 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 command: openIgnoreCommand,
                 description: 'エディタで直接編集',
             }),
-            new SecureZipTreeItem({
-                kind: 'message',
-                label: 'Git クリーンアップ（安全モード）は近日対応予定',
-            }),
         ];
 
         return items;
