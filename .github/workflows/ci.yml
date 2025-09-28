@@ -31,4 +31,12 @@ jobs:
         run: npm run package
 
       - name: Run tests
-        run: xvfb-run -a npm test
+        env:
+          ELECTRON_RUN_AS_NODE: '1'
+          DBUS_SESSION_BUS_ADDRESS: 'unix:path=/run/user/1000/bus'
+          DISPLAY: ':99'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          Xvfb :99 -screen 0 1280x1024x24 > /dev/null 2>&1 &
+          xvfb-run -a npm test
