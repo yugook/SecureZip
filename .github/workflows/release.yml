@@ -46,7 +46,7 @@ jobs:
         run: npm run test:unit
 
       - name: Run extension integration tests
-        run: xvfb-run -a npm run test
+        run: dbus-run-session -- xvfb-run -a npm run test
 
       - name: Package VSIX artifact
         env:
