@@ -5,6 +5,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import AdmZip = require('adm-zip');
+import { setTimeout as delay } from 'timers/promises';
 
 let tmpDir: string;
 let workspaceRoot: string;
@@ -21,6 +22,7 @@ suiteSetup(async () => {
         name: 'test-ws',
     });
     assert.ok(added, 'Failed to add test workspace folder');
+    await waitForWorkspaceFolder(workspaceRoot);
 });
 
 suiteTeardown(async () => {
@@ -48,6 +50,41 @@ async function stageFixture(name: string) {
     await fs.promises.cp(source, workspaceRoot, { recursive: true });
 }
 
+async function waitForWorkspaceFolder(target: string, timeoutMs = 5000) {
+    const normalize = (p: string) => path.resolve(p);
+    const matches = () =>
+        (vscode.workspace.workspaceFolders ?? []).some((folder) => normalize(folder.uri.fsPath) === normalize(target));
+
+    if (matches()) {
+        return;
+    }
+
+    const deadline = Date.now() + timeoutMs;
+    await new Promise<void>((resolve, reject) => {
+        const disposable = vscode.workspace.onDidChangeWorkspaceFolders(() => {
+            if (matches()) {
+                disposable.dispose();
+                resolve();
+            }
+        });
+
+        const check = async () => {
+            while (Date.now() < deadline) {
+                if (matches()) {
+                    disposable.dispose();
+                    resolve();
+                    return;
+                }
+                await delay(100);
+            }
+            disposable.dispose();
+            reject(new Error('Timed out waiting for test workspace folder to be registered.'));
+        };
+
+        void check();
+    });
+}
+
 async function loadExpectedHashes(name: string) {
     const manifest = path.join(fixturesRoot, name, 'expected-export.json');
     const raw = await fs.promises.readFile(manifest, 'utf8');
@@ -72,6 +109,7 @@ async function collectZipHashes(zipPath: string) {
 
 suite('SecureZip Extension', () => {
     test('exports expected contents for simple fixture project', async () => {
+        await waitForWorkspaceFolder(workspaceRoot);
         await stageFixture('simple-project');
 
         const outPath = path.join(workspaceRoot, 'securezip-export.zip');

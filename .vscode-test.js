@@ -8,7 +8,6 @@ module.exports = defineConfig({
         timeout: 20000,
     },
     env: {
-        DBUS_SESSION_BUS_ADDRESS: 'unix:path=/dev/null',
         NO_AT_BRIDGE: '1',
     },
 });
