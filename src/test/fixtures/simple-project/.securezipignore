@@ -1,0 +1,4 @@
+# Fixture ignore rules
+# Entire dist output is ignored by default, but release.txt must be kept.
+dist/
+!dist/release.txt
