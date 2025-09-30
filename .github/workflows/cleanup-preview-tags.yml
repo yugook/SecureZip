@@ -1,0 +1,49 @@
+name: Cleanup Preview Tags
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Delete old preview tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEEP_COUNT: '5'
+        run: |
+          set -euo pipefail
+          KEEP=${KEEP_COUNT}
+          if ! [[ $KEEP =~ ^[0-9]+$ ]]; then
+            echo "KEEP_COUNT must be numeric" >&2
+            exit 1
+          fi
+          mapfile -t TAGS < <(git tag --list 'v*-preview' --sort=-creatordate)
+          TOTAL=${#TAGS[@]}
+          if [ "$TOTAL" -le "$KEEP" ]; then
+            echo "Nothing to delete (total $TOTAL, keep $KEEP)."
+            exit 0
+          fi
+          echo "Found $TOTAL preview tags. Keeping the newest $KEEP."
+          TAGS_TO_DELETE=("${TAGS[@]:${KEEP}}")
+          if [ ${#TAGS_TO_DELETE[@]} -eq 0 ]; then
+            echo "No tags beyond retention window."
+            exit 0
+          fi
+          echo "Deleting ${#TAGS_TO_DELETE[@]} tag(s): ${TAGS_TO_DELETE[*]}"
+          for tag in "${TAGS_TO_DELETE[@]}"; do
+            git tag -d "$tag" || true
+            git push origin ":refs/tags/$tag"
+          done
