@@ -28,13 +28,61 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Determine extension version
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "Version not found in package.json" >&2
+            exit 1
+          fi
+          echo "plain=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Build VSIX bundle
         run: npm run package
 
       - name: Run unit tests
         run: npm run test:unit
 
+      - name: Package VSIX artifact
+        env:
+          VERSION: ${{ steps.version.outputs.plain }}
+        run: npx vsce package --out "securezip-${VERSION}.vsix"
+
       - name: Publish release to VS Code Marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: npx vsce publish --skip-duplicate
+
+      - name: Generate release notes template
+        env:
+          VSIX_NAME: securezip-${{ steps.version.outputs.plain }}.vsix
+        run: |
+          cat <<'EOF' > release-notes.md
+          ## Changes
+          - _TODO: summarize changes_
+
+          ## Assets
+          - ${VSIX_NAME}
+          EOF
+
+      - name: Create or update draft GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.version.outputs.tag }}
+          VSIX_NAME: securezip-${{ steps.version.outputs.plain }}.vsix
+        run: |
+          set -euo pipefail
+          if [ ! -f "$VSIX_NAME" ]; then
+            echo "VSIX artifact $VSIX_NAME not found" >&2
+            exit 1
+          fi
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Release $TAG_NAME exists. Updating assets and notes."
+            gh release upload "$TAG_NAME" "$VSIX_NAME" --clobber
+            gh release edit "$TAG_NAME" --draft --title "$TAG_NAME" --notes-file release-notes.md --target "$GITHUB_SHA"
+          else
+            echo "Creating draft release $TAG_NAME."
+            gh release create "$TAG_NAME" "$VSIX_NAME" --draft --title "$TAG_NAME" --notes-file release-notes.md --target "$GITHUB_SHA"
+          fi
