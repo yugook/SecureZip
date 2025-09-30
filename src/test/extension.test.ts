@@ -3,9 +3,13 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as crypto from 'crypto';
+import AdmZip = require('adm-zip');
 
 let tmpDir: string;
 let workspaceRoot: string;
+
+const fixturesRoot = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures');
 
 suiteSetup(async () => {
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-test-'));
@@ -39,29 +43,55 @@ setup(async () => {
     );
 });
 
-suite('SecureZip Extension', () => {
-    test('Export command creates a ZIP', async () => {
-        // Arrange: create a sample file to include in ZIP
-        const samplePath = path.join(workspaceRoot, 'README.txt');
-        await fs.promises.writeFile(samplePath, 'hello');
+async function stageFixture(name: string) {
+    const source = path.join(fixturesRoot, name);
+    await fs.promises.cp(source, workspaceRoot, { recursive: true });
+}
 
-        // Stub the save dialog to a deterministic path inside workspace
-        const outPath = path.join(workspaceRoot, 'export.zip');
+async function loadExpectedHashes(name: string) {
+    const manifest = path.join(fixturesRoot, name, 'expected-export.json');
+    const raw = await fs.promises.readFile(manifest, 'utf8');
+    const entries = Object.entries(JSON.parse(raw) as Record<string, string>);
+    entries.sort((a, b) => a[0].localeCompare(b[0]));
+    return Object.fromEntries(entries);
+}
+
+async function collectZipHashes(zipPath: string) {
+    const zip = new AdmZip(zipPath);
+    const files = zip
+        .getEntries()
+        .filter((entry) => !entry.isDirectory)
+        .map((entry) => {
+            const hash = crypto.createHash('sha256').update(entry.getData()).digest('hex');
+            const normalizedName = entry.entryName.replace(/\\/g, '/');
+            return [normalizedName, hash] as const;
+        })
+        .sort((a, b) => a[0].localeCompare(b[0]));
+    return Object.fromEntries(files);
+}
+
+suite('SecureZip Extension', () => {
+    test('exports expected contents for simple fixture project', async () => {
+        await stageFixture('simple-project');
+
+        const outPath = path.join(workspaceRoot, 'securezip-export.zip');
         const originalShowSaveDialog = vscode.window.showSaveDialog;
-        (vscode.window as any).showSaveDialog = async () => vscode.Uri.file(outPath);
+        (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
+            async () => vscode.Uri.file(outPath);
 
         try {
-            // Act: run the export command
             await vscode.commands.executeCommand('securezip.export');
-
-            // Assert: ZIP exists and is non-empty
-            const stat = await fs.promises.stat(outPath);
-            assert.ok(stat.isFile(), 'Export did not create a file');
-            assert.ok(stat.size > 0, 'Export ZIP is empty');
         } finally {
-            // Restore
-            (vscode.window as any).showSaveDialog = originalShowSaveDialog;
+            (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
+                originalShowSaveDialog;
         }
+
+        const stat = await fs.promises.stat(outPath);
+        assert.ok(stat.isFile(), 'Export did not create a file');
+
+        const actual = await collectZipHashes(outPath);
+        const expected = await loadExpectedHashes('simple-project');
+        assert.deepStrictEqual(actual, expected);
     });
 
     test('Export cancels cleanly when save dialog returns undefined', async () => {
