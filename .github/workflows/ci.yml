@@ -32,3 +32,6 @@ jobs:
 
       - name: Run unit tests
         run: npm run test:unit
+
+      - name: Run extension integration tests
+        run: npm run test
