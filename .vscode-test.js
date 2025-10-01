@@ -1,9 +1,9 @@
 const { defineConfig } = require('@vscode/test-cli');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
-const workspaceDir = path.join(__dirname, 'tmp', 'test-workspace');
-fs.mkdirSync(workspaceDir, { recursive: true });
+const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'securezip-test-'));
 
 module.exports = defineConfig({
     files: 'out/test/extension.test.js',
