@@ -1,4 +1,8 @@
 import * as assert from 'assert';
+import * as fs from 'fs';
+import * as path from 'path';
+import { createHash } from 'crypto';
+import AdmZip from 'adm-zip';
 import * as vscode from 'vscode';
 function log(step: string): void {
     console.log(`[SecureZip Test] ${step}`);
@@ -37,7 +41,7 @@ async function collectZipHashes(zipPath: string) {
         .getEntries()
         .filter((entry) => !entry.isDirectory)
         .map((entry) => {
-            const hash = crypto.createHash('sha256').update(entry.getData()).digest('hex');
+            const hash = createHash('sha256').update(entry.getData()).digest('hex');
             const normalizedName = entry.entryName.replace(/\\/g, '/');
             return [normalizedName, hash] as const;
         })
@@ -51,7 +55,7 @@ suite('SecureZip Extension', () => {
         log('test: export simple fixture - start');
         await stageFixture('simple-project');
 
-        const outPath = path.join(workspaceRoot, 'securezip-export.zip');
+        const outPath = path.join(getWorkspaceRoot(), 'securezip-export.zip');
         const originalShowSaveDialog = vscode.window.showSaveDialog;
         (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
             async () => vscode.Uri.file(outPath);
