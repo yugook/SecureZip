@@ -110,7 +110,12 @@ suite('SecureZip Extension', () => {
 
         const actual = await collectZipHashes(outPath);
         const expected = await loadExpectedHashes('simple-project');
-        assert.deepStrictEqual(actual, expected);
+        try {
+            assert.deepStrictEqual(actual, expected);
+        } catch (error) {
+            log(`mismatch detected. actual=${JSON.stringify(actual, null, 2)} expected=${JSON.stringify(expected, null, 2)}`);
+            throw error;
+        }
         log('test: export simple fixture - completed');
     });
 
