@@ -1,63 +1,26 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as crypto from 'crypto';
-import AdmZip = require('adm-zip');
-
-let workspaceRoot: string;
-
 function log(step: string): void {
     console.log(`[SecureZip Test] ${step}`);
 }
 
 const fixturesRoot = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures');
 
-suiteSetup(async function () {
-    this.timeout(30000);
-    log('suiteSetup starting');
-    const workspaceEnv = process.env.SECUREZIP_TEST_WORKSPACE;
-    assert.ok(workspaceEnv, 'SECUREZIP_TEST_WORKSPACE env var is not set.');
-    workspaceRoot = workspaceEnv!;
-    await fs.promises.mkdir(workspaceRoot, { recursive: true });
-
-    const folders = vscode.workspace.workspaceFolders;
-    assert.ok(folders && folders.length > 0, 'VS Code did not open a workspace folder.');
-    const actual = path.resolve(folders[0].uri.fsPath);
-    assert.strictEqual(actual, path.resolve(workspaceRoot), 'Opened workspace folder does not match expected test workspace.');
-    log(`workspace folder ready at ${workspaceRoot}`);
-});
-
-suiteTeardown(async function () {
-    this.timeout(15000);
-    log('suiteTeardown starting');
-    const existing = vscode.workspace.workspaceFolders ?? [];
-    if (existing.length > 0) {
-        vscode.workspace.updateWorkspaceFolders(0, existing.length);
-    }
-    try {
-        await fs.promises.rm(workspaceRoot, { recursive: true, force: true });
-    } catch {}
-});
-
 setup(async function () {
     this.timeout(15000);
-    log('setup clearing workspace root');
-    if (!workspaceRoot) {
-        return;
-    }
-    await fs.promises.mkdir(workspaceRoot, { recursive: true });
-    const entries = await fs.promises.readdir(workspaceRoot);
-    await Promise.all(
-        entries.map((entry) => fs.promises.rm(path.join(workspaceRoot, entry), { recursive: true, force: true })),
-    );
-    log('workspace root cleared');
+    log('setup ensuring workspace folder exists');
+    const folders = vscode.workspace.workspaceFolders;
+    assert.ok(folders && folders.length > 0, 'VS Code did not open a workspace folder.');
+    const folder = folders[0];
+    await ensureWorkspaceClean(folder.uri.fsPath);
+    log(`workspace root ready at ${folder.uri.fsPath}`);
 });
 
 async function stageFixture(name: string) {
     log(`staging fixture ${name}`);
     const source = path.join(fixturesRoot, name);
-    await fs.promises.cp(source, workspaceRoot, { recursive: true });
+    const destination = getWorkspaceRoot();
+    await fs.promises.cp(source, destination, { recursive: true });
 }
 
 async function loadExpectedHashes(name: string) {
@@ -122,7 +85,7 @@ suite('SecureZip Extension', () => {
     test('Export cancels cleanly when save dialog returns undefined', async function () {
         this.timeout(15000);
         log('test: cancel export - start');
-        const outPath = path.join(workspaceRoot, 'export.zip');
+        const outPath = path.join(getWorkspaceRoot(), 'export.zip');
         const originalShowSaveDialog = vscode.window.showSaveDialog;
         (vscode.window as any).showSaveDialog = async () => undefined;
 
@@ -141,3 +104,15 @@ suite('SecureZip Extension', () => {
         log('test: cancel export - completed');
     });
 });
+
+function getWorkspaceRoot(): string {
+    const folders = vscode.workspace.workspaceFolders;
+    assert.ok(folders && folders.length > 0, 'VS Code did not open a workspace folder.');
+    return folders[0].uri.fsPath;
+}
+
+async function ensureWorkspaceClean(root: string) {
+    await fs.promises.mkdir(root, { recursive: true });
+    const entries = await fs.promises.readdir(root);
+    await Promise.all(entries.map((entry) => fs.promises.rm(path.join(root, entry), { recursive: true, force: true })));
+}
