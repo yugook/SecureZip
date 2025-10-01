@@ -16,7 +16,8 @@ function log(step: string): void {
 
 const fixturesRoot = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures');
 
-suiteSetup(async () => {
+suiteSetup(async function () {
+    this.timeout(30000);
     log('suiteSetup starting');
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-test-'));
     workspaceRoot = path.join(tmpDir, 'ws');
@@ -31,7 +32,8 @@ suiteSetup(async () => {
     log(`workspace folder added at ${workspaceRoot}`);
 });
 
-suiteTeardown(async () => {
+suiteTeardown(async function () {
+    this.timeout(15000);
     log('suiteTeardown starting');
     const existing = vscode.workspace.workspaceFolders ?? [];
     if (existing.length > 0) {
@@ -42,7 +44,8 @@ suiteTeardown(async () => {
     } catch {}
 });
 
-setup(async () => {
+setup(async function () {
+    this.timeout(15000);
     log('setup clearing workspace root');
     if (!workspaceRoot) {
         return;
@@ -60,20 +63,24 @@ async function stageFixture(name: string) {
     await fs.promises.cp(source, workspaceRoot, { recursive: true });
 }
 
-async function waitForWorkspaceFolder(target: string, timeoutMs = 5000) {
+async function waitForWorkspaceFolder(target: string, timeoutMs = 15000) {
+    log(`waitForWorkspaceFolder: waiting for ${target}`);
     const normalize = (p: string) => path.resolve(p);
     const matches = () =>
         (vscode.workspace.workspaceFolders ?? []).some((folder) => normalize(folder.uri.fsPath) === normalize(target));
 
     if (matches()) {
+        log('waitForWorkspaceFolder: already present');
         return;
     }
 
     const deadline = Date.now() + timeoutMs;
     await new Promise<void>((resolve, reject) => {
         const disposable = vscode.workspace.onDidChangeWorkspaceFolders(() => {
+            log('waitForWorkspaceFolder: workspace folders changed');
             if (matches()) {
                 disposable.dispose();
+                log('waitForWorkspaceFolder: matched after change event');
                 resolve();
             }
         });
@@ -82,13 +89,16 @@ async function waitForWorkspaceFolder(target: string, timeoutMs = 5000) {
             while (Date.now() < deadline) {
                 if (matches()) {
                     disposable.dispose();
+                    log('waitForWorkspaceFolder: matched during polling');
                     resolve();
                     return;
                 }
                 await delay(100);
             }
             disposable.dispose();
-            reject(new Error('Timed out waiting for test workspace folder to be registered.'));
+            const message = 'Timed out waiting for test workspace folder to be registered.';
+            log(`waitForWorkspaceFolder: ${message}`);
+            reject(new Error(message));
         };
 
         void check();
