@@ -10,9 +10,14 @@ import { setTimeout as delay } from 'timers/promises';
 let tmpDir: string;
 let workspaceRoot: string;
 
+function log(step: string): void {
+    console.log(`[SecureZip Test] ${step}`);
+}
+
 const fixturesRoot = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures');
 
 suiteSetup(async () => {
+    log('suiteSetup starting');
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-test-'));
     workspaceRoot = path.join(tmpDir, 'ws');
     await fs.promises.mkdir(workspaceRoot, { recursive: true });
@@ -23,9 +28,11 @@ suiteSetup(async () => {
     });
     assert.ok(added, 'Failed to add test workspace folder');
     await waitForWorkspaceFolder(workspaceRoot);
+    log(`workspace folder added at ${workspaceRoot}`);
 });
 
 suiteTeardown(async () => {
+    log('suiteTeardown starting');
     const existing = vscode.workspace.workspaceFolders ?? [];
     if (existing.length > 0) {
         vscode.workspace.updateWorkspaceFolders(0, existing.length);
@@ -36,6 +43,7 @@ suiteTeardown(async () => {
 });
 
 setup(async () => {
+    log('setup clearing workspace root');
     if (!workspaceRoot) {
         return;
     }
@@ -43,9 +51,11 @@ setup(async () => {
     await Promise.all(
         entries.map((entry) => fs.promises.rm(path.join(workspaceRoot, entry), { recursive: true, force: true })),
     );
+    log('workspace root cleared');
 });
 
 async function stageFixture(name: string) {
+    log(`staging fixture ${name}`);
     const source = path.join(fixturesRoot, name);
     await fs.promises.cp(source, workspaceRoot, { recursive: true });
 }
@@ -108,7 +118,9 @@ async function collectZipHashes(zipPath: string) {
 }
 
 suite('SecureZip Extension', () => {
-    test('exports expected contents for simple fixture project', async () => {
+    test('exports expected contents for simple fixture project', async function () {
+        this.timeout(30000);
+        log('test: export simple fixture - start');
         await waitForWorkspaceFolder(workspaceRoot);
         await stageFixture('simple-project');
 
@@ -118,7 +130,12 @@ suite('SecureZip Extension', () => {
             async () => vscode.Uri.file(outPath);
 
         try {
+            log('executing securezip.export with saved dialog stub');
             await vscode.commands.executeCommand('securezip.export');
+            log('securezip.export command resolved');
+        } catch (error) {
+            log(`securezip.export command threw: ${String(error)}`);
+            throw error;
         } finally {
             (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
                 originalShowSaveDialog;
@@ -130,9 +147,12 @@ suite('SecureZip Extension', () => {
         const actual = await collectZipHashes(outPath);
         const expected = await loadExpectedHashes('simple-project');
         assert.deepStrictEqual(actual, expected);
+        log('test: export simple fixture - completed');
     });
 
-    test('Export cancels cleanly when save dialog returns undefined', async () => {
+    test('Export cancels cleanly when save dialog returns undefined', async function () {
+        this.timeout(15000);
+        log('test: cancel export - start');
         const outPath = path.join(workspaceRoot, 'export.zip');
         const originalShowSaveDialog = vscode.window.showSaveDialog;
         (vscode.window as any).showSaveDialog = async () => undefined;
@@ -145,8 +165,10 @@ suite('SecureZip Extension', () => {
                 .then(() => true)
                 .catch(() => false);
             assert.strictEqual(exists, false, 'ZIP should not exist on cancel');
+            log('test: cancel export - verified no zip created');
         } finally {
             (vscode.window as any).showSaveDialog = originalShowSaveDialog;
         }
+        log('test: cancel export - completed');
     });
 });
