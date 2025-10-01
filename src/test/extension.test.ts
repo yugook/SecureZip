@@ -1,13 +1,10 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import AdmZip = require('adm-zip');
-import { setTimeout as delay } from 'timers/promises';
 
-let tmpDir: string;
 let workspaceRoot: string;
 
 function log(step: string): void {
@@ -19,17 +16,16 @@ const fixturesRoot = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures')
 suiteSetup(async function () {
     this.timeout(30000);
     log('suiteSetup starting');
-    tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-test-'));
-    workspaceRoot = path.join(tmpDir, 'ws');
+    const workspaceEnv = process.env.SECUREZIP_TEST_WORKSPACE;
+    assert.ok(workspaceEnv, 'SECUREZIP_TEST_WORKSPACE env var is not set.');
+    workspaceRoot = workspaceEnv!;
     await fs.promises.mkdir(workspaceRoot, { recursive: true });
 
-    const added = vscode.workspace.updateWorkspaceFolders(0, 0, {
-        uri: vscode.Uri.file(workspaceRoot),
-        name: 'test-ws',
-    });
-    assert.ok(added, 'Failed to add test workspace folder');
-    await waitForWorkspaceFolder(workspaceRoot);
-    log(`workspace folder added at ${workspaceRoot}`);
+    const folders = vscode.workspace.workspaceFolders;
+    assert.ok(folders && folders.length > 0, 'VS Code did not open a workspace folder.');
+    const actual = path.resolve(folders[0].uri.fsPath);
+    assert.strictEqual(actual, path.resolve(workspaceRoot), 'Opened workspace folder does not match expected test workspace.');
+    log(`workspace folder ready at ${workspaceRoot}`);
 });
 
 suiteTeardown(async function () {
@@ -40,7 +36,7 @@ suiteTeardown(async function () {
         vscode.workspace.updateWorkspaceFolders(0, existing.length);
     }
     try {
-        await fs.promises.rm(tmpDir, { recursive: true, force: true });
+        await fs.promises.rm(workspaceRoot, { recursive: true, force: true });
     } catch {}
 });
 
@@ -50,6 +46,7 @@ setup(async function () {
     if (!workspaceRoot) {
         return;
     }
+    await fs.promises.mkdir(workspaceRoot, { recursive: true });
     const entries = await fs.promises.readdir(workspaceRoot);
     await Promise.all(
         entries.map((entry) => fs.promises.rm(path.join(workspaceRoot, entry), { recursive: true, force: true })),
@@ -61,48 +58,6 @@ async function stageFixture(name: string) {
     log(`staging fixture ${name}`);
     const source = path.join(fixturesRoot, name);
     await fs.promises.cp(source, workspaceRoot, { recursive: true });
-}
-
-async function waitForWorkspaceFolder(target: string, timeoutMs = 15000) {
-    log(`waitForWorkspaceFolder: waiting for ${target}`);
-    const normalize = (p: string) => path.resolve(p);
-    const matches = () =>
-        (vscode.workspace.workspaceFolders ?? []).some((folder) => normalize(folder.uri.fsPath) === normalize(target));
-
-    if (matches()) {
-        log('waitForWorkspaceFolder: already present');
-        return;
-    }
-
-    const deadline = Date.now() + timeoutMs;
-    await new Promise<void>((resolve, reject) => {
-        const disposable = vscode.workspace.onDidChangeWorkspaceFolders(() => {
-            log('waitForWorkspaceFolder: workspace folders changed');
-            if (matches()) {
-                disposable.dispose();
-                log('waitForWorkspaceFolder: matched after change event');
-                resolve();
-            }
-        });
-
-        const check = async () => {
-            while (Date.now() < deadline) {
-                if (matches()) {
-                    disposable.dispose();
-                    log('waitForWorkspaceFolder: matched during polling');
-                    resolve();
-                    return;
-                }
-                await delay(100);
-            }
-            disposable.dispose();
-            const message = 'Timed out waiting for test workspace folder to be registered.';
-            log(`waitForWorkspaceFolder: ${message}`);
-            reject(new Error(message));
-        };
-
-        void check();
-    });
 }
 
 async function loadExpectedHashes(name: string) {
@@ -131,7 +86,6 @@ suite('SecureZip Extension', () => {
     test('exports expected contents for simple fixture project', async function () {
         this.timeout(30000);
         log('test: export simple fixture - start');
-        await waitForWorkspaceFolder(workspaceRoot);
         await stageFixture('simple-project');
 
         const outPath = path.join(workspaceRoot, 'securezip-export.zip');
