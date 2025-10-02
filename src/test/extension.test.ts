@@ -25,6 +25,25 @@ async function stageFixture(name: string) {
     const source = path.join(fixturesRoot, name);
     const destination = getWorkspaceRoot();
     await fs.promises.cp(source, destination, { recursive: true });
+    await hydrateFixture(name, destination);
+}
+
+async function hydrateFixture(name: string, destination: string) {
+    switch (name) {
+        case 'simple-project':
+            await hydrateSimpleProject(destination);
+            break;
+        default:
+            break;
+    }
+}
+
+async function hydrateSimpleProject(root: string) {
+    const distDir = path.join(root, 'dist');
+    await fs.promises.mkdir(distDir, { recursive: true });
+    const releaseFile = path.join(distDir, 'release.txt');
+    const contents = 'SecureZip fixture build artifact.\n';
+    await fs.promises.writeFile(releaseFile, contents, 'utf8');
 }
 
 async function loadExpectedHashes(name: string) {

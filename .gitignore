@@ -30,9 +30,6 @@ web_modules/
 # Build
 out/
 dist/
-# Allow fixture archives to keep sample dist outputs
-!src/test/fixtures/**/dist/
-!src/test/fixtures/**/dist/**
 build/Release
 
 # Caches / Temp
