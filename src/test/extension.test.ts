@@ -126,6 +126,73 @@ suite('SecureZip Extension', () => {
         }
         log('test: cancel export - completed');
     });
+
+    test('reports an error when no files remain after excludes', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('additionalExcludes', ['**/*'], vscode.ConfigurationTarget.Workspace);
+
+        const outPath = path.join(getWorkspaceRoot(), 'securezip-empty.zip');
+        const originalShowSaveDialog = vscode.window.showSaveDialog;
+        const originalShowErrorMessage = vscode.window.showErrorMessage;
+        const errors: string[] = [];
+
+        (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
+            async () => vscode.Uri.file(outPath);
+        (vscode.window as unknown as { showErrorMessage: typeof vscode.window.showErrorMessage }).showErrorMessage =
+            (message: string, ...items: any[]) => {
+                errors.push(message);
+                return Promise.resolve(items[0] as any);
+            };
+
+        try {
+            await vscode.commands.executeCommand('securezip.export');
+        } finally {
+            await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
+            (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog = originalShowSaveDialog;
+            (vscode.window as unknown as { showErrorMessage: typeof vscode.window.showErrorMessage }).showErrorMessage =
+                originalShowErrorMessage;
+            await removeIfExists(outPath);
+        }
+
+        assert.ok(errors.length > 0, 'Expected export to report an error');
+        assert.match(errors[0], /No files were found to include in the archive/, 'Unexpected error message');
+    });
+
+    test('surfaces errors when ZIP archive creation fails', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspace = getWorkspaceRoot();
+        const failureTarget = path.join(workspace, 'securezip-fail-dir');
+        await fs.promises.mkdir(failureTarget, { recursive: true });
+
+        const originalShowSaveDialog = vscode.window.showSaveDialog;
+        const originalShowErrorMessage = vscode.window.showErrorMessage;
+
+        const errors: string[] = [];
+
+        (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
+            async () => vscode.Uri.file(failureTarget);
+        (vscode.window as unknown as { showErrorMessage: typeof vscode.window.showErrorMessage }).showErrorMessage =
+            (message: string, ...items: any[]) => {
+                errors.push(message);
+                return Promise.resolve(items[0] as any);
+            };
+
+        try {
+            await vscode.commands.executeCommand('securezip.export');
+        } finally {
+            (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog = originalShowSaveDialog;
+            (vscode.window as unknown as { showErrorMessage: typeof vscode.window.showErrorMessage }).showErrorMessage =
+                originalShowErrorMessage;
+        }
+
+        assert.ok(errors.length > 0, 'Expected export to report an error');
+        assert.match(errors[0], /EISDIR|is a directory/, 'Unexpected error message');
+    });
 });
 
 function getWorkspaceRoot(): string {
@@ -138,4 +205,14 @@ async function ensureWorkspaceClean(root: string) {
     await fs.promises.mkdir(root, { recursive: true });
     const entries = await fs.promises.readdir(root);
     await Promise.all(entries.map((entry) => fs.promises.rm(path.join(root, entry), { recursive: true, force: true })));
+}
+
+async function removeIfExists(file: string) {
+    try {
+        await fs.promises.unlink(file);
+    } catch (err: any) {
+        if (err?.code !== 'ENOENT') {
+            throw err;
+        }
+    }
 }
