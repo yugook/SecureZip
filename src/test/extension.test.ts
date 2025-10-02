@@ -49,6 +49,7 @@ async function stageFixture(name: string) {
     log(`staging fixture ${name}`);
     const source = path.join(fixturesRoot, name);
     const destination = getWorkspaceRoot();
+    await ensureWorkspaceClean(destination);
     await fs.promises.cp(source, destination, { recursive: true });
     await hydrateFixture(name, destination);
 }
@@ -272,8 +273,8 @@ async function ensureWorkspaceClean(root: string) {
 
 async function resetConfiguration() {
     const config = vscode.workspace.getConfiguration('secureZip');
-    await config.update('additionalExcludes', [], vscode.ConfigurationTarget.Workspace);
-    await config.update('includeNodeModules', false, vscode.ConfigurationTarget.Workspace);
+    await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
+    await config.update('includeNodeModules', undefined, vscode.ConfigurationTarget.Workspace);
 }
 
 async function exportAndCollect(outFileName: string) {
