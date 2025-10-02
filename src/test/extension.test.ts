@@ -4,11 +4,36 @@ import * as path from 'path';
 import { createHash } from 'crypto';
 import AdmZip from 'adm-zip';
 import * as vscode from 'vscode';
+const TEST_LOG_VERBOSE = process.env.SECUREZIP_TEST_LOG === '1';
+
 function log(step: string): void {
-    console.log(`[SecureZip Test] ${step}`);
+    if (TEST_LOG_VERBOSE) {
+        console.log(`[SecureZip Test] ${step}`);
+    }
 }
 
 const fixturesRoot = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures');
+
+const expectedManifests: Record<string, Record<string, string>> = {
+    'simple-project:default': {
+        '.securezipignore': 'f1bd19a508de0fcaacfd3b15757aba566ab591af9e18aa47dc31b6ee3d742df5',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
+    'simple-project:no-readme': {
+        '.securezipignore': 'f1bd19a508de0fcaacfd3b15757aba566ab591af9e18aa47dc31b6ee3d742df5',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
+    'simple-project:include-node-modules': {
+        '.securezipignore': 'f1bd19a508de0fcaacfd3b15757aba566ab591af9e18aa47dc31b6ee3d742df5',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'node_modules/left.js': '5540ac8a6adeb0fdaeb4e6e8169726bf774a6b3d199e6a1fd59c74b1fbbbbc3f',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
+};
 
 setup(async function () {
     this.timeout(15000);
@@ -46,12 +71,13 @@ async function hydrateSimpleProject(root: string) {
     await fs.promises.writeFile(releaseFile, contents, 'utf8');
 }
 
-async function loadExpectedHashes(name: string) {
-    const manifest = path.join(fixturesRoot, name, 'expected-export.json');
-    const raw = await fs.promises.readFile(manifest, 'utf8');
-    const entries = Object.entries(JSON.parse(raw) as Record<string, string>);
-    entries.sort((a, b) => a[0].localeCompare(b[0]));
-    return Object.fromEntries(entries);
+async function loadExpectedHashes(name: string, variant?: string) {
+    const key = variant ? `${name}:${variant}` : `${name}:default`;
+    const manifest = expectedManifests[key];
+    if (!manifest) {
+        throw new Error(`Expected manifest not defined for ${key}`);
+    }
+    return manifest;
 }
 
 async function collectZipHashes(zipPath: string) {
@@ -68,39 +94,23 @@ async function collectZipHashes(zipPath: string) {
     return Object.fromEntries(files);
 }
 
-suite('SecureZip Extension', () => {
+suite('SecureZip Extension', function () {
+    this.beforeEach(async () => {
+        await resetConfiguration();
+    });
     test('exports expected contents for simple fixture project', async function () {
         this.timeout(30000);
         log('test: export simple fixture - start');
         await stageFixture('simple-project');
-
-        const outPath = path.join(getWorkspaceRoot(), 'securezip-export.zip');
-        const originalShowSaveDialog = vscode.window.showSaveDialog;
-        (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
-            async () => vscode.Uri.file(outPath);
-
-        try {
-            log('executing securezip.export with saved dialog stub');
-            await vscode.commands.executeCommand('securezip.export');
-            log('securezip.export command resolved');
-        } catch (error) {
-            log(`securezip.export command threw: ${String(error)}`);
-            throw error;
-        } finally {
-            (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
-                originalShowSaveDialog;
-        }
-
-        const stat = await fs.promises.stat(outPath);
-        assert.ok(stat.isFile(), 'Export did not create a file');
-
-        const actual = await collectZipHashes(outPath);
+        const { outPath, hashes } = await exportAndCollect('securezip-export.zip');
         const expected = await loadExpectedHashes('simple-project');
         try {
-            assert.deepStrictEqual(actual, expected);
+            assert.deepStrictEqual(hashes, expected);
         } catch (error) {
-            log(`mismatch detected. actual=${JSON.stringify(actual, null, 2)} expected=${JSON.stringify(expected, null, 2)}`);
+            log(`mismatch detected. actual=${JSON.stringify(hashes, null, 2)} expected=${JSON.stringify(expected, null, 2)}`);
             throw error;
+        } finally {
+            await removeIfExists(outPath);
         }
         log('test: export simple fixture - completed');
     });
@@ -125,6 +135,58 @@ suite('SecureZip Extension', () => {
             (vscode.window as any).showSaveDialog = originalShowSaveDialog;
         }
         log('test: cancel export - completed');
+    });
+
+    test('applies additionalExcludes patterns to the export set', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('additionalExcludes', ['**/*.md'], vscode.ConfigurationTarget.Workspace);
+
+        const { outPath, hashes } = await exportAndCollect('securezip-filter.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'no-readme');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('re-includes files overridden by .securezipignore despite additional excludes', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('additionalExcludes', ['dist/**'], vscode.ConfigurationTarget.Workspace);
+
+        const { outPath, hashes } = await exportAndCollect('securezip-reinclude.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project');
+            assert.deepStrictEqual(hashes, expected);
+            assert.ok(hashes['dist/release.txt'], 'Expected dist/release.txt to be reinstated by .securezipignore');
+        } finally {
+            await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('includes node_modules when includeNodeModules is enabled', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('includeNodeModules', true, vscode.ConfigurationTarget.Workspace);
+
+        const { outPath, hashes } = await exportAndCollect('securezip-node-modules.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-node-modules');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await config.update('includeNodeModules', undefined, vscode.ConfigurationTarget.Workspace);
+            await removeIfExists(outPath);
+        }
     });
 
     test('reports an error when no files remain after excludes', async function () {
@@ -188,6 +250,7 @@ suite('SecureZip Extension', () => {
             (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog = originalShowSaveDialog;
             (vscode.window as unknown as { showErrorMessage: typeof vscode.window.showErrorMessage }).showErrorMessage =
                 originalShowErrorMessage;
+            await removeIfExists(failureTarget);
         }
 
         assert.ok(errors.length > 0, 'Expected export to report an error');
@@ -207,9 +270,44 @@ async function ensureWorkspaceClean(root: string) {
     await Promise.all(entries.map((entry) => fs.promises.rm(path.join(root, entry), { recursive: true, force: true })));
 }
 
-async function removeIfExists(file: string) {
+async function resetConfiguration() {
+    const config = vscode.workspace.getConfiguration('secureZip');
+    await config.update('additionalExcludes', [], vscode.ConfigurationTarget.Workspace);
+    await config.update('includeNodeModules', false, vscode.ConfigurationTarget.Workspace);
+}
+
+async function exportAndCollect(outFileName: string) {
+    const outPath = path.join(getWorkspaceRoot(), outFileName);
+    const originalShowSaveDialog = vscode.window.showSaveDialog;
+    log('executing securezip.export with saved dialog stub');
+    (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
+        async () => vscode.Uri.file(outPath);
+
     try {
-        await fs.promises.unlink(file);
+        await vscode.commands.executeCommand('securezip.export');
+        log('securezip.export command resolved');
+    } catch (error) {
+        log(`securezip.export command threw: ${String(error)}`);
+        throw error;
+    } finally {
+        (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
+            originalShowSaveDialog;
+    }
+
+    const stat = await fs.promises.stat(outPath);
+    assert.ok(stat.isFile(), 'Export did not create a file');
+    const hashes = await collectZipHashes(outPath);
+    return { outPath, hashes } as const;
+}
+
+async function removeIfExists(target: string) {
+    try {
+        const stat = await fs.promises.lstat(target);
+        if (stat.isDirectory()) {
+            await fs.promises.rm(target, { recursive: true, force: true });
+        } else {
+            await fs.promises.unlink(target);
+        }
     } catch (err: any) {
         if (err?.code !== 'ENOENT') {
             throw err;

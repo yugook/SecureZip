@@ -22,8 +22,10 @@ module.exports = defineConfig({
     launchArgs,
     mocha: {
         timeout: 20000,
+        jobs: 1,
     },
     env: {
         NO_AT_BRIDGE: '1',
+        VSCODE_LOG_LEVEL: process.env.SECUREZIP_TEST_VERBOSE === '1' ? 'info' : 'warn',
     },
 });
