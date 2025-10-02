@@ -295,6 +295,8 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         '.git',
         '.git/**',
         includeNodeModules ? '' : 'node_modules/**',
+        '.vscode',
+        '.vscode/**',
         '.env',
         '.env.*',
         '**/*.pem',
