@@ -5,16 +5,21 @@ const path = require('path');
 
 const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'securezip-test-'));
 
+const launchArgs = [
+    workspaceDir,
+    '--disable-gpu',
+    '--disable-features=CalculateNativeWinOcclusion',
+    '--disable-dev-shm-usage',
+];
+
+if (process.env.SECUREZIP_TEST_VERBOSE === '1') {
+    launchArgs.push('--verbose');
+}
+
 module.exports = defineConfig({
     files: 'out/test/extension.test.js',
     extensionDevelopmentPath: __dirname,
-    launchArgs: [
-        workspaceDir,
-        '--disable-gpu',
-        '--disable-features=CalculateNativeWinOcclusion',
-        '--disable-dev-shm-usage',
-        '--verbose',
-    ],
+    launchArgs,
     mocha: {
         timeout: 20000,
     },
