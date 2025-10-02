@@ -70,6 +70,12 @@ async function hydrateSimpleProject(root: string) {
     const releaseFile = path.join(distDir, 'release.txt');
     const contents = 'SecureZip fixture build artifact.\n';
     await fs.promises.writeFile(releaseFile, contents, 'utf8');
+
+    const nodeModulesDir = path.join(root, 'node_modules');
+    await fs.promises.mkdir(nodeModulesDir, { recursive: true });
+    const leftJs = path.join(nodeModulesDir, 'left.js');
+    const leftSource = 'module.exports = (a, b) => a - b;\n';
+    await fs.promises.writeFile(leftJs, leftSource, 'utf8');
 }
 
 async function loadExpectedHashes(name: string, variant?: string) {
