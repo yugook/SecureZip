@@ -99,6 +99,9 @@ suite('SecureZip Extension', function () {
     this.beforeEach(async () => {
         await resetConfiguration();
     });
+    this.beforeEach(async () => {
+        await resetConfiguration();
+    });
     test('exports expected contents for simple fixture project', async function () {
         this.timeout(30000);
         log('test: export simple fixture - start');
@@ -274,7 +277,7 @@ async function ensureWorkspaceClean(root: string) {
 async function resetConfiguration() {
     const config = vscode.workspace.getConfiguration('secureZip');
     await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
-    await config.update('includeNodeModules', undefined, vscode.ConfigurationTarget.Workspace);
+    await config.update('includeNodeModules', null, vscode.ConfigurationTarget.Workspace);
 }
 
 async function exportAndCollect(outFileName: string) {
