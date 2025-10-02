@@ -24,6 +24,17 @@ describe('ignore helpers', () => {
     });
 
     describe('loadSecureZipIgnore & addPatternsToSecureZipIgnore', () => {
+        it('returns empty pattern lists when file is missing', async () => {
+            const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-ignore-test-missing-'));
+            try {
+                const state = await loadSecureZipIgnore(tmp);
+                assert.deepStrictEqual(state, { excludes: [], includes: [] });
+                await assert.rejects(fs.promises.stat(path.join(tmp, '.securezipignore')));
+            } finally {
+                await fs.promises.rm(tmp, { recursive: true, force: true });
+            }
+        });
+
         it('loads existing patterns and appends new ones', async () => {
             const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-ignore-test-'));
             try {
@@ -43,6 +54,36 @@ describe('ignore helpers', () => {
                 const finalState = await loadSecureZipIgnore(tmp);
                 assert.deepStrictEqual(finalState.excludes.sort(), ['dist/**', 'logs/**']);
                 assert.deepStrictEqual(finalState.includes.sort(), ['dist/build.zip', 'dist/manifest.json']);
+            } finally {
+                await fs.promises.rm(tmp, { recursive: true, force: true });
+            }
+        });
+
+        it('skips invalid patterns without creating a file', async () => {
+            const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-ignore-test-invalid-'));
+            try {
+                const result = await addPatternsToSecureZipIgnore(tmp, ['   ', '# comment', '!']);
+                assert.deepStrictEqual(result.added, []);
+                assert.strictEqual(result.skipped.length, 3);
+                assert.ok(result.skipped.every((entry) => entry.reason === 'invalid'));
+                await assert.rejects(fs.promises.stat(path.join(tmp, '.securezipignore')));
+            } finally {
+                await fs.promises.rm(tmp, { recursive: true, force: true });
+            }
+        });
+
+        it('respects newline handling when appending to an existing file', async () => {
+            const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-ignore-test-newline-'));
+            try {
+                const file = path.join(tmp, '.securezipignore');
+                await fs.promises.writeFile(file, 'dist/\n!dist/build.zip', 'utf8');
+
+                const result = await addPatternsToSecureZipIgnore(tmp, ['cache/']);
+                assert.deepStrictEqual(result.added, ['cache/']);
+                assert.deepStrictEqual(result.skipped, []);
+
+                const contents = await fs.promises.readFile(file, 'utf8');
+                assert.strictEqual(contents, 'dist/\n!dist/build.zip\ncache/\n');
             } finally {
                 await fs.promises.rm(tmp, { recursive: true, force: true });
             }
