@@ -295,6 +295,8 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         '.git',
         '.git/**',
         includeNodeModules ? '' : 'node_modules/**',
+        '.vscode',
+        '.vscode/**',
         '.env',
         '.env.*',
         '**/*.pem',
@@ -313,7 +315,7 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     const files = await globby(patterns, {
         cwd: root,
         dot: true,
-        gitignore: true,
+        gitignore: !includeNodeModules,
         ignore: baseIgnore,
         onlyFiles: true,
         followSymbolicLinks: false,
