@@ -1,0 +1,11 @@
+name: SecureZip CodeQL Configuration
+paths:
+  - src
+  - esbuild.js
+paths-ignore:
+  - dist
+  - out
+  - tmp
+  - docs
+  - node_modules
+  - securezip-*.vsix

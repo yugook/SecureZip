@@ -1,5 +1,7 @@
 # SecureZip
 
+[![CodeQL](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml/badge.svg)](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml)
+
 **SecureZip** is a Visual Studio Code extension that lets you securely export your project as a clean ZIP archive.
 
 > Release 1.0.0 – stable export workflow with ignore tooling, auto-commit, and tagging.
@@ -73,6 +75,8 @@ Example `settings.json` override:
 ---
 
 # SecureZip（日本語）
+
+[![CodeQL](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml/badge.svg)](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml)
 
 **SecureZip** は、プロジェクトを安全かつクリーンな ZIP アーカイブとしてエクスポートできる Visual Studio Code 拡張機能です。
 
