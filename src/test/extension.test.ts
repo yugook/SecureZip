@@ -105,9 +105,6 @@ suite('SecureZip Extension', function () {
     this.beforeEach(async () => {
         await resetConfiguration();
     });
-    this.beforeEach(async () => {
-        await resetConfiguration();
-    });
     test('exports expected contents for simple fixture project', async function () {
         this.timeout(30000);
         log('test: export simple fixture - start');
