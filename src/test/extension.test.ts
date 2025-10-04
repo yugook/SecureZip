@@ -283,7 +283,7 @@ async function ensureWorkspaceClean(root: string) {
 async function resetConfiguration() {
     const config = vscode.workspace.getConfiguration('secureZip');
     await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
-    await config.update('includeNodeModules', null, vscode.ConfigurationTarget.Workspace);
+    await config.update('includeNodeModules', undefined, vscode.ConfigurationTarget.Workspace);
 }
 
 async function exportAndCollect(outFileName: string) {
