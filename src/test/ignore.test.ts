@@ -88,5 +88,43 @@ describe('ignore helpers', () => {
                 await fs.promises.rm(tmp, { recursive: true, force: true });
             }
         });
+
+        it('preserves CRLF newline style when appending to an existing file', async () => {
+            const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-ignore-test-crlf-'));
+            try {
+                const file = path.join(tmp, '.securezipignore');
+                await fs.promises.writeFile(file, 'dist/\r\n!dist/build.zip\r\n', 'utf8');
+
+                const result = await addPatternsToSecureZipIgnore(tmp, ['cache\\tmp\\']);
+                assert.deepStrictEqual(result.added, ['cache\\tmp\\']);
+                assert.deepStrictEqual(result.skipped, []);
+
+                const contents = await fs.promises.readFile(file, 'utf8');
+                assert.strictEqual(contents, 'dist/\r\n!dist/build.zip\r\ncache\\tmp\\\r\n');
+
+                const state = await loadSecureZipIgnore(tmp);
+                assert.deepStrictEqual(state.excludes.sort(), ['cache/tmp/**', 'dist/**']);
+                assert.deepStrictEqual(state.includes, ['dist/build.zip']);
+            } finally {
+                await fs.promises.rm(tmp, { recursive: true, force: true });
+            }
+        });
+
+        it('treats backslash directory patterns as duplicates of normalized entries', async () => {
+            const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-ignore-test-backslash-'));
+            try {
+                const file = path.join(tmp, '.securezipignore');
+                await fs.promises.writeFile(file, 'logs/\n', 'utf8');
+
+                const result = await addPatternsToSecureZipIgnore(tmp, ['logs\\']);
+                assert.deepStrictEqual(result.added, []);
+                assert.deepStrictEqual(result.skipped, [{ pattern: 'logs\\', reason: 'duplicate' }]);
+
+                const contents = await fs.promises.readFile(file, 'utf8');
+                assert.strictEqual(contents, 'logs/\n');
+            } finally {
+                await fs.promises.rm(tmp, { recursive: true, force: true });
+            }
+        });
     });
 });
