@@ -13,6 +13,7 @@ function log(step: string): void {
 }
 
 const fixturesRoot = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures');
+const expectedWorkspaceRoot = process.env.SECUREZIP_TEST_ROOT ? path.resolve(process.env.SECUREZIP_TEST_ROOT) : undefined;
 
 const expectedManifests: Record<string, Record<string, string>> = {
     'simple-project:default': {
@@ -268,13 +269,19 @@ suite('SecureZip Extension', function () {
 function getWorkspaceRoot(): string {
     const folders = vscode.workspace.workspaceFolders;
     assert.ok(folders && folders.length > 0, 'VS Code did not open a workspace folder.');
-    return folders[0].uri.fsPath;
+    const root = path.resolve(folders[0].uri.fsPath);
+    validateWorkspaceRoot(root);
+    return root;
 }
 
 async function ensureWorkspaceClean(root: string) {
-    await fs.promises.mkdir(root, { recursive: true });
-    const entries = await fs.promises.readdir(root);
-    await Promise.all(entries.map((entry) => fs.promises.rm(path.join(root, entry), { recursive: true, force: true })));
+    const normalizedRoot = path.resolve(root);
+    validateWorkspaceRoot(normalizedRoot);
+    await fs.promises.mkdir(normalizedRoot, { recursive: true });
+    const entries = await fs.promises.readdir(normalizedRoot);
+    await Promise.all(
+        entries.map((entry) => fs.promises.rm(path.join(normalizedRoot, entry), { recursive: true, force: true }))
+    );
 }
 
 async function resetConfiguration() {
@@ -319,5 +326,37 @@ async function removeIfExists(target: string) {
         if (err?.code !== 'ENOENT') {
             throw err;
         }
+    }
+}
+
+function validateWorkspaceRoot(root: string): void {
+    const normalized = path.resolve(root);
+    const filesystemRoot = path.parse(normalized).root;
+    assert.notStrictEqual(
+        normalized,
+        filesystemRoot,
+        `Refusing to operate on filesystem root: ${normalized}`
+    );
+
+    if (expectedWorkspaceRoot) {
+        const normalizedExpected = path.resolve(expectedWorkspaceRoot);
+        if (normalized === normalizedExpected) {
+            return;
+        }
+
+        const expectedParent = path.dirname(normalizedExpected);
+        const relativeToParent = path.relative(expectedParent, normalized);
+        const isInsideParent =
+            relativeToParent &&
+            !relativeToParent.startsWith('..') &&
+            !path.isAbsolute(relativeToParent);
+        const containsSecureZipTempDir = relativeToParent
+            .split(path.sep)
+            .some((segment) => segment.startsWith('securezip-test-'));
+
+        assert.ok(
+            isInsideParent && containsSecureZipTempDir,
+            `Workspace root mismatch. expected within ${path.join(expectedParent, 'securezip-test-*')} actual=${normalized}`
+        );
     }
 }
