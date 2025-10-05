@@ -187,13 +187,45 @@ suite('SecureZip Extension', function () {
         const config = vscode.workspace.getConfiguration('secureZip');
         await config.update('includeNodeModules', true, vscode.ConfigurationTarget.Workspace);
 
+        const workspaceRoot = getWorkspaceRoot();
+        const gitignorePath = path.join(workspaceRoot, '.gitignore');
+        const gitignoreContents = 'dist/\ncoverage/\ntmp/\n';
+        await fs.promises.writeFile(gitignorePath, gitignoreContents, 'utf8');
+
         const { outPath, hashes } = await exportAndCollect('securezip-node-modules.zip');
         try {
             const expected = await loadExpectedHashes('simple-project', 'include-node-modules');
-            assert.deepStrictEqual(hashes, expected);
+            const expectedWithGitignore = { ...expected };
+            delete expectedWithGitignore['dist/release.txt'];
+            const expectedGitignoreHash = createHash('sha256').update(gitignoreContents).digest('hex');
+
+            assert.strictEqual(
+                hashes['node_modules/left.js'],
+                expected['node_modules/left.js'],
+                'Expected node_modules/left.js to remain included'
+            );
+            assert.ok(!('dist/release.txt' in hashes), 'dist/release.txt should remain excluded by .gitignore');
+            assert.strictEqual(
+                hashes['README.md'],
+                expected['README.md'],
+                'README.md should still be included'
+            );
+            assert.strictEqual(
+                hashes['src/index.ts'],
+                expected['src/index.ts'],
+                'src/index.ts should still be included'
+            );
+            assert.strictEqual(hashes['.gitignore'], expectedGitignoreHash, '.gitignore should reflect added rules');
+
+            assert.deepStrictEqual(
+                Object.keys(hashes).sort(),
+                [...Object.keys(expectedWithGitignore), '.gitignore'].sort(),
+                'Export should match expected files when .gitignore excludes dist/'
+            );
         } finally {
             await config.update('includeNodeModules', undefined, vscode.ConfigurationTarget.Workspace);
             await removeIfExists(outPath);
+            await fs.promises.unlink(gitignorePath).catch(() => undefined);
         }
     });
 
