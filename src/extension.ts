@@ -295,6 +295,8 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         '.git',
         '.git/**',
         includeNodeModules ? '' : 'node_modules/**',
+        '.vscode',
+        '.vscode/**',
         '.env',
         '.env.*',
         '**/*.pem',
@@ -310,7 +312,7 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
 
     const patterns = ['**/*', '**/.*'];
     const baseIgnore = [...ignoreDefaults, ...additionalExcludes, ...szIgnore.excludes];
-    const files = await globby(patterns, {
+    const baseFiles = await globby(patterns, {
         cwd: root,
         dot: true,
         gitignore: true,
@@ -320,8 +322,32 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         absolute: true,
     });
 
+    const fileSet = new Set<string>(baseFiles);
+    let hasFiles = baseFiles.length > 0;
+
+    if (includeNodeModules) {
+        const nodeModuleFiles = await globby(['node_modules/**'], {
+            cwd: root,
+            dot: true,
+            gitignore: false,
+            ignore: baseIgnore,
+            onlyFiles: true,
+            followSymbolicLinks: false,
+            absolute: true,
+        });
+        for (const file of nodeModuleFiles) {
+            fileSet.add(file);
+        }
+        if (!hasFiles && nodeModuleFiles.length > 0) {
+            hasFiles = true;
+        }
+    }
+
+    if (!hasFiles) {
+        throw new Error(localize('error.noFilesToArchive', 'No files were found to include in the archive.'));
+    }
+
     // Re-include patterns from .securezipignore (does not override .gitignore or hard ignores like .git/**)
-    let finalFiles = files;
     if (szIgnore.includes.length > 0) {
         const reincluded = await globby(szIgnore.includes, {
             cwd: root,
@@ -333,16 +359,12 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
             followSymbolicLinks: false,
             absolute: true,
         });
-        const set = new Set<string>(files);
-        for (const f of reincluded) {
-            set.add(f);
+        for (const file of reincluded) {
+            fileSet.add(file);
         }
-        finalFiles = Array.from(set.values());
     }
 
-    if (files.length === 0) {
-        throw new Error(localize('error.noFilesToArchive', 'No files were found to include in the archive.'));
-    }
+    const finalFiles = Array.from(fileSet.values());
 
     // Create ZIP
     progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
