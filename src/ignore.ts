@@ -134,10 +134,19 @@ export async function addPatternsToSecureZipIgnore(
 
     const file = path.join(root, filename);
     let needsLeadingNewline = false;
+    let newline = '\n';
     try {
         const existingContent = await fs.promises.readFile(file, 'utf8');
-        if (existingContent.length > 0 && !existingContent.endsWith('\n')) {
-            needsLeadingNewline = true;
+        if (existingContent.length > 0) {
+            if (existingContent.includes('\r\n')) {
+                newline = '\r\n';
+            }
+
+            if (newline === '\r\n') {
+                needsLeadingNewline = !existingContent.endsWith('\r\n');
+            } else {
+                needsLeadingNewline = !existingContent.endsWith('\n');
+            }
         }
     } catch (err: any) {
         if (err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -147,7 +156,8 @@ export async function addPatternsToSecureZipIgnore(
         }
     }
 
-    const text = `${needsLeadingNewline ? '\n' : ''}${toAppend.join('\n')}\n`;
+    const prefix = needsLeadingNewline ? newline : '';
+    const text = `${prefix}${toAppend.join(newline)}${newline}`;
     await fs.promises.appendFile(file, text, { encoding: 'utf8' });
 
     return { added, skipped };
