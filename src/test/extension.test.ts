@@ -15,6 +15,8 @@ function log(step: string): void {
 const fixturesRoot = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures');
 const expectedWorkspaceRoot = process.env.SECUREZIP_TEST_ROOT ? path.resolve(process.env.SECUREZIP_TEST_ROOT) : undefined;
 
+// Expected ZIP contents for fixtures live inline here instead of external JSON files
+// to keep the tests self-contained.
 const expectedManifests: Record<string, Record<string, string>> = {
     'simple-project:default': {
         '.securezipignore': 'f1bd19a508de0fcaacfd3b15757aba566ab591af9e18aa47dc31b6ee3d742df5',
