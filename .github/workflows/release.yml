@@ -2,8 +2,11 @@ name: Publish Release
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   publish-release:
