@@ -274,6 +274,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         const snapshot = this.context.workspaceState.get<LastExportSnapshot>(LAST_EXPORT_STATE_KEY);
         const items: SecureZipTreeItem[] = [];
         let pendingTasks = 0;
+        let warningCount = 0;
 
         if (!context.exists) {
             pendingTasks += 1;
@@ -288,6 +289,17 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                         title: localize('guide.missingIgnore.commandTitle', 'Create .securezipignore'),
                         arguments: [root],
                     },
+                }),
+            );
+        }
+
+        if (this.hasGitOverride(context)) {
+            warningCount += 1;
+            items.push(
+                new SecureZipTreeItem({
+                    kind: 'message',
+                    label: localize('guide.gitOverrideWarning', 'Warning: .git override active'),
+                    tooltip: localize('guide.gitOverrideWarning.tooltip', 'The .git directory will be included in exports. Review repository history before sharing.'),
                 }),
             );
         }
@@ -350,9 +362,16 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
         const guideSection = this.rootItems.get('guide');
         if (guideSection) {
-            guideSection.description = pendingTasks > 0
-                ? localize('guide.summary.pending', '{0} tasks', pendingTasks.toString())
-                : localize('guide.summary.ok', 'All clear');
+            if (warningCount > 0) {
+                const total = pendingTasks + warningCount;
+                guideSection.description = total > 1
+                    ? localize('guide.summary.warningCount', 'Warning · {0} items', total.toString())
+                    : localize('guide.summary.warning', 'Warning');
+            } else {
+                guideSection.description = pendingTasks > 0
+                    ? localize('guide.summary.pending', '{0} tasks', pendingTasks.toString())
+                    : localize('guide.summary.ok', 'All clear');
+            }
         }
 
         return items;
@@ -445,6 +464,15 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
 
         return diffCount;
+    }
+
+    private hasGitOverride(context: IgnoreContext): boolean {
+        for (const pattern of context.includes) {
+            if (pattern === '.git' || pattern === '.git/**' || pattern.startsWith('.git/')) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private async buildPreviewItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
