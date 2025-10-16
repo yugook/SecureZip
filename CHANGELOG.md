@@ -4,15 +4,6 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [1.0.4] - 2025-10-06
-
-- Enlarged the Marketplace icon by trimming excess padding around the SecureZip glyph.
-
-## [1.0.3] - 2025-10-05
-
-- Updated release workflows to run only when version tags are created and to skip preview releases when not needed.
-- Switched the extension icon to a circular layout for better Marketplace visibility.
-
 ## [1.0.2] - 2025-09-28
 
 - Refined packaging to keep the extension lightweight.

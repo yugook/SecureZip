@@ -4,13 +4,14 @@ on:
   push:
     tags:
       - 'v*'
+    tags-ignore:
+      - 'v*-preview*'
 
 permissions:
   contents: write
 
 jobs:
   publish-release:
-    if: ${{ !endsWith(github.ref_name, '-preview') }}
     runs-on: ubuntu-latest
 
     steps:
