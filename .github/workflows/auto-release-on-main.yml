@@ -1,0 +1,58 @@
+name: Auto Tag on Main
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  create-release-tag:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "Version not found in package.json" >&2
+            exit 1
+          fi
+          echo "value=$VERSION" >>"$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >>"$GITHUB_OUTPUT"
+
+      - name: Check for skip directive
+        id: skip
+        run: |
+          if [[ "${{ github.event.head_commit.message }}" == *"[skip-release]"* ]]; then
+            echo "value=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "value=false" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Check tag existence
+        id: existing
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "value=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "value=false" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Create release tag
+        if: steps.skip.outputs.value == 'false' && steps.existing.outputs.value == 'false'
+        env:
+          TAG_NAME: ${{ steps.version.outputs.tag }}
+        run: |
+          git tag -a "$TAG_NAME" "$GITHUB_SHA" -m "Release $TAG_NAME"
+          git push origin "$TAG_NAME"
