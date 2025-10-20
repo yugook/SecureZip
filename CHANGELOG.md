@@ -4,6 +4,10 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.0.6] - 2025-10-21
+
+- Performance and stability improvements.
+
 ## [1.0.5] - 2025-10-07
 
 - Added support for repacking the `.git` directory so repositories can be tidied automatically.
