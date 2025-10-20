@@ -49,6 +49,12 @@ jobs:
             echo "value=false" >>"$GITHUB_OUTPUT"
           fi
 
+      - name: Configure git user
+        if: steps.skip.outputs.value == 'false' && steps.existing.outputs.value == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Create release tag
         if: steps.skip.outputs.value == 'false' && steps.existing.outputs.value == 'false'
         env:
