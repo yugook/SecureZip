@@ -4,18 +4,25 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_run:
+    workflows:
+      - Auto Tag on Main
+    types:
+      - completed
 
 permissions:
   contents: write
 
 jobs:
   publish-release:
-    if: ${{ !endsWith(github.ref_name, '-preview') }}
+    if: ${{ (github.event_name == 'push' && !endsWith(github.ref_name, '-preview')) || (github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Auto Tag on Main' && github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
