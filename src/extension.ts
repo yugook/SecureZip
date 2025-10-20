@@ -309,6 +309,23 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
 
     // Load .securezipignore (root-level). Negated patterns are treated as re-includes after base filtering.
     const szIgnore = await loadSecureZipIgnore(root);
+    const includePatternSet = new Set(szIgnore.includes);
+    const hasGitRootInclude = includePatternSet.has('.git');
+    if (hasGitRootInclude) {
+        includePatternSet.add('.git/**');
+    }
+    const gitOverride = Array.from(includePatternSet).some(
+        (pattern) => pattern === '.git' || pattern === '.git/**' || pattern.startsWith('.git/'),
+    );
+    const reincludePatterns = Array.from(includePatternSet);
+    if (gitOverride) {
+        void vscode.window.showWarningMessage(
+            localize(
+                'warning.gitIncluded',
+                'Warning: The .git directory will be included in the export. Double-check before sharing.',
+            ),
+        );
+    }
 
     const patterns = ['**/*', '**/.*'];
     const baseIgnore = [...ignoreDefaults, ...additionalExcludes, ...szIgnore.excludes];
@@ -348,13 +365,16 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     }
 
     // Re-include patterns from .securezipignore (does not override .gitignore or hard ignores like .git/**)
-    if (szIgnore.includes.length > 0) {
-        const reincluded = await globby(szIgnore.includes, {
+    if (reincludePatterns.length > 0) {
+        const reinclusionIgnore = gitOverride
+            ? ignoreDefaults.filter((pattern) => pattern !== '.git' && pattern !== '.git/**')
+            : ignoreDefaults;
+        const reincluded = await globby(reincludePatterns, {
             cwd: root,
             dot: true,
             gitignore: true,
             // Keep hard ignores; do NOT apply .securezipignore excludes here
-            ignore: ignoreDefaults,
+            ignore: reinclusionIgnore,
             onlyFiles: true,
             followSymbolicLinks: false,
             absolute: true,

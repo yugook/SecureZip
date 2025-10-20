@@ -36,6 +36,15 @@ const expectedManifests: Record<string, Record<string, string>> = {
         'node_modules/left.js': 'aa705b6a00a2f7b060977aa95f8a3c244c0a7005ab14a7aafd5deedd8d3d00ee',
         'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
     },
+    'simple-project:include-git': {
+        '.securezipignore': 'e93c3f4f5542c4d55ea61b0487ba3fed8504332be29def13a43770a3458d57fc',
+        '.git/HEAD': '28d25bf82af4c0e2b72f50959b2beb859e3e60b9630a5e8c603dad4ddb2b6e80',
+        '.git/config': 'cfe7ba1238c9a78be7535d7c63bcaf5a4d5011d46b07c9b45d3bbf7d6c312dfe',
+        '.git/refs/heads/main': '3d51eb31d2eaa0c0163e0e6e240f4370d06d484c91f4db87d14778c6140c67e3',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
 };
 
 setup(async function () {
@@ -79,6 +88,22 @@ async function hydrateSimpleProject(root: string) {
     const leftJs = path.join(nodeModulesDir, 'left.js');
     const leftSource = 'module.exports = (a, b) => a - b;\n';
     await fs.promises.writeFile(leftJs, leftSource, 'utf8');
+
+    const gitDir = path.join(root, '.git');
+    await fs.promises.mkdir(path.join(gitDir, 'refs', 'heads'), { recursive: true });
+    const headContent = 'ref: refs/heads/main\n';
+    const configContent = [
+        '[core]',
+        '\trepositoryformatversion = 0',
+        '\tfilemode = true',
+        '\tbare = false',
+        '\tlogallrefupdates = true',
+        '',
+    ].join('\n');
+    const refContent = '0123456789abcdef0123456789abcdef01234567\n';
+    await fs.promises.writeFile(path.join(gitDir, 'HEAD'), headContent, 'utf8');
+    await fs.promises.writeFile(path.join(gitDir, 'config'), configContent, 'utf8');
+    await fs.promises.writeFile(path.join(gitDir, 'refs', 'heads', 'main'), refContent, 'utf8');
 }
 
 async function loadExpectedHashes(name: string, variant?: string) {
@@ -178,6 +203,25 @@ suite('SecureZip Extension', function () {
             assert.ok(hashes['dist/release.txt'], 'Expected dist/release.txt to be reinstated by .securezipignore');
         } finally {
             await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('allows .securezipignore to re-include the .git directory explicitly', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!/.git\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-include-git.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-git');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
             await removeIfExists(outPath);
         }
     });
