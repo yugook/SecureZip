@@ -5,6 +5,7 @@ node_modules/**
 src/**
 .github/**
 docs/**
+tmp/**
 .gitignore
 .yarnrc
 esbuild.js
