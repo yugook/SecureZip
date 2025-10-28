@@ -1,0 +1,1 @@
+SecureZip fixture build artifact.
