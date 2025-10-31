@@ -78,7 +78,7 @@ jobs:
 
       - name: Remove auto-merge label for major updates
         if: steps.detect.outputs.is-major == 'true'
-        uses: peter-evans/remove-labels@v3
+        uses: peter-evans/remove-labels@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           labels: safe-to-automerge
