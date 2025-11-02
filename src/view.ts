@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
+import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { localize } from './nls';
 
 type SectionId = 'guide' | 'actions' | 'preview' | 'recentExports';
@@ -18,7 +19,7 @@ type LastExportSnapshot = {
     patterns: string[];
 };
 
-type PreviewStatus = 'exclude' | 'include' | 'comment' | 'duplicate';
+type PreviewStatus = 'exclude' | 'include' | 'comment' | 'duplicate' | 'auto';
 
 type TreeNode =
     | { kind: 'section'; section: SectionId; description?: string }
@@ -72,6 +73,8 @@ class SecureZipTreeItem extends vscode.TreeItem {
                     this.iconPath = new vscode.ThemeIcon('diff-removed');
                 } else if (node.status === 'include') {
                     this.iconPath = new vscode.ThemeIcon('diff-added');
+                } else if (node.status === 'auto') {
+                    this.iconPath = new vscode.ThemeIcon('shield');
                 } else if (node.status === 'duplicate') {
                     this.iconPath = new vscode.ThemeIcon('warning');
                 } else {
@@ -478,6 +481,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     private async buildPreviewItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
         const context = await this.ensureIgnoreContext(workspaceFolder.uri.fsPath);
         const previewSection = this.rootItems.get('preview');
+        const autoItems = this.buildAutoExcludePreviewItems(workspaceFolder, context);
+
         if (!context.exists) {
             if (previewSection) {
                 previewSection.description = localize('preview.status.notCreated', 'Not created');
@@ -487,13 +492,16 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                     kind: 'message',
                     label: localize('preview.message.notCreated', 'The .securezipignore file has not been created yet.'),
                 }),
+                ...autoItems,
             ];
         }
 
         if (previewSection) {
             previewSection.description = context.rawLines.length > 0
                 ? localize('preview.status.lines', '{0} lines', context.rawLines.length.toString())
-                : localize('preview.status.empty', 'Empty');
+                : autoItems.length > 0
+                    ? localize('preview.status.autoOnly', 'Auto defaults')
+                    : localize('preview.status.empty', 'Empty');
         }
 
         const occurrences = new Map<string, number>();
@@ -507,7 +515,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
 
         const seen = new Map<string, number>();
-        const items: SecureZipTreeItem[] = [];
+        const items: SecureZipTreeItem[] = [...autoItems];
 
         for (const line of context.rawLines) {
             const trimmed = line.trim();
@@ -567,6 +575,63 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                       label: localize('preview.message.empty', '.securezipignore is empty'),
                   }),
               ];
+    }
+
+    private buildAutoExcludePreviewItems(
+        workspaceFolder: vscode.WorkspaceFolder,
+        context: IgnoreContext,
+    ): SecureZipTreeItem[] {
+        const cfg = vscode.workspace.getConfiguration('secureZip', workspaceFolder.uri);
+        const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
+        const autoPatterns = resolveAutoExcludePatterns({ includeNodeModules });
+        if (autoPatterns.length === 0) {
+            return [];
+        }
+
+        const items: SecureZipTreeItem[] = [
+            new SecureZipTreeItem({
+                kind: 'message',
+                label: localize('preview.autoExclude.header', 'SecureZip auto excludes'),
+                tooltip: localize(
+                    'preview.autoExclude.header.tooltip',
+                    'Patterns SecureZip filters out before applying .securezipignore.',
+                ),
+            }),
+        ];
+
+        for (const pattern of autoPatterns) {
+            const normalized = normalizeIgnorePattern(pattern);
+            const baseKey = normalized?.pattern ?? pattern;
+            const candidateKeys = new Set<string>([baseKey]);
+            if (baseKey.endsWith('/**')) {
+                candidateKeys.add(baseKey.slice(0, -3));
+            } else if (!baseKey.includes('*')) {
+                candidateKeys.add(`${baseKey}/**`);
+            }
+            const reincluded = Array.from(candidateKeys).some((key) => context.includes.has(key));
+
+            items.push(
+                new SecureZipTreeItem({
+                    kind: 'preview',
+                    label: pattern,
+                    status: 'auto',
+                    tooltip: reincluded
+                        ? localize(
+                              'preview.autoExclude.reincluded.tooltip',
+                              'A matching !pattern in .securezipignore re-includes this path.',
+                          )
+                        : localize(
+                              'preview.autoExclude.tooltip',
+                              'SecureZip excludes this automatically before .securezipignore runs.',
+                          ),
+                    description: reincluded
+                        ? localize('preview.autoExclude.reincluded', 'Auto exclude (re-included)')
+                        : localize('preview.autoExclude', 'Auto exclude'),
+                }),
+            );
+        }
+
+        return items;
     }
 
     private async buildActionItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {

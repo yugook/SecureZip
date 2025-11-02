@@ -294,10 +294,13 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     const { globby } = await import('globby');
     const ignoreDefaults = resolveAutoExcludePatterns({ includeNodeModules });
 
-    void treeProvider?.recordLastExport(ignoreDefaults);
-
     // Load .securezipignore (root-level). Negated patterns are treated as re-includes after base filtering.
     const szIgnore = await loadSecureZipIgnore(root);
+    const ignoreSnapshot = [
+        ...szIgnore.excludes,
+        ...szIgnore.includes.map((pattern) => `!${pattern}`),
+    ];
+    void treeProvider?.recordLastExport(ignoreSnapshot);
     const includePatternSet = new Set(szIgnore.includes);
     const hasGitRootInclude = includePatternSet.has('.git');
     if (hasGitRootInclude) {
