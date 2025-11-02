@@ -45,6 +45,13 @@ const expectedManifests: Record<string, Record<string, string>> = {
         'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
         'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
     },
+    'simple-project:include-vscode': {
+        '.securezipignore': 'ca4674c258568d38d9f76d6ed6337392b8732cc98703d534d57d5af4751e6114',
+        '.vscode/tasks.json': '6ffa01856a571ef6bf49aee1fcde4923183570f3af7c3ab292880643d25286cf',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
 };
 
 setup(async function () {
@@ -88,6 +95,17 @@ async function hydrateSimpleProject(root: string) {
     const leftJs = path.join(nodeModulesDir, 'left.js');
     const leftSource = 'module.exports = (a, b) => a - b;\n';
     await fs.promises.writeFile(leftJs, leftSource, 'utf8');
+
+    const vscodeDir = path.join(root, '.vscode');
+    await fs.promises.mkdir(vscodeDir, { recursive: true });
+    const tasksFile = path.join(vscodeDir, 'tasks.json');
+    const tasksContents = [
+        '{',
+        '  "version": "2.0.0"',
+        '}',
+        '',
+    ].join('\n');
+    await fs.promises.writeFile(tasksFile, tasksContents, 'utf8');
 
     const gitDir = path.join(root, '.git');
     await fs.promises.mkdir(path.join(gitDir, 'refs', 'heads'), { recursive: true });
@@ -219,6 +237,25 @@ suite('SecureZip Extension', function () {
         const { outPath, hashes } = await exportAndCollect('securezip-include-git.zip');
         try {
             const expected = await loadExpectedHashes('simple-project', 'include-git');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('allows .securezipignore to re-include auto-excluded directories such as .vscode', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!/.vscode/tasks.json\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-include-vscode.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-vscode');
             assert.deepStrictEqual(hashes, expected);
         } finally {
             await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
