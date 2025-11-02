@@ -87,8 +87,6 @@
   "guide.summary.warning": "警告",
   "guide.summary.warningCount": "警告・{0}項目",
   "preview.autoExclude": "自動除外",
-  "preview.autoExclude.header": "SecureZip の自動除外",
-  "preview.autoExclude.header.tooltip": "SecureZip が .securezipignore を適用する前に除外するパターンです。",
   "preview.autoExclude.reincluded": "自動除外 (再包含済み)",
   "preview.autoExclude.reincluded.tooltip": ".securezipignore の一致する !パターンにより、このパスは再包含されます。",
   "preview.autoExclude.tooltip": "SecureZip は .securezipignore を処理する前にこのパターンを自動的に除外します。",

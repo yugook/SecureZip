@@ -588,16 +588,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             return [];
         }
 
-        const items: SecureZipTreeItem[] = [
-            new SecureZipTreeItem({
-                kind: 'message',
-                label: localize('preview.autoExclude.header', 'SecureZip auto excludes'),
-                tooltip: localize(
-                    'preview.autoExclude.header.tooltip',
-                    'Patterns SecureZip filters out before applying .securezipignore.',
-                ),
-            }),
-        ];
+        const items: SecureZipTreeItem[] = [];
 
         for (const pattern of autoPatterns) {
             const normalized = normalizeIgnorePattern(pattern);
