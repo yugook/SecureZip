@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import archiver from 'archiver';
 import simpleGit, { SimpleGit } from 'simple-git';
+import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { resolveFlags } from './flags';
 import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } from './ignore';
 import { SecureZipViewProvider, ensureSecureZipIgnoreFile } from './view';
@@ -291,19 +292,7 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     // Files to include
     progress.report({ message: localize('progress.collectingFiles', 'Collecting files...') });
     const { globby } = await import('globby');
-    const ignoreDefaults = [
-        '.git',
-        '.git/**',
-        includeNodeModules ? '' : 'node_modules/**',
-        '.vscode',
-        '.vscode/**',
-        '.env',
-        '.env.*',
-        '**/*.pem',
-        '**/*.key',
-        '**/*.crt',
-        '**/*.pfx',
-    ].filter(Boolean) as string[];
+    const ignoreDefaults = resolveAutoExcludePatterns({ includeNodeModules });
 
     void treeProvider?.recordLastExport(ignoreDefaults);
 
