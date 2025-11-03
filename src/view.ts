@@ -5,6 +5,11 @@ import simpleGit from 'simple-git';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { localize } from './nls';
+import {
+    classifyAutoExcludePatterns,
+    type AutoExcludePatternInfo,
+    type AutoExcludePresence,
+} from './autoExcludeDisplay';
 
 type SectionId = 'guide' | 'actions' | 'preview' | 'recentExports';
 
@@ -599,9 +604,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
         const includePatterns = context.includes;
 
-        type PatternPresence = { exists: boolean; examples: string[]; hasMore: boolean };
         const SAMPLE_LIMIT = 3;
-        const presenceCache = new Map<string, Promise<PatternPresence>>();
+        const presenceCache = new Map<string, Promise<AutoExcludePresence>>();
         let rootDirEntriesPromise: Promise<string[]> | undefined;
 
         const getRootDirEntries = async (): Promise<string[]> => {
@@ -611,7 +615,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             return rootDirEntriesPromise;
         };
 
-        const checkPath = async (relative: string): Promise<PatternPresence> => {
+        const checkPath = async (relative: string): Promise<AutoExcludePresence> => {
             try {
                 const full = path.join(root, relative);
                 const stats = await fs.promises.stat(full);
@@ -622,7 +626,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             }
         };
 
-        const checkRootEnvVariants = async (): Promise<PatternPresence> => {
+        const checkRootEnvVariants = async (): Promise<AutoExcludePresence> => {
             const entries = await getRootDirEntries();
             const matches = entries.filter((name) => name.startsWith('.env.') && name.length > '.env.'.length);
             if (matches.length === 0) {
@@ -635,7 +639,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         const checkGlob = async (
             pattern: string,
             options?: { onlyFiles?: boolean },
-        ): Promise<PatternPresence> => {
+        ): Promise<AutoExcludePresence> => {
             try {
                 const { globbyStream } = await import('globby');
                 const streamOptions: { [key: string]: unknown } = {
@@ -669,7 +673,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             }
         };
 
-        const resolvePresence = (pattern: string): Promise<PatternPresence> => {
+        const resolvePresence = (pattern: string): Promise<AutoExcludePresence> => {
             const cached = presenceCache.get(pattern);
             if (cached) {
                 return cached;
@@ -707,11 +711,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             return promise;
         };
 
-        const patternInfos: {
-            pattern: string;
-            reincluded: boolean;
-            presence: PatternPresence;
-        }[] = [];
+        const patternInfos: AutoExcludePatternInfo[] = [];
 
         for (const pattern of autoPatterns) {
             const normalized = normalizeIgnorePattern(pattern);
@@ -732,10 +732,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             patternInfos.push({ pattern, reincluded, presence });
         }
 
-        const orderedInfos = [
-            ...patternInfos.filter((info) => info.presence.exists),
-            ...patternInfos.filter((info) => !info.presence.exists),
-        ];
+        const orderedInfos = classifyAutoExcludePatterns(patternInfos);
 
         const items: SecureZipTreeItem[] = [];
 
