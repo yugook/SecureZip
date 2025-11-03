@@ -487,7 +487,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     private async buildPreviewItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
         const context = await this.ensureIgnoreContext(workspaceFolder.uri.fsPath);
         const previewSection = this.rootItems.get('preview');
-        const autoItems = this.buildAutoExcludePreviewItems(workspaceFolder, context);
+        const autoItems = await this.buildAutoExcludePreviewItems(workspaceFolder, context);
         const gitItems = await this.buildGitIgnorePreviewItems(workspaceFolder);
 
         if (!context.exists) {
@@ -585,10 +585,11 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
               ];
     }
 
-    private buildAutoExcludePreviewItems(
+    private async buildAutoExcludePreviewItems(
         workspaceFolder: vscode.WorkspaceFolder,
         context: IgnoreContext,
-    ): SecureZipTreeItem[] {
+    ): Promise<SecureZipTreeItem[]> {
+        const root = workspaceFolder.uri.fsPath;
         const cfg = vscode.workspace.getConfiguration('secureZip', workspaceFolder.uri);
         const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
         const autoPatterns = resolveAutoExcludePatterns({ includeNodeModules });
@@ -598,7 +599,119 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
         const includePatterns = context.includes;
 
-        const items: SecureZipTreeItem[] = [];
+        type PatternPresence = { exists: boolean; examples: string[]; hasMore: boolean };
+        const SAMPLE_LIMIT = 3;
+        const presenceCache = new Map<string, Promise<PatternPresence>>();
+        let rootDirEntriesPromise: Promise<string[]> | undefined;
+
+        const getRootDirEntries = async (): Promise<string[]> => {
+            if (!rootDirEntriesPromise) {
+                rootDirEntriesPromise = fs.promises.readdir(root).catch(() => []);
+            }
+            return rootDirEntriesPromise;
+        };
+
+        const checkPath = async (relative: string): Promise<PatternPresence> => {
+            try {
+                const full = path.join(root, relative);
+                const stats = await fs.promises.stat(full);
+                const label = stats.isDirectory() ? `${relative}/` : relative;
+                return { exists: true, examples: [label], hasMore: false };
+            } catch {
+                return { exists: false, examples: [], hasMore: false };
+            }
+        };
+
+        const checkRootEnvVariants = async (): Promise<PatternPresence> => {
+            const entries = await getRootDirEntries();
+            const matches = entries.filter((name) => name.startsWith('.env.') && name.length > '.env.'.length);
+            if (matches.length === 0) {
+                return { exists: false, examples: [], hasMore: false };
+            }
+            const examples = matches.slice(0, SAMPLE_LIMIT);
+            return { exists: true, examples, hasMore: matches.length > SAMPLE_LIMIT };
+        };
+
+        const checkGlob = async (
+            pattern: string,
+            options?: { onlyFiles?: boolean },
+        ): Promise<PatternPresence> => {
+            try {
+                const { globbyStream } = await import('globby');
+                const streamOptions: { [key: string]: unknown } = {
+                    cwd: root,
+                    dot: true,
+                    gitignore: false,
+                    followSymbolicLinks: false,
+                    unique: true,
+                };
+                if (typeof options?.onlyFiles === 'boolean') {
+                    streamOptions.onlyFiles = options.onlyFiles;
+                }
+                const examples: string[] = [];
+                let hasMore = false;
+                for await (const entry of globbyStream(pattern, streamOptions)) {
+                    const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
+                    if (!value) {
+                        continue;
+                    }
+                    if (examples.length < SAMPLE_LIMIT) {
+                        examples.push(value);
+                    } else {
+                        hasMore = true;
+                        break;
+                    }
+                }
+                const exists = examples.length > 0 || hasMore;
+                return { exists, examples, hasMore };
+            } catch {
+                return { exists: false, examples: [], hasMore: false };
+            }
+        };
+
+        const resolvePresence = (pattern: string): Promise<PatternPresence> => {
+            const cached = presenceCache.get(pattern);
+            if (cached) {
+                return cached;
+            }
+            const promise = (async () => {
+                if (pattern === '.git' || pattern === '.git/**') {
+                    return checkPath('.git');
+                }
+                if (pattern === '.vscode' || pattern === '.vscode/**') {
+                    return checkPath('.vscode');
+                }
+                if (pattern === 'node_modules/**') {
+                    return checkPath('node_modules');
+                }
+                if (pattern === '.env') {
+                    return checkPath('.env');
+                }
+                if (pattern === '.env.*') {
+                    return checkRootEnvVariants();
+                }
+                if (pattern === '**/.env' || pattern === '**/.env.*') {
+                    return checkGlob(pattern, { onlyFiles: true });
+                }
+                if (
+                    pattern === '**/*.pem' ||
+                    pattern === '**/*.key' ||
+                    pattern === '**/*.crt' ||
+                    pattern === '**/*.pfx'
+                ) {
+                    return checkGlob(pattern, { onlyFiles: true });
+                }
+                return checkGlob(pattern);
+            })();
+            presenceCache.set(pattern, promise);
+            return promise;
+        };
+
+        const patternInfos: {
+            pattern: string;
+            reincluded: boolean;
+            presence: PatternPresence;
+        }[] = [];
 
         for (const pattern of autoPatterns) {
             const normalized = normalizeIgnorePattern(pattern);
@@ -615,24 +728,72 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             const reincluded =
                 Array.from(candidateKeys).some((key) => includePatterns.has(key)) ||
                 isAutoExcludePatternReincluded(baseKey, includePatterns);
+            const presence = await resolvePresence(pattern);
+            patternInfos.push({ pattern, reincluded, presence });
+        }
+
+        const orderedInfos = [
+            ...patternInfos.filter((info) => info.presence.exists),
+            ...patternInfos.filter((info) => !info.presence.exists),
+        ];
+
+        const items: SecureZipTreeItem[] = [];
+
+        for (const info of orderedInfos) {
+            const { pattern, reincluded, presence } = info;
+            let description: string;
+            if (reincluded) {
+                description = localize('preview.autoExclude.reincluded', 'Auto exclude (re-included)');
+            } else if (presence.exists) {
+                description = localize('preview.autoExclude.active', 'Auto exclude (active)');
+            } else {
+                description = localize('preview.autoExclude.inactive', 'Auto exclude (no matches)');
+            }
+
+            let tooltip = reincluded
+                ? localize(
+                      'preview.autoExclude.reincluded.tooltip',
+                      'A matching !pattern in .securezipignore re-includes this path.',
+                  )
+                : localize(
+                      'preview.autoExclude.tooltip',
+                      'SecureZip excludes this automatically before .securezipignore runs.',
+                  );
+
+            if (presence.exists) {
+                if (presence.examples.length > 0) {
+                    const exampleList = presence.examples.map((example) => `• ${example}`).join('\n');
+                    tooltip += `\n\n${localize(
+                        'preview.autoExclude.tooltip.matches',
+                        'Detected examples:\n{0}',
+                        exampleList,
+                    )}`;
+                } else {
+                    tooltip += `\n\n${localize(
+                        'preview.autoExclude.tooltip.matches.noExample',
+                        'Matching paths detected.',
+                    )}`;
+                }
+                if (presence.hasMore) {
+                    tooltip += `\n${localize(
+                        'preview.autoExclude.tooltip.matches.more',
+                        'Additional matches are not listed.',
+                    )}`;
+                }
+            } else {
+                tooltip += `\n\n${localize(
+                    'preview.autoExclude.tooltip.none',
+                    'No matching paths detected yet.',
+                )}`;
+            }
 
             items.push(
                 new SecureZipTreeItem({
                     kind: 'preview',
                     label: pattern,
                     status: 'auto',
-                    tooltip: reincluded
-                        ? localize(
-                              'preview.autoExclude.reincluded.tooltip',
-                              'A matching !pattern in .securezipignore re-includes this path.',
-                          )
-                        : localize(
-                              'preview.autoExclude.tooltip',
-                              'SecureZip excludes this automatically before .securezipignore runs.',
-                          ),
-                    description: reincluded
-                        ? localize('preview.autoExclude.reincluded', 'Auto exclude (re-included)')
-                        : localize('preview.autoExclude', 'Auto exclude'),
+                    tooltip,
+                    description,
                 }),
             );
         }
