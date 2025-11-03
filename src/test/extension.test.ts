@@ -52,6 +52,36 @@ const expectedManifests: Record<string, Record<string, string>> = {
         'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
         'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
     },
+    'simple-project:include-node-modules-ignore': {
+        '.securezipignore': 'ea400f435fb27dd5f9b2a962ac5e4e312091465c24cee9b7a5a024f762d23cda',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'node_modules/left.js': 'aa705b6a00a2f7b060977aa95f8a3c244c0a7005ab14a7aafd5deedd8d3d00ee',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
+    'simple-project:include-env': {
+        '.securezipignore': 'e95dd645adbd34659503655f5d9f252ae10da122c30514abc3843d1c0430e0d9',
+        '.env': 'b736d31214ef074d8193c210df49549e82ae1db42544164185b0b9bc8702e9b0',
+        '.env.local': '4fd67b7e22f2bd74aa35571c4e8fbee2005791345b64a28fafc894921a408fe3',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
+    'simple-project:include-pem': {
+        '.securezipignore': '3f1795fa76b368d65a5426eaaeeb58f71d0cd3fa739692ea39d8fcd6083d3264',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'certs/server.pem': '19ca233348bb6b7d5a2f8e59fa679fb6395c59ae1f2f4f01170cc1b27db73714',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
+    'simple-project:include-secure-config': {
+        '.securezipignore': '889994736f8d38732454e4bc83f4b6bd2fa1c1a11251a89f686767cafd21a6fb',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'secure-config/.env.production': '200a4a4e1a7c8402d3a4fbe074492b92058a71348c31ce9fbea2bf0e478ed6ad',
+        'secure-config/service.pem': '37b28ea27d1b471b451612d9f000f4af30b8e202d2b6cea818b1577c492d6234',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
 };
 
 setup(async function () {
@@ -256,6 +286,100 @@ suite('SecureZip Extension', function () {
         const { outPath, hashes } = await exportAndCollect('securezip-include-vscode.zip');
         try {
             const expected = await loadExpectedHashes('simple-project', 'include-vscode');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('allows .securezipignore to re-include node_modules without toggling settings', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!node_modules/**\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-include-node-modules-ignore.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-node-modules-ignore');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('allows .securezipignore to re-include .env family files explicitly', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const envLocalPath = path.join(workspaceRoot, '.env.local');
+        await fs.promises.writeFile(envLocalPath, 'LOCAL_FLAG=1\n', 'utf8');
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!.env\n!.env.local\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-include-env.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-env');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('allows .securezipignore to re-include extension-based auto excludes such as PEM files', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const certsDir = path.join(workspaceRoot, 'certs');
+        await fs.promises.mkdir(certsDir, { recursive: true });
+        await fs.promises.writeFile(
+            path.join(certsDir, 'server.pem'),
+            '-----BEGIN CERT-----\nfixture\n-----END CERT-----\n',
+            'utf8',
+        );
+        await fs.promises.writeFile(
+            path.join(certsDir, 'server.key'),
+            '-----BEGIN KEY-----\nfixture\n-----END KEY-----\n',
+            'utf8',
+        );
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!certs/server.pem\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-include-pem.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-pem');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('allows wildcard re-include to restore nested secure-config secrets', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const secureConfigDir = path.join(workspaceRoot, 'secure-config');
+        await fs.promises.mkdir(secureConfigDir, { recursive: true });
+        await fs.promises.writeFile(path.join(secureConfigDir, '.env.production'), 'PRODUCTION=1\n', 'utf8');
+        await fs.promises.writeFile(path.join(secureConfigDir, 'service.pem'), 'secure-service\n', 'utf8');
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!secure-config/**\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-include-secure-config.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-secure-config');
             assert.deepStrictEqual(hashes, expected);
         } finally {
             await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');

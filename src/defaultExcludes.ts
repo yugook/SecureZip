@@ -10,6 +10,8 @@ const AUTO_EXCLUDE_BASE_PATTERNS = Object.freeze([
     '.vscode/**',
     '.env',
     '.env.*',
+    '**/.env',
+    '**/.env.*',
     '**/*.pem',
     '**/*.key',
     '**/*.crt',

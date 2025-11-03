@@ -358,15 +358,12 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
 
     // Re-include patterns from .securezipignore (does not override .gitignore or hard ignores like .git/**)
     if (reincludePatterns.length > 0) {
-        const reinclusionIgnore = ignoreDefaults.filter(
-            (pattern) => !isAutoExcludePatternOverridden(pattern, reincludePatterns),
-        );
         const reincluded = await globby(reincludePatterns, {
             cwd: root,
             dot: true,
             gitignore: true,
-            // Keep hard ignores; do NOT apply .securezipignore excludes here
-            ignore: reinclusionIgnore,
+            // Allow explicit !patterns to override SecureZip defaults and additional excludes
+            ignore: [],
             onlyFiles: true,
             followSymbolicLinks: false,
             absolute: true,
@@ -383,49 +380,6 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     await createZip(root, finalFiles, targetUri.fsPath);
 
     vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
-}
-
-function isAutoExcludePatternOverridden(autoPattern: string, includePatterns: string[]): boolean {
-    const autoExtensionMatch = autoPattern.startsWith('**/*.') ? autoPattern.slice(4) : undefined;
-
-    for (const include of includePatterns) {
-        if (include === autoPattern) {
-            return true;
-        }
-
-        if (autoPattern.endsWith('/**')) {
-            const base = autoPattern.slice(0, -3);
-            if (base.length === 0) {
-                continue;
-            }
-            if (include === base || include.startsWith(`${base}/`)) {
-                return true;
-            }
-        }
-
-        if (!autoPattern.includes('*')) {
-            if (include === autoPattern || include.startsWith(`${autoPattern}/`)) {
-                return true;
-            }
-        }
-
-        if (include.endsWith('/**')) {
-            const includeBase = include.slice(0, -3);
-            if (includeBase.length > 0 && (autoPattern === includeBase || autoPattern.startsWith(`${includeBase}/`))) {
-                return true;
-            }
-        }
-
-        if (autoPattern === '.env.*' && (include === '.env' || include === '.env.*' || include.startsWith('.env.'))) {
-            return true;
-        }
-
-        if (autoExtensionMatch && (include.endsWith(autoExtensionMatch) || include === `**/*${autoExtensionMatch}`)) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 async function handleAddToIgnore(target?: vscode.Uri) {
