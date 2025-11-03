@@ -145,7 +145,7 @@
   },
   "dependencies": {
     "archiver": "^7.0.1",
-    "globby": "^14.0.2",
+    "globby": "^15.0.0",
     "simple-git": "^3.27.0"
   },
   "scripts": {
