@@ -35,11 +35,39 @@ type TreeNode =
     | { kind: 'action'; label: string; command: vscode.Command; description?: string; icon?: string; tooltip?: string };
 
 class SecureZipTreeItem extends vscode.TreeItem {
-    constructor(public readonly node: TreeNode) {
+    readonly node: TreeNode;
+
+    constructor(node: TreeNode) {
+        let label: string;
+        let collapsibleState: vscode.TreeItemCollapsibleState;
+
         switch (node.kind) {
             case 'section': {
                 const meta = SECTION_DEFS[node.section];
-                super(meta.label, vscode.TreeItemCollapsibleState.Collapsed);
+                label = meta.label;
+                collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+                break;
+            }
+            case 'message':
+            case 'suggestion':
+            case 'preview':
+            case 'action': {
+                label = node.label;
+                collapsibleState = vscode.TreeItemCollapsibleState.None;
+                break;
+            }
+            default: {
+                label = 'Unknown';
+                collapsibleState = vscode.TreeItemCollapsibleState.None;
+            }
+        }
+
+        super(label, collapsibleState);
+        this.node = node;
+
+        switch (node.kind) {
+            case 'section': {
+                const meta = SECTION_DEFS[node.section];
                 this.iconPath = new vscode.ThemeIcon(meta.icon);
                 if (node.description) {
                     this.description = node.description;
@@ -48,13 +76,11 @@ class SecureZipTreeItem extends vscode.TreeItem {
                 break;
             }
             case 'message': {
-                super(node.label, vscode.TreeItemCollapsibleState.None);
                 this.tooltip = node.tooltip;
                 this.contextValue = 'securezip.message';
                 break;
             }
             case 'suggestion': {
-                super(node.label, vscode.TreeItemCollapsibleState.None);
                 this.tooltip = node.detail;
                 this.contextValue = node.alreadyExists ? 'securezip.suggestion.disabled' : 'securezip.suggestion';
                 this.iconPath = new vscode.ThemeIcon(node.alreadyExists ? 'pass-filled' : 'add');
@@ -71,7 +97,6 @@ class SecureZipTreeItem extends vscode.TreeItem {
                 break;
             }
             case 'preview': {
-                super(node.label, vscode.TreeItemCollapsibleState.None);
                 this.tooltip = node.tooltip;
                 this.description = node.description;
                 this.contextValue = 'securezip.preview';
@@ -91,7 +116,6 @@ class SecureZipTreeItem extends vscode.TreeItem {
                 break;
             }
             case 'action': {
-                super(node.label, vscode.TreeItemCollapsibleState.None);
                 this.command = node.command;
                 this.description = node.description;
                 this.tooltip = node.tooltip;
@@ -100,7 +124,7 @@ class SecureZipTreeItem extends vscode.TreeItem {
                 break;
             }
             default: {
-                super('Unknown', vscode.TreeItemCollapsibleState.None);
+                this.contextValue = 'securezip.unknown';
             }
         }
     }

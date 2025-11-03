@@ -4,6 +4,7 @@ import * as path from 'path';
 import { createHash } from 'crypto';
 import AdmZip from 'adm-zip';
 import * as vscode from 'vscode';
+import { SecureZipViewProvider } from '../view';
 const TEST_LOG_VERBOSE = process.env.SECUREZIP_TEST_LOG === '1';
 
 function log(step: string): void {
@@ -364,6 +365,66 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('SecureZip view prioritizes active auto excludes in preview', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const autoItems = previewItems.filter((item) => {
+                const node = (item as any).node;
+                return node?.kind === 'preview' && node?.status === 'auto';
+            });
+
+            assert.ok(autoItems.length > 0, 'Expected at least one auto exclude preview item');
+            const labels = autoItems.map(getTreeItemLabel);
+
+            const required = ['.git', '.git/**', 'node_modules/**', '.vscode', '.vscode/**'];
+            for (const pattern of required) {
+                const index = labels.indexOf(pattern);
+                assert.ok(index >= 0, `Expected to find auto pattern ${pattern}`);
+            }
+
+            const firstInactive = autoItems.findIndex(
+                (item) => item.description === 'Auto exclude (no matches)',
+            );
+
+            if (firstInactive === -1) {
+                for (const item of autoItems) {
+                    assert.ok(
+                        item.description === 'Auto exclude (active)' ||
+                            item.description === 'Auto exclude (re-included)',
+                        `Unexpected description ${item.description}`,
+                    );
+                }
+            } else {
+                for (const item of autoItems.slice(0, firstInactive)) {
+                    assert.ok(
+                        item.description === 'Auto exclude (active)' ||
+                            item.description === 'Auto exclude (re-included)',
+                        `Expected active or reincluded before inactive entries, got ${item.description}`,
+                    );
+                }
+                for (const item of autoItems.slice(firstInactive)) {
+                    assert.strictEqual(
+                        item.description,
+                        'Auto exclude (no matches)',
+                        'Inactive entries should appear after active ones',
+                    );
+                }
+            }
+        } finally {
+            provider.dispose();
+        }
+    });
+
     test('allows wildcard re-include to restore nested secure-config secrets', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
@@ -504,6 +565,48 @@ suite('SecureZip Extension', function () {
         assert.match(errors[0], /EISDIR|is a directory/, 'Unexpected error message');
     });
 });
+
+class InMemoryMemento implements vscode.Memento {
+    private store = new Map<string, unknown>();
+
+    get<T>(key: string, defaultValue?: T): T | undefined {
+        if (this.store.has(key)) {
+            return this.store.get(key) as T;
+        }
+        return defaultValue;
+    }
+
+    async update(key: string, value: unknown): Promise<void> {
+        if (value === undefined) {
+            this.store.delete(key);
+        } else {
+            this.store.set(key, value);
+        }
+    }
+
+    keys(): readonly string[] {
+        return Array.from(this.store.keys());
+    }
+}
+
+function createTestExtensionContext(): vscode.ExtensionContext {
+    return {
+        workspaceState: new InMemoryMemento(),
+        globalState: new InMemoryMemento(),
+        subscriptions: [],
+    } as unknown as vscode.ExtensionContext;
+}
+
+function getTreeItemLabel(item: vscode.TreeItem): string {
+    const raw = item.label;
+    if (typeof raw === 'string') {
+        return raw;
+    }
+    if (raw && typeof (raw as vscode.TreeItemLabel).label === 'string') {
+        return (raw as vscode.TreeItemLabel).label;
+    }
+    return String(raw ?? '');
+}
 
 function getWorkspaceRoot(): string {
     const folders = vscode.workspace.workspaceFolders;
