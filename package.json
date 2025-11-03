@@ -3,7 +3,7 @@
   "displayName": "SecureZip",
   "description": "Securely export your project as a clean ZIP.",
   "publisher": "yugook",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "icon": "resources/securezip.png",
   "repository": {
     "type": "git",
@@ -159,7 +159,7 @@
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "test:unit": "npm run compile-tests && npx mocha out/test/flags.test.js out/test/ignore.test.js",
+    "test:unit": "npm run compile-tests && npx mocha out/test/flags.test.js out/test/ignore.test.js out/test/previewAutoExclude.test.js",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vscode-test",

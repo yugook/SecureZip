@@ -4,6 +4,12 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.0.7] - 2025-11-03
+
+- Preview now surfaces `.gitignore` auto excludes, including live examples of matching files and re-include warnings.
+- Auto exclude defaults in the preview highlight patterns that are currently active, example matches, and those with no hits.
+- Added unit coverage for auto exclude ordering and an integration test ensuring the SecureZip view groups active vs inactive defaults correctly.
+
 ## [1.0.6] - 2025-10-21
 
 - Performance and stability improvements.

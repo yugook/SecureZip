@@ -4,6 +4,7 @@ import * as path from 'path';
 import { createHash } from 'crypto';
 import AdmZip from 'adm-zip';
 import * as vscode from 'vscode';
+import { SecureZipViewProvider } from '../view';
 const TEST_LOG_VERBOSE = process.env.SECUREZIP_TEST_LOG === '1';
 
 function log(step: string): void {
@@ -43,6 +44,43 @@ const expectedManifests: Record<string, Record<string, string>> = {
         '.git/refs/heads/main': '3d51eb31d2eaa0c0163e0e6e240f4370d06d484c91f4db87d14778c6140c67e3',
         'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
         'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
+    'simple-project:include-vscode': {
+        '.securezipignore': 'ca4674c258568d38d9f76d6ed6337392b8732cc98703d534d57d5af4751e6114',
+        '.vscode/tasks.json': '6ffa01856a571ef6bf49aee1fcde4923183570f3af7c3ab292880643d25286cf',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
+    'simple-project:include-node-modules-ignore': {
+        '.securezipignore': 'ea400f435fb27dd5f9b2a962ac5e4e312091465c24cee9b7a5a024f762d23cda',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'node_modules/left.js': 'aa705b6a00a2f7b060977aa95f8a3c244c0a7005ab14a7aafd5deedd8d3d00ee',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
+    'simple-project:include-env': {
+        '.securezipignore': 'e95dd645adbd34659503655f5d9f252ae10da122c30514abc3843d1c0430e0d9',
+        '.env': 'b736d31214ef074d8193c210df49549e82ae1db42544164185b0b9bc8702e9b0',
+        '.env.local': '4fd67b7e22f2bd74aa35571c4e8fbee2005791345b64a28fafc894921a408fe3',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
+    'simple-project:include-pem': {
+        '.securezipignore': '3f1795fa76b368d65a5426eaaeeb58f71d0cd3fa739692ea39d8fcd6083d3264',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'certs/server.pem': '19ca233348bb6b7d5a2f8e59fa679fb6395c59ae1f2f4f01170cc1b27db73714',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
+    },
+    'simple-project:include-secure-config': {
+        '.securezipignore': '889994736f8d38732454e4bc83f4b6bd2fa1c1a11251a89f686767cafd21a6fb',
+        'README.md': 'e51105731653a1056f8fc9a4ca4e50614372a0e8dbceba88d027fa6374339e9c',
+        'dist/release.txt': '3d51e725d6ad11f311d1dd9629ca06307a6361bddc8e76f6c93b87aadddac5bc',
+        'secure-config/.env.production': '200a4a4e1a7c8402d3a4fbe074492b92058a71348c31ce9fbea2bf0e478ed6ad',
+        'secure-config/service.pem': '37b28ea27d1b471b451612d9f000f4af30b8e202d2b6cea818b1577c492d6234',
         'src/index.ts': 'e1831ca6d7392f6e0b583b4477d84cfd86bc6f7801bda5461479c02a77cc7d83',
     },
 };
@@ -88,6 +126,17 @@ async function hydrateSimpleProject(root: string) {
     const leftJs = path.join(nodeModulesDir, 'left.js');
     const leftSource = 'module.exports = (a, b) => a - b;\n';
     await fs.promises.writeFile(leftJs, leftSource, 'utf8');
+
+    const vscodeDir = path.join(root, '.vscode');
+    await fs.promises.mkdir(vscodeDir, { recursive: true });
+    const tasksFile = path.join(vscodeDir, 'tasks.json');
+    const tasksContents = [
+        '{',
+        '  "version": "2.0.0"',
+        '}',
+        '',
+    ].join('\n');
+    await fs.promises.writeFile(tasksFile, tasksContents, 'utf8');
 
     const gitDir = path.join(root, '.git');
     await fs.promises.mkdir(path.join(gitDir, 'refs', 'heads'), { recursive: true });
@@ -226,6 +275,181 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('allows .securezipignore to re-include auto-excluded directories such as .vscode', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!/.vscode/tasks.json\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-include-vscode.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-vscode');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('allows .securezipignore to re-include node_modules without toggling settings', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!node_modules/**\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-include-node-modules-ignore.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-node-modules-ignore');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('allows .securezipignore to re-include .env family files explicitly', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const envPath = path.join(workspaceRoot, '.env');
+        const envLocalPath = path.join(workspaceRoot, '.env.local');
+        await fs.promises.writeFile(envPath, 'SECRET_TOKEN=fixture\n', 'utf8');
+        await fs.promises.writeFile(envLocalPath, 'LOCAL_FLAG=1\n', 'utf8');
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!.env\n!.env.local\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-include-env.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-env');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('allows .securezipignore to re-include extension-based auto excludes such as PEM files', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const certsDir = path.join(workspaceRoot, 'certs');
+        await fs.promises.mkdir(certsDir, { recursive: true });
+        await fs.promises.writeFile(
+            path.join(certsDir, 'server.pem'),
+            '-----BEGIN CERT-----\nfixture\n-----END CERT-----\n',
+            'utf8',
+        );
+        await fs.promises.writeFile(
+            path.join(certsDir, 'server.key'),
+            '-----BEGIN KEY-----\nfixture\n-----END KEY-----\n',
+            'utf8',
+        );
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!certs/server.pem\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-include-pem.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-pem');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('SecureZip view prioritizes active auto excludes in preview', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const autoItems = previewItems.filter((item) => {
+                const node = (item as any).node;
+                return node?.kind === 'preview' && node?.status === 'auto';
+            });
+
+            assert.ok(autoItems.length > 0, 'Expected at least one auto exclude preview item');
+            const labels = autoItems.map(getTreeItemLabel);
+
+            const required = ['.git', '.git/**', 'node_modules/**', '.vscode', '.vscode/**'];
+            for (const pattern of required) {
+                const index = labels.indexOf(pattern);
+                assert.ok(index >= 0, `Expected to find auto pattern ${pattern}`);
+            }
+
+            const firstInactive = autoItems.findIndex(
+                (item) => item.description === 'Auto exclude (no matches)',
+            );
+
+            if (firstInactive === -1) {
+                for (const item of autoItems) {
+                    assert.ok(
+                        item.description === 'Auto exclude (active)' ||
+                            item.description === 'Auto exclude (re-included)',
+                        `Unexpected description ${item.description}`,
+                    );
+                }
+            } else {
+                for (const item of autoItems.slice(0, firstInactive)) {
+                    assert.ok(
+                        item.description === 'Auto exclude (active)' ||
+                            item.description === 'Auto exclude (re-included)',
+                        `Expected active or reincluded before inactive entries, got ${item.description}`,
+                    );
+                }
+                for (const item of autoItems.slice(firstInactive)) {
+                    assert.strictEqual(
+                        item.description,
+                        'Auto exclude (no matches)',
+                        'Inactive entries should appear after active ones',
+                    );
+                }
+            }
+        } finally {
+            provider.dispose();
+        }
+    });
+
+    test('allows wildcard re-include to restore nested secure-config secrets', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const secureConfigDir = path.join(workspaceRoot, 'secure-config');
+        await fs.promises.mkdir(secureConfigDir, { recursive: true });
+        await fs.promises.writeFile(path.join(secureConfigDir, '.env.production'), 'PRODUCTION=1\n', 'utf8');
+        await fs.promises.writeFile(path.join(secureConfigDir, 'service.pem'), 'secure-service\n', 'utf8');
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!secure-config/**\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-include-secure-config.zip');
+        try {
+            const expected = await loadExpectedHashes('simple-project', 'include-secure-config');
+            assert.deepStrictEqual(hashes, expected);
+        } finally {
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
     test('includes node_modules when includeNodeModules is enabled', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
@@ -343,6 +567,48 @@ suite('SecureZip Extension', function () {
         assert.match(errors[0], /EISDIR|is a directory/, 'Unexpected error message');
     });
 });
+
+class InMemoryMemento implements vscode.Memento {
+    private store = new Map<string, unknown>();
+
+    get<T>(key: string, defaultValue?: T): T | undefined {
+        if (this.store.has(key)) {
+            return this.store.get(key) as T;
+        }
+        return defaultValue;
+    }
+
+    async update(key: string, value: unknown): Promise<void> {
+        if (value === undefined) {
+            this.store.delete(key);
+        } else {
+            this.store.set(key, value);
+        }
+    }
+
+    keys(): readonly string[] {
+        return Array.from(this.store.keys());
+    }
+}
+
+function createTestExtensionContext(): vscode.ExtensionContext {
+    return {
+        workspaceState: new InMemoryMemento(),
+        globalState: new InMemoryMemento(),
+        subscriptions: [],
+    } as unknown as vscode.ExtensionContext;
+}
+
+function getTreeItemLabel(item: vscode.TreeItem): string {
+    const raw = item.label;
+    if (typeof raw === 'string') {
+        return raw;
+    }
+    if (raw && typeof (raw as vscode.TreeItemLabel).label === 'string') {
+        return (raw as vscode.TreeItemLabel).label;
+    }
+    return String(raw ?? '');
+}
 
 function getWorkspaceRoot(): string {
     const folders = vscode.workspace.workspaceFolders;
