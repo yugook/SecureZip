@@ -767,13 +767,13 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         const headerTooltip = truncatedByPathLimit
             ? localize(
                   'preview.gitIgnore.header.tooltip.truncated',
-                  'Showing up to {0} gitignore patterns currently hiding {1} paths (truncated).',
+                  'Showing up to {0} .gitignore patterns currently hiding {1} paths (truncated).',
                   displayEntries.length.toString(),
                   totalMatches.toString(),
               )
             : localize(
                   'preview.gitIgnore.header.tooltip',
-                  'Showing up to {0} gitignore patterns currently hiding {1} paths.',
+                  'Showing up to {0} .gitignore patterns currently hiding {1} paths.',
                   displayEntries.length.toString(),
                   totalMatches.toString(),
               );
@@ -781,7 +781,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         const items: SecureZipTreeItem[] = [
             new SecureZipTreeItem({
                 kind: 'message',
-                label: localize('preview.gitIgnore.header', 'Git auto excludes ({0})', totalPatterns.toString()),
+                label: localize('preview.gitIgnore.header', '.gitignore auto excludes ({0})', totalPatterns.toString()),
                 tooltip: headerTooltip,
             }),
         ];
@@ -795,7 +795,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                     status: 'git',
                     description: localize(
                         'preview.gitIgnore.description',
-                        'Git auto exclude ({0})',
+                        '.gitignore auto exclude ({0})',
                         entry.count.toString(),
                     ),
                     tooltip: localize(
