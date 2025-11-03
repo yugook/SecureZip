@@ -29,7 +29,9 @@ web_modules/
 
 # Build
 out/
-dist/
+dist/*
+dist/.*
+!dist/securezip-sbom.cdx.json
 build/Release
 
 # Caches / Temp
