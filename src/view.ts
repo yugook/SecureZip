@@ -588,6 +588,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             return [];
         }
 
+        const includePatterns = context.includes;
+
         const items: SecureZipTreeItem[] = [];
 
         for (const pattern of autoPatterns) {
@@ -599,7 +601,12 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             } else if (!baseKey.includes('*')) {
                 candidateKeys.add(`${baseKey}/**`);
             }
-            const reincluded = Array.from(candidateKeys).some((key) => context.includes.has(key));
+            if (baseKey.startsWith('**/')) {
+                candidateKeys.add(baseKey.slice(3));
+            }
+            const reincluded =
+                Array.from(candidateKeys).some((key) => includePatterns.has(key)) ||
+                isAutoExcludePatternReincluded(baseKey, includePatterns);
 
             items.push(
                 new SecureZipTreeItem({
@@ -685,6 +692,78 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
         return false;
     }
+}
+
+function isAutoExcludePatternReincluded(pattern: string, includes: Set<string>): boolean {
+    const autoExtensionMatch = pattern.startsWith('**/*.') ? pattern.slice(4) : undefined;
+
+    for (const include of includes) {
+        if (!include) {
+            continue;
+        }
+
+        if (include === pattern) {
+            return true;
+        }
+
+        if (pattern.endsWith('/**')) {
+            const base = pattern.slice(0, -3);
+            if (include === base || include.startsWith(`${base}/`) || include.startsWith(`${base}.`)) {
+                return true;
+            }
+        }
+
+        if (!pattern.includes('*')) {
+            if (include === pattern || include.startsWith(`${pattern}/`) || include.startsWith(`${pattern}.`)) {
+                return true;
+            }
+        }
+
+        if (include.endsWith('/**')) {
+            const includeBase = include.slice(0, -3);
+            if (
+                includeBase.length > 0 &&
+                (pattern === includeBase || pattern.startsWith(`${includeBase}/`) || pattern.startsWith(`${includeBase}.`))
+            ) {
+                return true;
+            }
+        }
+
+        if (pattern === '.env' || pattern === '**/.env') {
+            if (
+                include === '.env' ||
+                include === '**/.env' ||
+                include.endsWith('/.env') ||
+                include.startsWith('.env')
+            ) {
+                return true;
+            }
+        }
+
+        if (pattern === '.env.*' || pattern === '**/.env.*') {
+            if (
+                include === '.env' ||
+                include === '.env.*' ||
+                include === '**/.env.*' ||
+                include.startsWith('.env.') ||
+                include.includes('/.env.')
+            ) {
+                return true;
+            }
+        }
+
+        if (pattern.startsWith('**/.env.') && include.includes('/.env.')) {
+            return true;
+        }
+
+        if (autoExtensionMatch) {
+            if (include === `**/*${autoExtensionMatch}` || include.endsWith(autoExtensionMatch)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 export async function ensureSecureZipIgnoreFile(root: string): Promise<void> {
