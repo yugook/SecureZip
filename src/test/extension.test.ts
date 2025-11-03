@@ -318,7 +318,9 @@ suite('SecureZip Extension', function () {
         await stageFixture('simple-project');
 
         const workspaceRoot = getWorkspaceRoot();
+        const envPath = path.join(workspaceRoot, '.env');
         const envLocalPath = path.join(workspaceRoot, '.env.local');
+        await fs.promises.writeFile(envPath, 'SECRET_TOKEN=fixture\n', 'utf8');
         await fs.promises.writeFile(envLocalPath, 'LOCAL_FLAG=1\n', 'utf8');
         const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
         const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
