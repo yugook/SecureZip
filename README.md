@@ -1,6 +1,9 @@
 # SecureZip
 
 [![CodeQL](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml/badge.svg)](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml)
+[![CI](https://github.com/yugook/SecureZip/actions/workflows/ci.yml/badge.svg)](https://github.com/yugook/SecureZip/actions/workflows/ci.yml)
+[![Publish Release](https://github.com/yugook/SecureZip/actions/workflows/release.yml/badge.svg)](https://github.com/yugook/SecureZip/actions/workflows/release.yml)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/yugook.securezip?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
 
 **SecureZip** is a Visual Studio Code extension that lets you securely export your project as a clean ZIP archive.
 
