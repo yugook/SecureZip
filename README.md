@@ -79,6 +79,13 @@ Example `settings.json` override:
 - Password-protected archives
 - 🗂 **Manifest File** – Embed an `__export_manifest.json` with commit ID, tag, and export metadata (future candidate)
 
+## 📥 Download
+- Install from the VS Code Marketplace: [yugook.securezip](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
+- Latest `.vsix` packages: [GitHub Releases](https://github.com/yugook/SecureZip/releases/latest)
+
+## 📄 License
+SecureZip is distributed under the [MIT License](LICENSE).
+
 ---
 
 # SecureZip（日本語）
@@ -158,3 +165,10 @@ SecureZip は、ビルド時のデフォルトと実行時の上書きを組み�
 - `audit` や `distribution` などのカスタム除外プロファイル
 - パスワード保護付きアーカイブ
 - 🗂 **Manifest File** – コミット ID、タグ、エクスポート情報を含む `__export_manifest.json` の埋め込み（将来的な候補）
+
+## 📥 ダウンロード
+- VS Code Marketplace からインストール: [yugook.securezip](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
+- 最新 `.vsix` パッケージ: [GitHub Releases](https://github.com/yugook/SecureZip/releases/latest)
+
+## 📄 ライセンス
+SecureZip は [MIT License](LICENSE) で配布しています。
