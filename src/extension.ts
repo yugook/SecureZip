@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import archiver from 'archiver';
 import simpleGit, { SimpleGit } from 'simple-git';
+import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { resolveFlags } from './flags';
 import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } from './ignore';
 import { SecureZipViewProvider, ensureSecureZipIgnoreFile } from './view';
@@ -291,33 +292,24 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     // Files to include
     progress.report({ message: localize('progress.collectingFiles', 'Collecting files...') });
     const { globby } = await import('globby');
-    const ignoreDefaults = [
-        '.git',
-        '.git/**',
-        includeNodeModules ? '' : 'node_modules/**',
-        '.vscode',
-        '.vscode/**',
-        '.env',
-        '.env.*',
-        '**/*.pem',
-        '**/*.key',
-        '**/*.crt',
-        '**/*.pfx',
-    ].filter(Boolean) as string[];
-
-    void treeProvider?.recordLastExport(ignoreDefaults);
+    const ignoreDefaults = resolveAutoExcludePatterns({ includeNodeModules });
 
     // Load .securezipignore (root-level). Negated patterns are treated as re-includes after base filtering.
     const szIgnore = await loadSecureZipIgnore(root);
+    const ignoreSnapshot = [
+        ...szIgnore.excludes,
+        ...szIgnore.includes.map((pattern) => `!${pattern}`),
+    ];
+    void treeProvider?.recordLastExport(ignoreSnapshot);
     const includePatternSet = new Set(szIgnore.includes);
     const hasGitRootInclude = includePatternSet.has('.git');
     if (hasGitRootInclude) {
         includePatternSet.add('.git/**');
     }
-    const gitOverride = Array.from(includePatternSet).some(
+    const reincludePatterns = Array.from(includePatternSet);
+    const gitOverride = reincludePatterns.some(
         (pattern) => pattern === '.git' || pattern === '.git/**' || pattern.startsWith('.git/'),
     );
-    const reincludePatterns = Array.from(includePatternSet);
     if (gitOverride) {
         void vscode.window.showWarningMessage(
             localize(
@@ -366,15 +358,12 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
 
     // Re-include patterns from .securezipignore (does not override .gitignore or hard ignores like .git/**)
     if (reincludePatterns.length > 0) {
-        const reinclusionIgnore = gitOverride
-            ? ignoreDefaults.filter((pattern) => pattern !== '.git' && pattern !== '.git/**')
-            : ignoreDefaults;
         const reincluded = await globby(reincludePatterns, {
             cwd: root,
             dot: true,
             gitignore: true,
-            // Keep hard ignores; do NOT apply .securezipignore excludes here
-            ignore: reinclusionIgnore,
+            // Allow explicit !patterns to override SecureZip defaults and additional excludes
+            ignore: [],
             onlyFiles: true,
             followSymbolicLinks: false,
             absolute: true,

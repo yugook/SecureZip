@@ -1,8 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import simpleGit from 'simple-git';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
+import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { localize } from './nls';
+import {
+    classifyAutoExcludePatterns,
+    type AutoExcludePatternInfo,
+    type AutoExcludePresence,
+} from './autoExcludeDisplay';
 
 type SectionId = 'guide' | 'actions' | 'preview' | 'recentExports';
 
@@ -18,7 +25,7 @@ type LastExportSnapshot = {
     patterns: string[];
 };
 
-type PreviewStatus = 'exclude' | 'include' | 'comment' | 'duplicate';
+type PreviewStatus = 'exclude' | 'include' | 'comment' | 'duplicate' | 'auto' | 'git';
 
 type TreeNode =
     | { kind: 'section'; section: SectionId; description?: string }
@@ -28,11 +35,39 @@ type TreeNode =
     | { kind: 'action'; label: string; command: vscode.Command; description?: string; icon?: string; tooltip?: string };
 
 class SecureZipTreeItem extends vscode.TreeItem {
-    constructor(public readonly node: TreeNode) {
+    readonly node: TreeNode;
+
+    constructor(node: TreeNode) {
+        let label: string;
+        let collapsibleState: vscode.TreeItemCollapsibleState;
+
         switch (node.kind) {
             case 'section': {
                 const meta = SECTION_DEFS[node.section];
-                super(meta.label, vscode.TreeItemCollapsibleState.Collapsed);
+                label = meta.label;
+                collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+                break;
+            }
+            case 'message':
+            case 'suggestion':
+            case 'preview':
+            case 'action': {
+                label = node.label;
+                collapsibleState = vscode.TreeItemCollapsibleState.None;
+                break;
+            }
+            default: {
+                label = 'Unknown';
+                collapsibleState = vscode.TreeItemCollapsibleState.None;
+            }
+        }
+
+        super(label, collapsibleState);
+        this.node = node;
+
+        switch (node.kind) {
+            case 'section': {
+                const meta = SECTION_DEFS[node.section];
                 this.iconPath = new vscode.ThemeIcon(meta.icon);
                 if (node.description) {
                     this.description = node.description;
@@ -41,13 +76,11 @@ class SecureZipTreeItem extends vscode.TreeItem {
                 break;
             }
             case 'message': {
-                super(node.label, vscode.TreeItemCollapsibleState.None);
                 this.tooltip = node.tooltip;
                 this.contextValue = 'securezip.message';
                 break;
             }
             case 'suggestion': {
-                super(node.label, vscode.TreeItemCollapsibleState.None);
                 this.tooltip = node.detail;
                 this.contextValue = node.alreadyExists ? 'securezip.suggestion.disabled' : 'securezip.suggestion';
                 this.iconPath = new vscode.ThemeIcon(node.alreadyExists ? 'pass-filled' : 'add');
@@ -64,7 +97,6 @@ class SecureZipTreeItem extends vscode.TreeItem {
                 break;
             }
             case 'preview': {
-                super(node.label, vscode.TreeItemCollapsibleState.None);
                 this.tooltip = node.tooltip;
                 this.description = node.description;
                 this.contextValue = 'securezip.preview';
@@ -72,6 +104,10 @@ class SecureZipTreeItem extends vscode.TreeItem {
                     this.iconPath = new vscode.ThemeIcon('diff-removed');
                 } else if (node.status === 'include') {
                     this.iconPath = new vscode.ThemeIcon('diff-added');
+                } else if (node.status === 'git') {
+                    this.iconPath = new vscode.ThemeIcon('circle-slash');
+                } else if (node.status === 'auto') {
+                    this.iconPath = new vscode.ThemeIcon('shield');
                 } else if (node.status === 'duplicate') {
                     this.iconPath = new vscode.ThemeIcon('warning');
                 } else {
@@ -80,7 +116,6 @@ class SecureZipTreeItem extends vscode.TreeItem {
                 break;
             }
             case 'action': {
-                super(node.label, vscode.TreeItemCollapsibleState.None);
                 this.command = node.command;
                 this.description = node.description;
                 this.tooltip = node.tooltip;
@@ -89,7 +124,7 @@ class SecureZipTreeItem extends vscode.TreeItem {
                 break;
             }
             default: {
-                super('Unknown', vscode.TreeItemCollapsibleState.None);
+                this.contextValue = 'securezip.unknown';
             }
         }
     }
@@ -129,6 +164,9 @@ const ARTIFACT_CANDIDATES: ArtifactCandidate[] = [
 const WATCH_PATTERN = '**/.securezipignore';
 
 const LAST_EXPORT_STATE_KEY = 'securezip.lastExport';
+
+const GIT_IGNORE_PREVIEW_LIMIT = 5;
+const GIT_CHECK_IGNORE_PATH_LIMIT = 200;
 
 export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipTreeItem>, vscode.Disposable {
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
@@ -478,6 +516,9 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     private async buildPreviewItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
         const context = await this.ensureIgnoreContext(workspaceFolder.uri.fsPath);
         const previewSection = this.rootItems.get('preview');
+        const autoItems = await this.buildAutoExcludePreviewItems(workspaceFolder, context);
+        const gitItems = await this.buildGitIgnorePreviewItems(workspaceFolder);
+
         if (!context.exists) {
             if (previewSection) {
                 previewSection.description = localize('preview.status.notCreated', 'Not created');
@@ -487,13 +528,17 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                     kind: 'message',
                     label: localize('preview.message.notCreated', 'The .securezipignore file has not been created yet.'),
                 }),
+                ...autoItems,
+                ...gitItems,
             ];
         }
 
         if (previewSection) {
             previewSection.description = context.rawLines.length > 0
                 ? localize('preview.status.lines', '{0} lines', context.rawLines.length.toString())
-                : localize('preview.status.empty', 'Empty');
+                : autoItems.length > 0
+                    ? localize('preview.status.autoOnly', 'Auto defaults')
+                    : localize('preview.status.empty', 'Empty');
         }
 
         const occurrences = new Map<string, number>();
@@ -507,7 +552,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
 
         const seen = new Map<string, number>();
-        const items: SecureZipTreeItem[] = [];
+        const items: SecureZipTreeItem[] = [...autoItems, ...gitItems];
 
         for (const line of context.rawLines) {
             const trimmed = line.trim();
@@ -567,6 +612,399 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                       label: localize('preview.message.empty', '.securezipignore is empty'),
                   }),
               ];
+    }
+
+    private async buildAutoExcludePreviewItems(
+        workspaceFolder: vscode.WorkspaceFolder,
+        context: IgnoreContext,
+    ): Promise<SecureZipTreeItem[]> {
+        const root = workspaceFolder.uri.fsPath;
+        const cfg = vscode.workspace.getConfiguration('secureZip', workspaceFolder.uri);
+        const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
+        const autoPatterns = resolveAutoExcludePatterns({ includeNodeModules });
+        if (autoPatterns.length === 0) {
+            return [];
+        }
+
+        const includePatterns = context.includes;
+
+        const SAMPLE_LIMIT = 3;
+        const presenceCache = new Map<string, Promise<AutoExcludePresence>>();
+        let rootDirEntriesPromise: Promise<string[]> | undefined;
+
+        const getRootDirEntries = async (): Promise<string[]> => {
+            if (!rootDirEntriesPromise) {
+                rootDirEntriesPromise = fs.promises.readdir(root).catch(() => []);
+            }
+            return rootDirEntriesPromise;
+        };
+
+        const checkPath = async (relative: string): Promise<AutoExcludePresence> => {
+            try {
+                const full = path.join(root, relative);
+                const stats = await fs.promises.stat(full);
+                const label = stats.isDirectory() ? `${relative}/` : relative;
+                return { exists: true, examples: [label], hasMore: false };
+            } catch {
+                return { exists: false, examples: [], hasMore: false };
+            }
+        };
+
+        const checkRootEnvVariants = async (): Promise<AutoExcludePresence> => {
+            const entries = await getRootDirEntries();
+            const matches = entries.filter((name) => name.startsWith('.env.') && name.length > '.env.'.length);
+            if (matches.length === 0) {
+                return { exists: false, examples: [], hasMore: false };
+            }
+            const examples = matches.slice(0, SAMPLE_LIMIT);
+            return { exists: true, examples, hasMore: matches.length > SAMPLE_LIMIT };
+        };
+
+        const checkGlob = async (
+            pattern: string,
+            options?: { onlyFiles?: boolean },
+        ): Promise<AutoExcludePresence> => {
+            try {
+                const { globbyStream } = await import('globby');
+                const streamOptions: { [key: string]: unknown } = {
+                    cwd: root,
+                    dot: true,
+                    gitignore: false,
+                    followSymbolicLinks: false,
+                    unique: true,
+                };
+                if (typeof options?.onlyFiles === 'boolean') {
+                    streamOptions.onlyFiles = options.onlyFiles;
+                }
+                const examples: string[] = [];
+                let hasMore = false;
+                for await (const entry of globbyStream(pattern, streamOptions)) {
+                    const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
+                    if (!value) {
+                        continue;
+                    }
+                    if (examples.length < SAMPLE_LIMIT) {
+                        examples.push(value);
+                    } else {
+                        hasMore = true;
+                        break;
+                    }
+                }
+                const exists = examples.length > 0 || hasMore;
+                return { exists, examples, hasMore };
+            } catch {
+                return { exists: false, examples: [], hasMore: false };
+            }
+        };
+
+        const resolvePresence = (pattern: string): Promise<AutoExcludePresence> => {
+            const cached = presenceCache.get(pattern);
+            if (cached) {
+                return cached;
+            }
+            const promise = (async () => {
+                if (pattern === '.git' || pattern === '.git/**') {
+                    return checkPath('.git');
+                }
+                if (pattern === '.vscode' || pattern === '.vscode/**') {
+                    return checkPath('.vscode');
+                }
+                if (pattern === 'node_modules/**') {
+                    return checkPath('node_modules');
+                }
+                if (pattern === '.env') {
+                    return checkPath('.env');
+                }
+                if (pattern === '.env.*') {
+                    return checkRootEnvVariants();
+                }
+                if (pattern === '**/.env' || pattern === '**/.env.*') {
+                    return checkGlob(pattern, { onlyFiles: true });
+                }
+                if (
+                    pattern === '**/*.pem' ||
+                    pattern === '**/*.key' ||
+                    pattern === '**/*.crt' ||
+                    pattern === '**/*.pfx'
+                ) {
+                    return checkGlob(pattern, { onlyFiles: true });
+                }
+                return checkGlob(pattern);
+            })();
+            presenceCache.set(pattern, promise);
+            return promise;
+        };
+
+        const patternInfos: AutoExcludePatternInfo[] = [];
+
+        for (const pattern of autoPatterns) {
+            const normalized = normalizeIgnorePattern(pattern);
+            const baseKey = normalized?.pattern ?? pattern;
+            const candidateKeys = new Set<string>([baseKey]);
+            if (baseKey.endsWith('/**')) {
+                candidateKeys.add(baseKey.slice(0, -3));
+            } else if (!baseKey.includes('*')) {
+                candidateKeys.add(`${baseKey}/**`);
+            }
+            if (baseKey.startsWith('**/')) {
+                candidateKeys.add(baseKey.slice(3));
+            }
+            const reincluded =
+                Array.from(candidateKeys).some((key) => includePatterns.has(key)) ||
+                isAutoExcludePatternReincluded(baseKey, includePatterns);
+            const presence = await resolvePresence(pattern);
+            patternInfos.push({ pattern, reincluded, presence });
+        }
+
+        const orderedInfos = classifyAutoExcludePatterns(patternInfos);
+
+        const items: SecureZipTreeItem[] = [];
+
+        for (const info of orderedInfos) {
+            const { pattern, reincluded, presence } = info;
+            let description: string;
+            if (reincluded) {
+                description = localize('preview.autoExclude.reincluded', 'Auto exclude (re-included)');
+            } else if (presence.exists) {
+                description = localize('preview.autoExclude.active', 'Auto exclude (active)');
+            } else {
+                description = localize('preview.autoExclude.inactive', 'Auto exclude (no matches)');
+            }
+
+            let tooltip = reincluded
+                ? localize(
+                      'preview.autoExclude.reincluded.tooltip',
+                      'A matching !pattern in .securezipignore re-includes this path.',
+                  )
+                : localize(
+                      'preview.autoExclude.tooltip',
+                      'SecureZip excludes this automatically before .securezipignore runs.',
+                  );
+
+            if (presence.exists) {
+                if (presence.examples.length > 0) {
+                    const exampleList = presence.examples.map((example) => `• ${example}`).join('\n');
+                    tooltip += `\n\n${localize(
+                        'preview.autoExclude.tooltip.matches',
+                        'Detected examples:\n{0}',
+                        exampleList,
+                    )}`;
+                } else {
+                    tooltip += `\n\n${localize(
+                        'preview.autoExclude.tooltip.matches.noExample',
+                        'Matching paths detected.',
+                    )}`;
+                }
+                if (presence.hasMore) {
+                    tooltip += `\n${localize(
+                        'preview.autoExclude.tooltip.matches.more',
+                        'Additional matches are not listed.',
+                    )}`;
+                }
+            } else {
+                tooltip += `\n\n${localize(
+                    'preview.autoExclude.tooltip.none',
+                    'No matching paths detected yet.',
+                )}`;
+            }
+
+            items.push(
+                new SecureZipTreeItem({
+                    kind: 'preview',
+                    label: pattern,
+                    status: 'auto',
+                    tooltip,
+                    description,
+                }),
+            );
+        }
+
+        return items;
+    }
+
+    private async buildGitIgnorePreviewItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
+        const root = workspaceFolder.uri.fsPath;
+        const git = simpleGit(root);
+
+        let isRepo = false;
+        try {
+            isRepo = await git.checkIsRepo();
+        } catch {
+            return [];
+        }
+        if (!isRepo) {
+            return [];
+        }
+
+        let statusRaw = '';
+        try {
+            statusRaw = await git.raw(['status', '--ignored', '-s']);
+        } catch {
+            return [];
+        }
+
+        const ignoredPathSet = new Set<string>();
+        const statusLines = statusRaw.split(/\r?\n/);
+        for (const line of statusLines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('!!')) {
+                continue;
+            }
+            const match = /^!!\s*(.+)$/.exec(trimmed);
+            if (!match) {
+                continue;
+            }
+            const candidate = match[1].trim();
+            if (candidate) {
+                ignoredPathSet.add(candidate);
+            }
+        }
+
+        if (ignoredPathSet.size === 0) {
+            return [];
+        }
+
+        const ignoredPaths = Array.from(ignoredPathSet);
+        const truncatedByPathLimit = ignoredPaths.length > GIT_CHECK_IGNORE_PATH_LIMIT;
+        const checkArgs = ['check-ignore', '-v', ...ignoredPaths.slice(0, GIT_CHECK_IGNORE_PATH_LIMIT)];
+
+        let checkOutput = '';
+        try {
+            checkOutput = await git.raw(checkArgs);
+        } catch (err: any) {
+            const fallback =
+                (typeof err?.stdout === 'string' && err.stdout) ||
+                (typeof err?.git?.stdout === 'string' && err.git.stdout);
+            if (fallback) {
+                checkOutput = fallback;
+            } else {
+                return [];
+            }
+        }
+
+        if (!checkOutput.trim()) {
+            return [];
+        }
+
+        type GitPatternEntry = {
+            pattern: string;
+            sourceFile: string;
+            lineNumber: string;
+            count: number;
+            examples: string[];
+        };
+
+        const patternMap = new Map<string, GitPatternEntry>();
+
+        for (const raw of checkOutput.split(/\r?\n/)) {
+            if (!raw) {
+                continue;
+            }
+            const tabIndex = raw.indexOf('\t');
+            if (tabIndex === -1) {
+                continue;
+            }
+            const meta = raw.slice(0, tabIndex);
+            const target = raw.slice(tabIndex + 1);
+            if (!meta || !target) {
+                continue;
+            }
+            const metaParts = meta.split(':');
+            if (metaParts.length < 3) {
+                continue;
+            }
+            const sourceFile = metaParts[0];
+            const lineNumber = metaParts[1];
+            const pattern = metaParts.slice(2).join(':');
+            const key = `${sourceFile}:${lineNumber}:${pattern}`;
+            let entry = patternMap.get(key);
+            if (!entry) {
+                entry = {
+                    pattern,
+                    sourceFile,
+                    lineNumber,
+                    count: 0,
+                    examples: [],
+                };
+                patternMap.set(key, entry);
+            }
+            entry.count += 1;
+            if (entry.examples.length < 3) {
+                entry.examples.push(target);
+            }
+        }
+
+        if (patternMap.size === 0) {
+            return [];
+        }
+
+        const entries = Array.from(patternMap.values()).sort(
+            (a, b) => b.count - a.count || a.pattern.localeCompare(b.pattern),
+        );
+        const totalPatterns = entries.length;
+        const totalMatches = entries.reduce((sum, entry) => sum + entry.count, 0);
+        const displayEntries = entries.slice(0, GIT_IGNORE_PREVIEW_LIMIT);
+        const remainingPatterns = totalPatterns - displayEntries.length;
+
+        const headerTooltip = truncatedByPathLimit
+            ? localize(
+                  'preview.gitIgnore.header.tooltip.truncated',
+                  'Showing up to {0} .gitignore patterns currently hiding {1} paths (truncated).',
+                  displayEntries.length.toString(),
+                  totalMatches.toString(),
+              )
+            : localize(
+                  'preview.gitIgnore.header.tooltip',
+                  'Showing up to {0} .gitignore patterns currently hiding {1} paths.',
+                  displayEntries.length.toString(),
+                  totalMatches.toString(),
+              );
+
+        const items: SecureZipTreeItem[] = [
+            new SecureZipTreeItem({
+                kind: 'message',
+                label: localize('preview.gitIgnore.header', '.gitignore auto excludes ({0})', totalPatterns.toString()),
+                tooltip: headerTooltip,
+            }),
+        ];
+
+        for (const entry of displayEntries) {
+            const examplesLabel = entry.examples.length > 0 ? entry.examples.join(', ') : '—';
+            items.push(
+                new SecureZipTreeItem({
+                    kind: 'preview',
+                    label: entry.pattern,
+                    status: 'git',
+                    description: localize(
+                        'preview.gitIgnore.description',
+                        '.gitignore auto exclude ({0})',
+                        entry.count.toString(),
+                    ),
+                    tooltip: localize(
+                        'preview.gitIgnore.tooltip',
+                        'Source: {0}:{1}\nExample: {2}',
+                        entry.sourceFile,
+                        entry.lineNumber,
+                        examplesLabel,
+                    ),
+                }),
+            );
+        }
+
+        if (remainingPatterns > 0) {
+            items.push(
+                new SecureZipTreeItem({
+                    kind: 'message',
+                    label: localize(
+                        'preview.gitIgnore.more',
+                        '+{0} more patterns hidden',
+                        remainingPatterns.toString(),
+                    ),
+                }),
+            );
+        }
+
+        return items;
     }
 
     private async buildActionItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
@@ -629,6 +1067,78 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
         return false;
     }
+}
+
+function isAutoExcludePatternReincluded(pattern: string, includes: Set<string>): boolean {
+    const autoExtensionMatch = pattern.startsWith('**/*.') ? pattern.slice(4) : undefined;
+
+    for (const include of includes) {
+        if (!include) {
+            continue;
+        }
+
+        if (include === pattern) {
+            return true;
+        }
+
+        if (pattern.endsWith('/**')) {
+            const base = pattern.slice(0, -3);
+            if (include === base || include.startsWith(`${base}/`) || include.startsWith(`${base}.`)) {
+                return true;
+            }
+        }
+
+        if (!pattern.includes('*')) {
+            if (include === pattern || include.startsWith(`${pattern}/`) || include.startsWith(`${pattern}.`)) {
+                return true;
+            }
+        }
+
+        if (include.endsWith('/**')) {
+            const includeBase = include.slice(0, -3);
+            if (
+                includeBase.length > 0 &&
+                (pattern === includeBase || pattern.startsWith(`${includeBase}/`) || pattern.startsWith(`${includeBase}.`))
+            ) {
+                return true;
+            }
+        }
+
+        if (pattern === '.env' || pattern === '**/.env') {
+            if (
+                include === '.env' ||
+                include === '**/.env' ||
+                include.endsWith('/.env') ||
+                include.startsWith('.env')
+            ) {
+                return true;
+            }
+        }
+
+        if (pattern === '.env.*' || pattern === '**/.env.*') {
+            if (
+                include === '.env' ||
+                include === '.env.*' ||
+                include === '**/.env.*' ||
+                include.startsWith('.env.') ||
+                include.includes('/.env.')
+            ) {
+                return true;
+            }
+        }
+
+        if (pattern.startsWith('**/.env.') && include.includes('/.env.')) {
+            return true;
+        }
+
+        if (autoExtensionMatch) {
+            if (include === `**/*${autoExtensionMatch}` || include.endsWith(autoExtensionMatch)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 export async function ensureSecureZipIgnoreFile(root: string): Promise<void> {
