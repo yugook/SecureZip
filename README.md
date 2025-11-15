@@ -11,9 +11,21 @@
 
 ## ✨ Features
 - 📦 **Export to ZIP** – Create a ZIP of your project with one click.
-- 🔄 **Optional Auto Commit** – Offer to commit tracked changes before export.
+- 🔄 **Optional Auto Commit** – Offer to commit tracked changes before export, with a toggle to include untracked files automatically.
 - 🏷 **Auto Tagging** – Tag the repository with the export timestamp for traceability.
 - 🧹 **Smart Ignore Support** – Respects `.gitignore` and project-specific `.securezipignore` to strip secrets and build artifacts.
+
+## ⚙️ Auto Commit Stage Mode
+SecureZip only offers the auto-commit step when it detects local changes. By default it stages tracked files via `git add --update`, matching the safe workflow shown in the warning dialog. If you prefer SecureZip to stage new files as well, switch the stage mode in your settings:
+
+```json
+{
+  "secureZip.autoCommit.stageMode": "all"
+}
+```
+
+- `tracked` (default) – Stage edits/deletions to tracked files only.
+- `all` – Stage tracked and untracked files (`git add --all`).
 
 ## 🛡 Ignore Rules
 SecureZip respects the following when selecting files to include:
@@ -96,9 +108,21 @@ SecureZip is distributed under the [MIT License](LICENSE).
 
 ## ✨ 機能
 - 📦 **Export to ZIP** – プロジェクトをワンクリックで ZIP アーカイブとしてエクスポートします。
-- 🔄 **Auto Commit（任意設定）** – エクスポート前に追跡済み変更をコミットするよう確認します。
+- 🔄 **Auto Commit（任意設定）** – エクスポート前に追跡済み変更をコミットするよう確認し、必要であれば未追跡ファイルも自動ステージできます。
 - 🏷 **Auto Tagging** – エクスポート時刻を利用してリポジトリにタグを付けます。
 - 🧹 **スマートな除外サポート** – `.gitignore` と `.securezipignore` を尊重し、機密情報やビルド成果物を除外します。
+
+## ⚙️ Auto Commit ステージモード
+SecureZip が未コミット変更を検出したときだけ自動コミットを提案します。既定では `git add --update`（追跡済みファイルのみ）を実行しますが、設定で未追跡ファイルも含めるように切り替えられます。
+
+```json
+{
+  "secureZip.autoCommit.stageMode": "all"
+}
+```
+
+- `tracked`（既定）– 追跡済みファイルの変更/削除のみをステージ。
+- `all` – 追跡済み＋未追跡ファイルをステージ（`git add --all` 相当）。
 
 ## 🛡 無視ルール
 SecureZip はアーカイブに含めるファイルを選ぶ際、次のルールを尊重します。

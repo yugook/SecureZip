@@ -11,6 +11,8 @@ import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } f
 import { SecureZipViewProvider, ensureSecureZipIgnoreFile } from './view';
 import { localize } from './nls';
 
+type AutoCommitStageMode = 'tracked' | 'all';
+
 function toErrorMessage(err: unknown): string {
     if (err instanceof Error && err.message) {
         return err.message;
@@ -184,6 +186,8 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     const commitTemplate = cfg.get<string>('commitMessageTemplate') || '[SecureZip] Automated commit for export: ${date} ${time} (Branch: ${branch}, Tag: ${tag})';
     const additionalExcludes = cfg.get<string[]>('additionalExcludes') || [];
     const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
+    const stageModeSetting = cfg.get<AutoCommitStageMode>('autoCommit.stageMode');
+    const autoCommitStageMode: AutoCommitStageMode = stageModeSetting === 'all' ? 'all' : 'tracked';
 
     const now = new Date();
     const fmt = formatDate(now);
@@ -241,10 +245,14 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
             if (shouldAutoCommit) {
                 progress.report({ message: localize('progress.gitPreparingCommit', 'Git: preparing automatic commit...') });
                 try {
-                    await git.add(['--update']);
+                    const stageArgs = autoCommitStageMode === 'all' ? ['--all'] : ['--update'];
+                    await git.add(stageArgs);
                     const stagedDiff = await git.diff(['--cached']);
                     if (!stagedDiff.trim()) {
-                        vscode.window.showWarningMessage(localize('warning.noChangesToCommit', 'No staged changes were found. Only modifications to tracked files can be committed automatically.'));
+                        const noChangesMessage = autoCommitStageMode === 'all'
+                            ? localize('warning.noChangesToCommit.all', 'No staged changes were found. There may be nothing left to commit.')
+                            : localize('warning.noChangesToCommit', 'No staged changes were found. Only modifications to tracked files are staged automatically (change the Auto Commit stage mode setting to include untracked files).');
+                        vscode.window.showWarningMessage(noChangesMessage);
                     } else {
                         const commitMessage = renderTemplate(commitTemplate, {
                             date: fmt.date,
