@@ -4,6 +4,11 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.0.8] - 2025-11-17
+
+- Added the `secureZip.autoCommit.stageMode` setting to choose whether auto-commit stages tracked files only or all changes (tracked + untracked).
+- The auto-commit confirmation dialog now surfaces the selected stage mode and highlights pending untracked files so you know what will (and will not) be included.
+
 ## [1.0.7] - 2025-11-03
 
 - Preview now surfaces `.gitignore` auto excludes, including live examples of matching files and re-include warnings.
