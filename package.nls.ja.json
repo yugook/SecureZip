@@ -10,5 +10,8 @@
   "config.commitMessageTemplate.description": "自動コミット時のメッセージテンプレート。利用可能変数: ${date}, ${time}, ${datetime}, ${branch}, ${tag}",
   "config.tagPrefix.description": "自動作成するタグの接頭辞（例: export -> export-YYYYMMDD-HHmmss）",
   "config.additionalExcludes.description": "追加で除外したいglobパターン（.gitignoreは自動適用）",
-  "config.includeNodeModules.description": "node_modules を含めるか（既定では除外）"
+  "config.includeNodeModules.description": "node_modules を含めるか（既定では除外）",
+  "config.autoCommit.stageMode.description": "自動コミット前に SecureZip がステージする対象を選択します",
+  "config.autoCommit.stageMode.enum.tracked": "追跡済みファイルの変更/削除のみをステージ（git add --update）",
+  "config.autoCommit.stageMode.enum.all": "追跡済み＋未追跡の変更をステージ（git add --all）"
 }

@@ -3,7 +3,7 @@
   "displayName": "SecureZip",
   "description": "Securely export your project as a clean ZIP.",
   "publisher": "yugook",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "icon": "resources/securezip.png",
   "repository": {
     "type": "git",
@@ -139,6 +139,19 @@
           "type": "boolean",
           "default": false,
           "description": "%config.includeNodeModules.description%"
+        },
+        "secureZip.autoCommit.stageMode": {
+          "type": "string",
+          "enum": [
+            "tracked",
+            "all"
+          ],
+          "enumDescriptions": [
+            "%config.autoCommit.stageMode.enum.tracked%",
+            "%config.autoCommit.stageMode.enum.all%"
+          ],
+          "default": "tracked",
+          "description": "%config.autoCommit.stageMode.description%"
         }
       }
     }
