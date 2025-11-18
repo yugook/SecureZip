@@ -10,5 +10,8 @@
   "config.commitMessageTemplate.description": "Template for automatic commits. Available variables: ${date}, ${time}, ${datetime}, ${branch}, ${tag}",
   "config.tagPrefix.description": "Prefix for automatically created tags (for example, export becomes export-YYYYMMDD-HHmmss)",
   "config.additionalExcludes.description": "Additional glob patterns to exclude (beyond .gitignore)",
-  "config.includeNodeModules.description": "Include node_modules in the export (excluded by default)"
+  "config.includeNodeModules.description": "Include node_modules in the export (excluded by default)",
+  "config.autoCommit.stageMode.description": "Choose how SecureZip stages changes before creating the optional auto-commit",
+  "config.autoCommit.stageMode.enum.tracked": "Stage modifications/deletions to tracked files only (git add --update)",
+  "config.autoCommit.stageMode.enum.all": "Stage tracked and untracked files (git add --all)"
 }

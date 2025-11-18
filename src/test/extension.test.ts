@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createHash } from 'crypto';
 import AdmZip from 'adm-zip';
+import simpleGit, { SimpleGit } from 'simple-git';
 import * as vscode from 'vscode';
 import { SecureZipViewProvider } from '../view';
 const TEST_LOG_VERBOSE = process.env.SECUREZIP_TEST_LOG === '1';
@@ -499,6 +500,113 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('auto commit respects tracked stage mode setting', async function () {
+        this.timeout(40000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const git = await initGitRepository(workspaceRoot);
+        const trackedFile = path.join(workspaceRoot, 'README.md');
+        await fs.promises.appendFile(trackedFile, '\ntracked change for tracked mode\n', 'utf8');
+        const untrackedPath = path.join(workspaceRoot, 'auto-commit-tracked.txt');
+        await fs.promises.writeFile(untrackedPath, 'tracked mode file\n', 'utf8');
+
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('autoCommit.stageMode', 'tracked', vscode.ConfigurationTarget.Workspace);
+        await config.update('tagPrefix', 'export-tracked', vscode.ConfigurationTarget.Workspace);
+
+        const warningMessages: string[] = [];
+        const { outPath } = await exportAndCollect('securezip-auto-commit-tracked.zip', {
+            showWarningMessage: createAutoCommitWarningStub(warningMessages),
+        });
+
+        try {
+            await removeIfExists(outPath);
+            const status = await git.status();
+            const latestCommit = await git.log({ maxCount: 1 });
+
+            assert.ok(
+                warningMessages.some((message) => message.includes('git add --update')),
+                'Tracked stage mode prompt should mention git add --update'
+            );
+            assert.strictEqual(
+                status.isClean(),
+                false,
+                'Tracked stage mode should leave untracked files untouched'
+            );
+            assert.ok(
+                status.not_added.includes(path.basename(untrackedPath)),
+                'Untracked file should remain unstaged when using tracked mode'
+            );
+            let headReadSucceeded = true;
+            try {
+                await readHeadFile(git, workspaceRoot, untrackedPath);
+            } catch {
+                headReadSucceeded = false;
+            }
+            assert.strictEqual(headReadSucceeded, false, 'Untracked file should not be committed when using tracked mode');
+            assert.ok(
+                latestCommit.latest?.message.startsWith('[SecureZip] Automated commit for export:'),
+                'Latest commit should come from the auto-commit template'
+            );
+        } finally {
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('auto commit stages untracked files when stage mode is all', async function () {
+        this.timeout(40000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const git = await initGitRepository(workspaceRoot);
+        const trackedFile = path.join(workspaceRoot, 'README.md');
+        await fs.promises.appendFile(trackedFile, '\ntracked change for all mode\n', 'utf8');
+        const untrackedPath = path.join(workspaceRoot, 'auto-commit-all.txt');
+        await fs.promises.writeFile(untrackedPath, 'all mode file\n', 'utf8');
+
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('autoCommit.stageMode', 'all', vscode.ConfigurationTarget.Workspace);
+        await config.update('tagPrefix', 'export-all', vscode.ConfigurationTarget.Workspace);
+
+        const warningMessages: string[] = [];
+        const { outPath } = await exportAndCollect('securezip-auto-commit-all.zip', {
+            showWarningMessage: createAutoCommitWarningStub(warningMessages),
+        });
+
+        try {
+            await removeIfExists(outPath);
+            const status = await git.status();
+            const latestCommit = await git.log({ maxCount: 1 });
+            const committedContents = await readHeadFile(git, workspaceRoot, untrackedPath);
+
+            assert.ok(
+                warningMessages.some((message) => message.includes('git add --all')),
+                'All stage mode prompt should mention git add --all'
+            );
+            assert.strictEqual(
+                status.isClean(),
+                true,
+                'All stage mode should leave the working tree clean'
+            );
+            assert.ok(
+                !status.not_added.includes(path.basename(untrackedPath)),
+                'Untracked file should be included in the auto-commit when using all mode'
+            );
+            assert.strictEqual(
+                committedContents,
+                'all mode file\n',
+                'Auto-commit should capture the contents of the previously untracked file'
+            );
+            assert.ok(
+                latestCommit.latest?.message.startsWith('[SecureZip] Automated commit for export:'),
+                'Latest commit should come from the auto-commit template'
+            );
+        } finally {
+            await removeIfExists(outPath);
+        }
+    });
+
     test('reports an error when no files remain after excludes', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
@@ -628,18 +736,64 @@ async function ensureWorkspaceClean(root: string) {
     );
 }
 
+async function initGitRepository(root: string): Promise<SimpleGit> {
+    await removeIfExists(path.join(root, '.git'));
+    const git = simpleGit({ baseDir: root });
+    await git.init();
+    await git.addConfig('user.email', 'securezip-tests@example.com');
+    await git.addConfig('user.name', 'SecureZip Tests');
+    await git.add('.');
+    await git.commit('Fixture base commit');
+    return git;
+}
+
+function createAutoCommitWarningStub(messages: string[]): typeof vscode.window.showWarningMessage {
+    return ((message: any, ...args: any[]) => {
+        const text = typeof message === 'string' ? message : String(message);
+        messages.push(text);
+        let startIndex = 0;
+        if (args.length > 0 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
+            startIndex = 1;
+        }
+        const choice = args.slice(startIndex).find((item) => typeof item === 'string');
+        return Promise.resolve(choice as any);
+    }) as typeof vscode.window.showWarningMessage;
+}
+
+function toGitPath(root: string, target: string): string {
+    return path.relative(root, target).split(path.sep).join('/');
+}
+
+async function readHeadFile(git: SimpleGit, root: string, target: string): Promise<string> {
+    const relative = toGitPath(root, target);
+    return git.show([`HEAD:${relative}`]);
+}
+
 async function resetConfiguration() {
     const config = vscode.workspace.getConfiguration('secureZip');
     await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
     await config.update('includeNodeModules', undefined, vscode.ConfigurationTarget.Workspace);
+    await config.update('autoCommit.stageMode', undefined, vscode.ConfigurationTarget.Workspace);
+    await config.update('tagPrefix', undefined, vscode.ConfigurationTarget.Workspace);
 }
 
-async function exportAndCollect(outFileName: string) {
+interface ExportOverrides {
+    showWarningMessage?: typeof vscode.window.showWarningMessage;
+}
+
+async function exportAndCollect(outFileName: string, overrides?: ExportOverrides) {
     const outPath = path.join(getWorkspaceRoot(), outFileName);
-    const originalShowSaveDialog = vscode.window.showSaveDialog;
+    const windowOverrides = vscode.window as unknown as {
+        showSaveDialog: typeof vscode.window.showSaveDialog;
+        showWarningMessage: typeof vscode.window.showWarningMessage;
+    };
+    const originalShowSaveDialog = windowOverrides.showSaveDialog;
+    const originalShowWarningMessage = windowOverrides.showWarningMessage;
     log('executing securezip.export with saved dialog stub');
-    (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
-        async () => vscode.Uri.file(outPath);
+    windowOverrides.showSaveDialog = async () => vscode.Uri.file(outPath);
+    if (overrides?.showWarningMessage) {
+        windowOverrides.showWarningMessage = overrides.showWarningMessage;
+    }
 
     try {
         await vscode.commands.executeCommand('securezip.export');
@@ -648,8 +802,8 @@ async function exportAndCollect(outFileName: string) {
         log(`securezip.export command threw: ${String(error)}`);
         throw error;
     } finally {
-        (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
-            originalShowSaveDialog;
+        windowOverrides.showSaveDialog = originalShowSaveDialog;
+        windowOverrides.showWarningMessage = originalShowWarningMessage;
     }
 
     const stat = await fs.promises.stat(outPath);
