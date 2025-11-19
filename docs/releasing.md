@@ -17,21 +17,20 @@ never consume the number intended for the next stable release.
 
 ## Versioning rules
 
-1. Stable releases use plain semver (e.g. `1.0.9`).
-2. Preview builds append the suffix `-pre.N`
-   (e.g. `1.0.9-pre.1`, `1.0.9-pre.2`).
-3. Each published version number is immutable. When the preview workflow already
-   used `1.0.9-pre.1`, the next publish must bump to either `1.0.9-pre.2` or
-   `1.0.9` (for the final release).
-4. Never publish `1.0.9` as a preview. Doing so would block the real stable
-   release because the Marketplace would treat that version as already taken.
+1. Use plain semver numbers (e.g. `1.0.9`). The VS Code Marketplace rejects
+   prerelease suffixes such as `-pre.1`.
+2. Every published version number is immutable. Once the preview workflow has
+   shipped `1.0.9` (with `--pre-release`), that number cannot be reused for the
+   stable release—bump to `1.0.10` instead.
+3. The `--pre-release` flag controls whether Marketplace lists the build under
+   the preview channel. Do not encode “preview vs stable” in the version string.
 
 ## Preview checklist
 
-1. Bump `package.json` to the next preview version (`npm version 1.0.9-pre.1`)
-   and update `CHANGELOG.md`.
+1. Bump `package.json` to the next unused version (`npm version 1.0.9`) and
+   update `CHANGELOG.md`.
 2. Commit the changes with a message such as
-   `chore: release 1.0.9-pre.1`.
+   `chore: release 1.0.9 preview`.
 3. Push to the `preview` branch. The workflow will build, test, and run
    `vsce publish --pre-release --skip-duplicate`.
 4. Inspect the Marketplace preview listing. If you need to skip publishing for a
@@ -40,8 +39,8 @@ never consume the number intended for the next stable release.
 ## Promoting to stable
 
 1. Merge the preview branch into `main`.
-2. Bump `package.json` to the stable version without the suffix
-   (`npm version 1.0.9`) and update the changelog if necessary.
+2. Bump `package.json` to the next semver (e.g. `npm version 1.0.10`) because
+   the preview already consumed `1.0.9`. Update the changelog if necessary.
 3. Push to `main`. The auto-release workflow will:
    - create the `v1.0.9` tag,
    - run type checks, lint, `npm run package`, unit/integration tests,
