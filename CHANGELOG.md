@@ -4,6 +4,10 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.0.9] - 2025-11-18
+
+- Align the extension build/test/release pipeline with Node.js 22.20.0, matching the runtime used by the latest VS Code host.
+
 ## [1.0.8] - 2025-11-17
 
 - Added the `secureZip.autoCommit.stageMode` setting to choose whether auto-commit stages tracked files only or all changes (tracked + untracked).
