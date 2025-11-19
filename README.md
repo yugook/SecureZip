@@ -95,6 +95,14 @@ Example `settings.json` override:
 - Install from the VS Code Marketplace: [yugook.securezip](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
 - Latest `.vsix` packages: [GitHub Releases](https://github.com/yugook/SecureZip/releases/latest)
 
+## 🛠 Developer Resources
+- [Contributing guide](CONTRIBUTING.md) – setup, coding standards, and PR checklist.
+- [Testing guide](docs/testing.md) – how to run type checks, linters, unit, and integration tests.
+- [Release process](docs/releasing.md) – preview/stable branching strategy and versioning rules.
+- [Architecture overview](docs/architecture.md) – maps key modules and data flows.
+- [Localization guide](docs/localization.md) – adding translations for runtime and contribution strings.
+- [SBOM instructions](docs/sbom.md) – details about `npm run sbom` and the bundled CycloneDX file.
+
 ## 📄 License
 SecureZip is distributed under the [MIT License](LICENSE).
 
