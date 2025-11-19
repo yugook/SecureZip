@@ -4,9 +4,9 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [1.0.9-pre.1] - 2025-11-18
+## [1.0.9] - 2025-11-18
 
-- Preview release to validate the Node.js 22.20.0 toolchain; all workflows now run on the same runtime as the latest VS Code host.
+- Align the extension build/test/release pipeline with Node.js 22.20.0, matching the runtime used by the latest VS Code host.
 
 ## [1.0.8] - 2025-11-17
 
