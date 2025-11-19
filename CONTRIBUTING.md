@@ -41,7 +41,8 @@ features.
 Before touching the `preview` or `main` branches for publishing, read
 [`docs/releasing.md`](docs/releasing.md). It documents:
 
-- How preview builds use `-pre.N` suffixes (e.g. `1.0.9-pre.1`).
+- Why preview builds stick to plain semver numbers (the Marketplace rejects
+  prerelease suffixes).
 - Which GitHub Actions run on each branch.
 - When to use `[skip-preview]` / `[skip-release]` commit flags.
 - The checklist for promoting a preview build to a stable release.
