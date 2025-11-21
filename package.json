@@ -173,6 +173,7 @@
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "test:unit": "npm run compile-tests && npx mocha out/test/flags.test.js out/test/ignore.test.js out/test/previewAutoExclude.test.js",
+    "coverage:unit": "npm run compile-tests && npx c8 --reporter=lcov --reporter=text-summary --all --include src --exclude 'src/test/**' --exclude 'dist/**' npx mocha out/test/flags.test.js out/test/ignore.test.js out/test/previewAutoExclude.test.js",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vscode-test",
@@ -192,5 +193,23 @@
     "eslint": "^9.39.0",
     "npm-run-all": "^4.1.5",
     "typescript": "^5.9.3"
+  },
+  "c8": {
+    "reporter": [
+      "text-summary",
+      "lcov"
+    ],
+    "all": true,
+    "include": [
+      "src/**/*.ts"
+    ],
+    "exclude": [
+      "src/test/**",
+      "dist/**",
+      "**/*.d.ts"
+    ],
+    "extension": [
+      ".ts"
+    ]
   }
 }
