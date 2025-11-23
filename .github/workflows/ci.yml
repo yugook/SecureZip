@@ -7,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VSIX_PREVIEW_NAME: securezip-preview-${{ github.run_id }}.vsix
 
     steps:
       - name: Checkout repository
@@ -35,3 +37,15 @@ jobs:
 
       - name: Run extension integration tests
         run: xvfb-run -a npm run test
+
+      - name: Package VSIX preview artifact
+        if: ${{ github.event_name == 'pull_request' }}
+        run: npx vsce package --out "$VSIX_PREVIEW_NAME"
+
+      - name: Upload VSIX preview artifact
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: securezip-vsix-preview
+          path: ${{ env.VSIX_PREVIEW_NAME }}
+          if-no-files-found: error
