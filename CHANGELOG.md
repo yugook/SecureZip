@@ -4,6 +4,10 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.1.0] - 2025-11-27
+
+- New `.securezipignore` files now include a self-exclusion template by default so the ignore file itself is left out of exported archives.
+
 ## [1.0.9] - 2025-11-18
 
 - Align the extension build/test/release pipeline with Node.js 22.20.0, matching the runtime used by the latest VS Code host.
