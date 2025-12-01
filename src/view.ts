@@ -1141,13 +1141,16 @@ function isAutoExcludePatternReincluded(pattern: string, includes: Set<string>):
     return false;
 }
 
+// Default template that hides the ignore file from exported archives.
+const DEFAULT_IGNORE_TEMPLATE = '# Example: exclude this file itself by default\n.securezipignore\n';
+
 export async function ensureSecureZipIgnoreFile(root: string): Promise<void> {
     const file = path.join(root, '.securezipignore');
     try {
         await fs.promises.access(file, fs.constants.F_OK);
     } catch (err: any) {
         if (err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
-            await fs.promises.writeFile(file, '', { encoding: 'utf8' });
+            await fs.promises.writeFile(file, DEFAULT_IGNORE_TEMPLATE, { encoding: 'utf8' });
         } else {
             throw err;
         }
