@@ -4,13 +4,19 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_call:
+    inputs:
+      tag_name:
+        description: 'Tag name to publish (e.g. v1.0.0)'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
   publish-release:
-    if: ${{ !endsWith(github.ref_name, '-preview') }}
+    if: ${{ (github.event_name == 'push' && !endsWith(github.ref_name, '-preview')) || (github.event_name == 'workflow_call' && !endsWith(inputs.tag_name || '', '-preview')) }}
     runs-on: ubuntu-latest
 
     steps:
@@ -22,7 +28,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22.20.0'
           cache: 'npm'
 
       - name: Install dependencies

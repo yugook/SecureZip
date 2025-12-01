@@ -4,6 +4,19 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.1.0] - 2025-11-27
+
+- New `.securezipignore` files now include a self-exclusion template by default so the ignore file itself is left out of exported archives.
+
+## [1.0.9] - 2025-11-18
+
+- Align the extension build/test/release pipeline with Node.js 22.20.0, matching the runtime used by the latest VS Code host.
+
+## [1.0.8] - 2025-11-17
+
+- Added the `secureZip.autoCommit.stageMode` setting to choose whether auto-commit stages tracked files only or all changes (tracked + untracked).
+- The auto-commit confirmation dialog now surfaces the selected stage mode and highlights pending untracked files so you know what will (and will not) be included.
+
 ## [1.0.7] - 2025-11-03
 
 - Preview now surfaces `.gitignore` auto excludes, including live examples of matching files and re-include warnings.

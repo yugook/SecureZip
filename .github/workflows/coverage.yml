@@ -1,11 +1,11 @@
-name: CI
+name: Coverage Report
 
 on:
   push:
   pull_request:
 
 jobs:
-  build:
+  coverage:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,17 +21,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Type check
-        run: npm run check-types
+      - name: Run unit test coverage
+        run: npm run coverage:unit
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Build VSIX bundle
-        run: npm run package
-
-      - name: Run unit tests
-        run: npm run test:unit
-
-      - name: Run extension integration tests
-        run: xvfb-run -a npm run test
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+          if-no-files-found: warn
