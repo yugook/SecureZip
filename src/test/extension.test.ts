@@ -513,6 +513,41 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('SecureZip preview deduplicates gitignore and auto excludes', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const gitignorePath = path.join(workspaceRoot, '.gitignore');
+        await fs.promises.writeFile(gitignorePath, 'node_modules/\n', 'utf8');
+        const git = await initGitRepository(workspaceRoot);
+        await git.add('.');
+        await git.commit('Add gitignore for preview');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const nodeItems = previewItems.filter((item) => getTreeItemLabel(item) === 'node_modules/**');
+            assert.strictEqual(nodeItems.length, 1, 'Expected node_modules/** to appear once after dedupe');
+
+            const nodeItem = nodeItems[0] as any;
+            const tooltip = String(nodeItem.tooltip ?? '');
+            assert.ok(
+                tooltip.includes('auto exclude') || tooltip.includes('自動除外'),
+                'Tooltip should list suppressed auto exclude source',
+            );
+            assert.strictEqual(nodeItem.node?.status ?? nodeItem.status, 'git', 'Gitignore entry should win over auto');
+        } finally {
+            provider.dispose();
+        }
+    });
+
     test('allows wildcard re-include to restore nested secure-config secrets', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
