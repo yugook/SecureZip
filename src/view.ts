@@ -634,14 +634,6 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
             const info = normalizeIgnorePattern(line);
             if (!info) {
-                items.push(
-                    new SecureZipTreeItem({
-                        kind: 'preview',
-                        label: line,
-                        status: 'comment',
-                        description: localize('preview.comment', 'Comment / ignored'),
-                    }),
-                );
                 continue;
             }
 

@@ -410,6 +410,31 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('SecureZip preview hides comments and blank lines', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const commentItems = previewItems.filter((item) => (item as any).node?.status === 'comment');
+            assert.strictEqual(commentItems.length, 0, 'Comments should not appear in preview');
+
+            const labels = previewItems.map(getTreeItemLabel);
+            for (const label of labels) {
+                assert.ok(!label.trim().startsWith('#'), `Comment should be hidden: ${label}`);
+            }
+        } finally {
+            provider.dispose();
+        }
+    });
+
     test('SecureZip view shows only auto excludes with matches', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
