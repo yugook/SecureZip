@@ -858,6 +858,10 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
         for (const info of orderedInfos) {
             const { pattern, reincluded, presence } = info;
+            if (reincluded) {
+                // Reincluded auto excludes are already surfaced through the .securezipignore preview.
+                continue;
+            }
             if (!presence.exists) {
                 hiddenCount += 1;
                 continue;

@@ -481,6 +481,38 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('SecureZip auto excludes do not list reincluded patterns', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!node_modules/**\n', 'utf8');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const autoItems = previewItems.filter((item) => {
+                const node = (item as any).node;
+                return node?.kind === 'preview' && node?.status === 'auto';
+            });
+
+            const labels = autoItems.map(getTreeItemLabel);
+            assert.ok(!labels.includes('node_modules/**'), 'Reincluded auto exclude should be hidden');
+            assert.ok(labels.length > 0, 'Expected other auto excludes to remain visible');
+        } finally {
+            provider.dispose();
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+        }
+    });
+
     test('allows wildcard re-include to restore nested secure-config secrets', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
