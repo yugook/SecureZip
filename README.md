@@ -32,6 +32,10 @@ SecureZip respects the following when selecting files to include:
 
 - `.gitignore` – Acknowledged automatically.
 - `.securezipignore` – Project rules to exclude and re-include files for export.
+- Preview deduplication: the SecureZip view merges duplicates with priority
+  `.securezipignore` > `.gitignore` > auto-excludes, hides comments/blank lines
+  and unmatched entries, and shows suppressed sources in the tooltip (“Also
+  excluded by …”).
 
 `.securezipignore` syntax (gitignore-like subset):
 
@@ -137,6 +141,7 @@ SecureZip はアーカイブに含めるファイルを選ぶ際、次のルー�
 
 - `.gitignore` – 自動的に適用されます。
 - `.securezipignore` – エクスポート専用に除外や再包含を指定するプロジェクトルールです。
+- SecureZip ビューのプレビューでは、`.securezipignore` > `.gitignore` > 自動除外の優先順で同一パターンを1行にまとめ、コメント/空行や未マッチ行は表示しません（抑制された出典はツールチップに表示）。
 
 `.securezipignore` の構文（gitignore 互換のサブセット）:
 

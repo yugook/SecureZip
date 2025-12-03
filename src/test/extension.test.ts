@@ -368,9 +368,78 @@ suite('SecureZip Extension', function () {
         }
     });
 
-    test('SecureZip view prioritizes active auto excludes in preview', async function () {
+    test('SecureZip preview hides unmatched rules and surfaces a hidden count', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const hiddenMessage = previewItems.find((item) => {
+                const node = (item as any).node;
+                if (node?.kind !== 'message') {
+                    return false;
+                }
+                const label = getTreeItemLabel(item).toLowerCase();
+                return label.includes('hidden') || label.includes('非表示');
+            });
+
+            assert.ok(hiddenMessage, 'Expected hidden rules message');
+
+            const ignoreItems = previewItems.filter((item) => {
+                const node = (item as any).node;
+                return node?.kind === 'preview' && ['exclude', 'include', 'duplicate'].includes(node.status);
+            });
+
+            const labels = ignoreItems.map(getTreeItemLabel);
+            assert.ok(!labels.includes('expected-export.json'), 'Unmatched rule should be hidden');
+
+            const description = getTreeItemDescription(previewSection).toLowerCase();
+            assert.ok(
+                description.includes('hidden') || description.includes('非表示'),
+                `Expected hidden count in description, got ${description}`,
+            );
+        } finally {
+            provider.dispose();
+        }
+    });
+
+    test('SecureZip preview hides comments and blank lines', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const commentItems = previewItems.filter((item) => (item as any).node?.status === 'comment');
+            assert.strictEqual(commentItems.length, 0, 'Comments should not appear in preview');
+
+            const labels = previewItems.map(getTreeItemLabel);
+            for (const label of labels) {
+                assert.ok(!label.trim().startsWith('#'), `Comment should be hidden: ${label}`);
+            }
+        } finally {
+            provider.dispose();
+        }
+    });
+
+    test('SecureZip view shows only auto excludes with matches', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const workspaceRoot = getWorkspaceRoot();
+        await fs.promises.writeFile(path.join(workspaceRoot, '.env'), 'LOCAL=1\n', 'utf8');
 
         const provider = new SecureZipViewProvider(createTestExtensionContext());
         try {
@@ -389,40 +458,97 @@ suite('SecureZip Extension', function () {
             assert.ok(autoItems.length > 0, 'Expected at least one auto exclude preview item');
             const labels = autoItems.map(getTreeItemLabel);
 
-            const required = ['.git', '.git/**', 'node_modules/**', '.vscode', '.vscode/**'];
-            for (const pattern of required) {
-                const index = labels.indexOf(pattern);
-                assert.ok(index >= 0, `Expected to find auto pattern ${pattern}`);
-            }
+            const autoDescriptions = {
+                active: 'Auto exclude: active',
+                reincluded: 'Auto exclude: re-included',
+                inactive: 'Auto exclude: no matches',
+            } as const;
 
-            const firstInactive = autoItems.findIndex(
-                (item) => item.description === 'Auto exclude (no matches)',
+            assert.ok(labels.includes('node_modules/**'), 'Expected node_modules auto exclude');
+            assert.ok(
+                labels.some((label) => label === '.vscode' || label === '.vscode/**'),
+                'Expected .vscode auto exclude',
             );
+            assert.ok(labels.includes('.env'), 'Expected .env auto exclude');
+            assert.ok(labels.includes('**/.env'), 'Expected **/.env auto exclude');
 
-            if (firstInactive === -1) {
-                for (const item of autoItems) {
-                    assert.ok(
-                        item.description === 'Auto exclude (active)' ||
-                            item.description === 'Auto exclude (re-included)',
-                        `Unexpected description ${item.description}`,
-                    );
-                }
-            } else {
-                for (const item of autoItems.slice(0, firstInactive)) {
-                    assert.ok(
-                        item.description === 'Auto exclude (active)' ||
-                            item.description === 'Auto exclude (re-included)',
-                        `Expected active or reincluded before inactive entries, got ${item.description}`,
-                    );
-                }
-                for (const item of autoItems.slice(firstInactive)) {
-                    assert.strictEqual(
-                        item.description,
-                        'Auto exclude (no matches)',
-                        'Inactive entries should appear after active ones',
-                    );
-                }
+            for (const item of autoItems) {
+                const description = getTreeItemDescription(item);
+                assert.ok(
+                    description === autoDescriptions.active || description === autoDescriptions.reincluded,
+                    `Unexpected description ${item.description}`,
+                );
             }
+        } finally {
+            provider.dispose();
+        }
+    });
+
+    test('SecureZip auto excludes do not list reincluded patterns', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const secureZipIgnorePath = path.join(workspaceRoot, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
+        await fs.promises.appendFile(secureZipIgnorePath, '\n!node_modules/**\n', 'utf8');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const autoItems = previewItems.filter((item) => {
+                const node = (item as any).node;
+                return node?.kind === 'preview' && node?.status === 'auto';
+            });
+
+            const labels = autoItems.map(getTreeItemLabel);
+            assert.ok(!labels.includes('node_modules/**'), 'Reincluded auto exclude should be hidden');
+            assert.ok(labels.length > 0, 'Expected other auto excludes to remain visible');
+        } finally {
+            provider.dispose();
+            await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+        }
+    });
+
+    test('SecureZip preview deduplicates gitignore and auto excludes', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const nodeModulesDir = path.join(workspaceRoot, 'node_modules');
+        await fs.promises.mkdir(nodeModulesDir, { recursive: true });
+        await fs.promises.writeFile(path.join(nodeModulesDir, 'keep.js'), 'module.exports = 1;\n', 'utf8');
+        const gitignorePath = path.join(workspaceRoot, '.gitignore');
+        await fs.promises.writeFile(gitignorePath, 'node_modules/\n', 'utf8');
+        const git = await initGitRepository(workspaceRoot);
+        await git.add('.');
+        await git.commit('Add gitignore for preview');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const nodeItems = previewItems.filter((item) => getTreeItemLabel(item).startsWith('node_modules'));
+            assert.strictEqual(nodeItems.length, 1, 'Expected node_modules to appear once after dedupe');
+
+            const nodeItem = nodeItems[0] as any;
+            const tooltip = String(nodeItem.tooltip ?? '');
+            assert.ok(
+                tooltip.includes('auto exclude') || tooltip.includes('自動除外'),
+                'Tooltip should list suppressed auto exclude source',
+            );
+            assert.strictEqual(nodeItem.node?.status ?? nodeItem.status, 'git', 'Gitignore entry should win over auto');
         } finally {
             provider.dispose();
         }
@@ -716,6 +842,17 @@ function getTreeItemLabel(item: vscode.TreeItem): string {
         return (raw as vscode.TreeItemLabel).label;
     }
     return String(raw ?? '');
+}
+
+function getTreeItemDescription(item: vscode.TreeItem): string {
+    const raw = item.description;
+    if (typeof raw === 'string') {
+        return raw;
+    }
+    if (raw && typeof raw === 'object' && 'label' in raw && typeof (raw as vscode.TreeItemLabel).label === 'string') {
+        return (raw as vscode.TreeItemLabel).label;
+    }
+    return raw === undefined ? '' : String(raw);
 }
 
 function getWorkspaceRoot(): string {
