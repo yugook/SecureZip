@@ -438,6 +438,8 @@ suite('SecureZip Extension', function () {
     test('SecureZip view shows only auto excludes with matches', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
+        const workspaceRoot = getWorkspaceRoot();
+        await fs.promises.writeFile(path.join(workspaceRoot, '.env'), 'LOCAL=1\n', 'utf8');
 
         const provider = new SecureZipViewProvider(createTestExtensionContext());
         try {
@@ -519,6 +521,9 @@ suite('SecureZip Extension', function () {
         await stageFixture('simple-project');
 
         const workspaceRoot = getWorkspaceRoot();
+        const nodeModulesDir = path.join(workspaceRoot, 'node_modules');
+        await fs.promises.mkdir(nodeModulesDir, { recursive: true });
+        await fs.promises.writeFile(path.join(nodeModulesDir, 'keep.js'), 'module.exports = 1;\n', 'utf8');
         const gitignorePath = path.join(workspaceRoot, '.gitignore');
         await fs.promises.writeFile(gitignorePath, 'node_modules/\n', 'utf8');
         const git = await initGitRepository(workspaceRoot);
