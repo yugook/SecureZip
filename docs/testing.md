@@ -25,6 +25,7 @@ npm install
 | `npm run package` | Production bundle (`node esbuild.js --production`) plus SBOM. |
 | `npm run test:unit` | Mocha unit tests from `out/test/*.js`. |
 | `npm run test` | VS Code integration tests via `@vscode/test-electron`. |
+| `npm run package:verify` | Preflight vsce packaging (`@vscode/vsce`) to catch `engines.vscode`/`@types/vscode` mismatches before release. |
 
 CI (preview/release) calls these exact commands, so reproducing them locally
 avoids surprises.
@@ -35,6 +36,7 @@ avoids surprises.
 2. `npm run lint`
 3. `npm run test:unit`
 4. `npm run compile` (or `npm run package` when validating a production build)
+5. `npm run package:verify` (before tagging/release to ensure vsce packaging succeeds)
 
 Run `npm run test` before pushing when you modify VS Code APIs, the tree view, or
 git/export logic. This mirrors CI’s integration stage.

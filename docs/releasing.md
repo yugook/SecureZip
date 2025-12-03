@@ -35,6 +35,9 @@ never consume the number intended for the next stable release.
    `vsce publish --pre-release --skip-duplicate`.
 4. Inspect the Marketplace preview listing. If you need to skip publishing for a
    specific commit, add `[skip-preview]` to the commit message.
+5. Before tagging or merging, run `npm run package:verify` locally/CI to ensure
+   `engines.vscode` and dependencies (e.g., `@types/vscode`) are aligned for
+   packaging.
 
 ## Promoting to stable
 
@@ -48,6 +51,8 @@ never consume the number intended for the next stable release.
    - create a draft GitHub Release with the VSIX artifact.
 4. If the release should be suppressed (e.g. doc-only change), include
    `[skip-release]` in the commit message.
+5. Preflight tip: run `npm run package:verify` before tagging to catch version
+   mismatches that would block vsce packaging.
 
 ## Additional notes
 
