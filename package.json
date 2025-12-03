@@ -10,7 +10,7 @@
     "url": "https://github.com/yugook/SecureZip.git"
   },
   "engines": {
-    "vscode": "^1.105.0"
+    "vscode": "^1.106.0"
   },
   "categories": [
     "Other"
