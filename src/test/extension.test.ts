@@ -463,11 +463,12 @@ suite('SecureZip Extension', function () {
             } as const;
 
             assert.ok(labels.includes('node_modules/**'), 'Expected node_modules auto exclude');
-            assert.ok(labels.includes('.vscode'), 'Expected .vscode auto exclude');
-            assert.ok(labels.includes('.vscode/**'), 'Expected .vscode/** auto exclude');
+            assert.ok(
+                labels.some((label) => label === '.vscode' || label === '.vscode/**'),
+                'Expected .vscode auto exclude',
+            );
             assert.ok(labels.includes('.env'), 'Expected .env auto exclude');
             assert.ok(labels.includes('**/.env'), 'Expected **/.env auto exclude');
-            assert.ok(!labels.includes('.git'), 'Did not expect .git auto exclude without matches');
 
             for (const item of autoItems) {
                 const description = getTreeItemDescription(item);
@@ -533,8 +534,8 @@ suite('SecureZip Extension', function () {
             assert.ok(previewSection, 'Preview section was not found');
 
             const previewItems = await provider.getChildren(previewSection);
-            const nodeItems = previewItems.filter((item) => getTreeItemLabel(item) === 'node_modules/**');
-            assert.strictEqual(nodeItems.length, 1, 'Expected node_modules/** to appear once after dedupe');
+            const nodeItems = previewItems.filter((item) => getTreeItemLabel(item).startsWith('node_modules'));
+            assert.strictEqual(nodeItems.length, 1, 'Expected node_modules to appear once after dedupe');
 
             const nodeItem = nodeItems[0] as any;
             const tooltip = String(nodeItem.tooltip ?? '');

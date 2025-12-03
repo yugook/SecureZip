@@ -181,8 +181,22 @@ const LAST_EXPORT_STATE_KEY = 'securezip.lastExport';
 const GIT_IGNORE_PREVIEW_LIMIT = 5;
 const GIT_CHECK_IGNORE_PATH_LIMIT = 200;
 
+function canonicalizePattern(pattern: string): string {
+    let value = pattern.trim();
+    if (value.endsWith('/**')) {
+        value = value.slice(0, -3);
+    }
+    if (value.endsWith('/')) {
+        value = value.slice(0, -1);
+    }
+    if (value.startsWith('./')) {
+        value = value.slice(2);
+    }
+    return value;
+}
+
 function makePreviewKey(kind: 'include' | 'exclude', pattern: string): string {
-    return `${kind}:${pattern.trim()}`;
+    return `${kind}:${canonicalizePattern(pattern)}`;
 }
 
 export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipTreeItem>, vscode.Disposable {
