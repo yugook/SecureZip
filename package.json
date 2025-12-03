@@ -3,14 +3,14 @@
   "displayName": "SecureZip",
   "description": "Securely export your project as a clean ZIP.",
   "publisher": "yugook",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "icon": "resources/securezip.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/yugook/SecureZip.git"
   },
   "engines": {
-    "vscode": "^1.105.0"
+    "vscode": "^1.106.0"
   },
   "categories": [
     "Other"
@@ -164,6 +164,7 @@
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "package:verify": "npm run compile && npx @vscode/vsce package --out tmp/securezip-verify.vsix --no-yarn && node -e \"require('fs').rmSync('tmp/securezip-verify.vsix',{force:true});\"",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
@@ -188,6 +189,7 @@
     "@typescript-eslint/parser": "^8.46.2",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^2.15.0",
     "adm-zip": "^0.5.16",
     "esbuild": "^0.27.0",
     "eslint": "^9.39.1",
