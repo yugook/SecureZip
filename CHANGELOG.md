@@ -4,6 +4,10 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.1.3] - 2025-12-05
+
+- SecureZip view now keeps `.securezipignore` and `.gitignore` match counts in tooltips only, leaving labels concise.
+
 ## [1.1.2] - 2025-12-03
 
 - Bumped VS Code engine requirement to ^1.106.0 to align with @types/vscode and unblock packaging.
