@@ -6,6 +6,7 @@ import AdmZip from 'adm-zip';
 import simpleGit, { SimpleGit } from 'simple-git';
 import * as vscode from 'vscode';
 import { SecureZipViewProvider } from '../view';
+import { localize } from '../nls';
 const TEST_LOG_VERBOSE = process.env.SECUREZIP_TEST_LOG === '1';
 
 function log(step: string): void {
@@ -458,12 +459,6 @@ suite('SecureZip Extension', function () {
             assert.ok(autoItems.length > 0, 'Expected at least one auto exclude preview item');
             const labels = autoItems.map(getTreeItemLabel);
 
-            const autoDescriptions = {
-                active: 'Auto exclude: active',
-                reincluded: 'Auto exclude: re-included',
-                inactive: 'Auto exclude: no matches',
-            } as const;
-
             assert.ok(labels.includes('node_modules/**'), 'Expected node_modules auto exclude');
             assert.ok(
                 labels.some((label) => label === '.vscode' || label === '.vscode/**'),
@@ -472,12 +467,10 @@ suite('SecureZip Extension', function () {
             assert.ok(labels.includes('.env'), 'Expected .env auto exclude');
             assert.ok(labels.includes('**/.env'), 'Expected **/.env auto exclude');
 
+            const expectedDescription = localize('preview.autoExclude', 'Auto exclude');
             for (const item of autoItems) {
                 const description = getTreeItemDescription(item);
-                assert.ok(
-                    description === autoDescriptions.active || description === autoDescriptions.reincluded,
-                    `Unexpected description ${item.description}`,
-                );
+                assert.strictEqual(description, expectedDescription, `Unexpected description ${item.description}`);
             }
         } finally {
             provider.dispose();

@@ -991,50 +991,21 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 continue;
             }
             visibleCount += 1;
-            let description: string;
-            if (reincluded) {
-                description = localize('preview.autoExclude.reincluded', 'Auto exclude: re-included');
-            } else if (presence.exists) {
-                description = localize('preview.autoExclude.active', 'Auto exclude: active');
+
+            const description = localize('preview.autoExclude', 'Auto exclude');
+            let tooltip = localize(
+                'preview.autoExclude.tooltip',
+                'SecureZip excludes this automatically before .securezipignore runs.',
+            );
+
+            if (presence.examples.length > 0) {
+                const exampleList = presence.examples.map((example) => `• ${example}`).join('\n');
+                tooltip += `\n\n${localize('preview.autoExclude.tooltip.matches', 'Detected examples:\n{0}', exampleList)}`;
             } else {
-                description = localize('preview.autoExclude.inactive', 'Auto exclude: no matches');
+                tooltip += `\n\n${localize('preview.autoExclude.tooltip.matches.noExample', 'Matching paths detected.')}`;
             }
-
-            let tooltip = reincluded
-                ? localize(
-                      'preview.autoExclude.reincluded.tooltip',
-                      'A matching !pattern in .securezipignore re-includes this path.',
-                  )
-                : localize(
-                      'preview.autoExclude.tooltip',
-                      'SecureZip excludes this automatically before .securezipignore runs.',
-                  );
-
-            if (presence.exists) {
-                if (presence.examples.length > 0) {
-                    const exampleList = presence.examples.map((example) => `• ${example}`).join('\n');
-                    tooltip += `\n\n${localize(
-                        'preview.autoExclude.tooltip.matches',
-                        'Detected examples:\n{0}',
-                        exampleList,
-                    )}`;
-                } else {
-                    tooltip += `\n\n${localize(
-                        'preview.autoExclude.tooltip.matches.noExample',
-                        'Matching paths detected.',
-                    )}`;
-                }
-                if (presence.hasMore) {
-                    tooltip += `\n${localize(
-                        'preview.autoExclude.tooltip.matches.more',
-                        'Additional matches are not listed.',
-                    )}`;
-                }
-            } else {
-                tooltip += `\n\n${localize(
-                    'preview.autoExclude.tooltip.none',
-                    'No matching paths detected yet.',
-                )}`;
+            if (presence.hasMore) {
+                tooltip += `\n${localize('preview.autoExclude.tooltip.matches.more', 'Additional matches are not listed.')}`;
             }
 
             entries.push({
