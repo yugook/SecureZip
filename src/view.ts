@@ -290,7 +290,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             case 'actions':
                 return this.buildActionItems(workspaceFolder);
             case 'preview':
-                return this.buildPreviewItems(workspaceFolder);
+                return this.buildPreviewItems(workspaceFolder, element);
             case 'recentExports':
                 return this.buildRecentExportItems(workspaceFolder);
             default:
@@ -544,10 +544,13 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         return false;
     }
 
-    private async buildPreviewItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
+    private async buildPreviewItems(
+        workspaceFolder: vscode.WorkspaceFolder,
+        sectionItem?: SecureZipTreeItem,
+    ): Promise<SecureZipTreeItem[]> {
         const root = workspaceFolder.uri.fsPath;
         const context = await this.ensureIgnoreContext(root);
-        const previewSection = this.rootItems.get('preview');
+        const previewSection = sectionItem ?? this.rootItems.get('preview');
         const autoResult = await this.buildAutoExcludePreviewItems(workspaceFolder, context);
         const gitResult = await this.buildGitIgnorePreviewItems(workspaceFolder);
         let hiddenIgnoreCount = 0;
