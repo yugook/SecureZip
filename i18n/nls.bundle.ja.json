@@ -105,6 +105,7 @@
   "preview.duplicate": "重複",
   "preview.exclude": "除外",
   "preview.excludeWithInclude": "除外 (再包含あり)",
+  "preview.securezipignore.tooltip.count": "この .securezipignore ルールは現在 {0} 件のパスに一致しています。",
   "preview.alsoExcludedBy": "他の除外: {0}",
   "preview.source.autoExclude": "自動除外",
   "preview.hiddenRules": "未一致のルール {0} 件を非表示",

@@ -737,6 +737,14 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 description = localize('preview.duplicate', 'Duplicate');
             }
 
+            const matchCountLabel = `${presence.examples.length}${presence.hasMore ? '+' : ''}`;
+            const countMessage = localize(
+                'preview.securezipignore.tooltip.count',
+                'This .securezipignore rule currently matches {0} paths.',
+                matchCountLabel || '0',
+            );
+            tooltip = `${countMessage}\n${tooltip}`;
+
             const entry: PreviewEntry = {
                 key: makePreviewKey(info.negated ? 'include' : 'exclude', info.pattern),
                 label: line,
