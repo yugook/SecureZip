@@ -436,6 +436,40 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('SecureZip preview shows .securezipignore match count in tooltip only', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const ignoreItems = previewItems.filter((item) => {
+                const node = (item as any).node;
+                return node?.kind === 'preview' && ['exclude', 'include', 'duplicate'].includes(node.status);
+            });
+            assert.ok(ignoreItems.length > 0, 'Expected securezipignore preview entries');
+
+            const label = getTreeItemLabel(ignoreItems[0]);
+            const tooltip = String((ignoreItems[0] as any).tooltip ?? '');
+            const expectedCountLine = localize(
+                'preview.securezipignore.tooltip.count',
+                'This .securezipignore rule currently matches {0} paths.',
+                '1',
+            );
+
+            assert.ok(tooltip.includes(expectedCountLine), `Tooltip should include match count, got: ${tooltip}`);
+            assert.ok(!label.includes('matches') && !label.includes('件'), 'Label should not include match count');
+        } finally {
+            provider.dispose();
+        }
+    });
+
     test('SecureZip view shows only auto excludes with matches', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
