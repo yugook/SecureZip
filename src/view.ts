@@ -1170,15 +1170,15 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 status: 'git',
                 description: localize(
                     'preview.gitIgnore.description',
-                    '.gitignore auto exclude ({0})',
-                    entry.count.toString(),
+                    '.gitignore auto exclude',
                 ),
                 tooltip: localize(
                     'preview.gitIgnore.tooltip',
-                    'Source: {0}:{1}\nExample: {2}',
+                    'This .gitignore rule hides {3} paths.\nSource: {0}:{1}\nExample: {2}',
                     entry.sourceFile,
                     entry.lineNumber,
                     examplesLabel,
+                    entry.count.toString(),
                 ),
                 source: 'gitignore',
                 suppressedSources: [],
