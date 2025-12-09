@@ -6,6 +6,7 @@ import AdmZip from 'adm-zip';
 import simpleGit, { SimpleGit } from 'simple-git';
 import * as vscode from 'vscode';
 import { SecureZipViewProvider } from '../view';
+import { localize } from '../nls';
 const TEST_LOG_VERBOSE = process.env.SECUREZIP_TEST_LOG === '1';
 
 function log(step: string): void {
@@ -435,6 +436,40 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('SecureZip preview shows .securezipignore match count in tooltip only', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const ignoreItems = previewItems.filter((item) => {
+                const node = (item as any).node;
+                return node?.kind === 'preview' && ['exclude', 'include', 'duplicate'].includes(node.status);
+            });
+            assert.ok(ignoreItems.length > 0, 'Expected securezipignore preview entries');
+
+            const label = getTreeItemLabel(ignoreItems[0]);
+            const tooltip = String((ignoreItems[0] as any).tooltip ?? '');
+            const expectedCountLine = localize(
+                'preview.securezipignore.tooltip.count',
+                'This .securezipignore rule currently matches {0} paths.',
+                '1',
+            );
+
+            assert.ok(tooltip.includes(expectedCountLine), `Tooltip should include match count, got: ${tooltip}`);
+            assert.ok(!label.includes('matches') && !label.includes('件'), 'Label should not include match count');
+        } finally {
+            provider.dispose();
+        }
+    });
+
     test('SecureZip view shows only auto excludes with matches', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
@@ -458,12 +493,6 @@ suite('SecureZip Extension', function () {
             assert.ok(autoItems.length > 0, 'Expected at least one auto exclude preview item');
             const labels = autoItems.map(getTreeItemLabel);
 
-            const autoDescriptions = {
-                active: 'Auto exclude: active',
-                reincluded: 'Auto exclude: re-included',
-                inactive: 'Auto exclude: no matches',
-            } as const;
-
             assert.ok(labels.includes('node_modules/**'), 'Expected node_modules auto exclude');
             assert.ok(
                 labels.some((label) => label === '.vscode' || label === '.vscode/**'),
@@ -472,12 +501,10 @@ suite('SecureZip Extension', function () {
             assert.ok(labels.includes('.env'), 'Expected .env auto exclude');
             assert.ok(labels.includes('**/.env'), 'Expected **/.env auto exclude');
 
+            const expectedDescription = localize('preview.autoExclude', 'Auto exclude');
             for (const item of autoItems) {
                 const description = getTreeItemDescription(item);
-                assert.ok(
-                    description === autoDescriptions.active || description === autoDescriptions.reincluded,
-                    `Unexpected description ${item.description}`,
-                );
+                assert.strictEqual(description, expectedDescription, `Unexpected description ${item.description}`);
             }
         } finally {
             provider.dispose();
