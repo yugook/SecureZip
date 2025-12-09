@@ -36,6 +36,9 @@ jobs:
       - name: Build VSIX bundle
         run: npm run package
 
+      - name: Package preflight (vsce)
+        run: npm run package:verify
+
       - name: Run unit tests
         run: npm run test:unit
 

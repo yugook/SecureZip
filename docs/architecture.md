@@ -32,7 +32,12 @@ find the right files when adding features or debugging.
   renders sections for the guide, actions, `.securezipignore` preview, and
   recent exports.
 - The preview section highlights auto excludes, re-includes, duplicates, and
-  `.gitignore`-sourced patterns with tooltip/context information.
+  `.gitignore`-sourced patterns with tooltip/context information. Displayed
+  entries are deduplicated by priority: `.securezipignore` > `.gitignore` >
+  auto-excludes. Suppressed sources are listed in the tooltip (“Also excluded
+  by …”), and unmatched/comment lines are omitted to reduce noise. Match counts
+  for `.securezipignore` rules and `.gitignore` patterns live only in tooltips
+  to keep labels minimal.
 - The view listens for file system changes, git events, and command results to
   keep the tree in sync.
 

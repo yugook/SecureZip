@@ -32,6 +32,10 @@ SecureZip respects the following when selecting files to include:
 
 - `.gitignore` – Acknowledged automatically.
 - `.securezipignore` – Project rules to exclude and re-include files for export.
+- Preview deduplication: the SecureZip view merges duplicates with priority
+  `.securezipignore` > `.gitignore` > auto-excludes, hides comments/blank lines
+  and unmatched entries, and shows suppressed sources in the tooltip (“Also
+  excluded by …”).
 
 `.securezipignore` syntax (gitignore-like subset):
 
@@ -102,6 +106,7 @@ Example `settings.json` override:
 - [Architecture overview](docs/architecture.md) – maps key modules and data flows.
 - [Localization guide](docs/localization.md) – adding translations for runtime and contribution strings.
 - [SBOM instructions](docs/sbom.md) – details about `npm run sbom` and the bundled CycloneDX file.
+- Packaging preflight: run `npm run package:verify` before tagging/release to catch VS Code engine mismatches for `vsce`.
 
 ## 📄 License
 SecureZip is distributed under the [MIT License](LICENSE).
@@ -137,6 +142,7 @@ SecureZip はアーカイブに含めるファイルを選ぶ際、次のルー�
 
 - `.gitignore` – 自動的に適用されます。
 - `.securezipignore` – エクスポート専用に除外や再包含を指定するプロジェクトルールです。
+- SecureZip ビューのプレビューでは、`.securezipignore` > `.gitignore` > 自動除外の優先順で同一パターンを1行にまとめ、コメント/空行や未マッチ行は表示しません（抑制された出典はツールチップに表示）。
 
 `.securezipignore` の構文（gitignore 互換のサブセット）:
 
@@ -202,3 +208,10 @@ SecureZip は、ビルド時のデフォルトと実行時の上書きを組み�
 
 ## 📄 ライセンス
 SecureZip は [MIT License](LICENSE) で配布しています。
+- [コントリビュートガイド](CONTRIBUTING.md) – セットアップ、コーディング規約、PR チェックリスト。
+- [テストガイド](docs/testing.md) – 型チェック、lint、ユニット/インテグレーションテストの実行方法。
+- [リリース手順](docs/releasing.md) – プレビュー/安定版のブランチ戦略とバージョンルール。
+- [アーキテクチャ概要](docs/architecture.md) – 主要モジュールとデータフローの説明。
+- [ローカライズガイド](docs/localization.md) – 実行時・コントリビューション文字列への翻訳追加手順。
+- [SBOM 手順](docs/sbom.md) – `npm run sbom` の詳細と同梱される CycloneDX ファイルについて。
+- パッケージ前チェック: タグ/リリース前に `npm run package:verify` を実行して、VS Code エンジンの不整合で `vsce` が失敗しないか確認してください。

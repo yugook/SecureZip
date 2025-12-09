@@ -4,6 +4,20 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.1.3] - 2025-12-05
+
+- SecureZip view now keeps `.securezipignore` and `.gitignore` match counts in tooltips only, leaving labels concise.
+
+## [1.1.2] - 2025-12-03
+
+- Bumped VS Code engine requirement to ^1.106.0 to align with @types/vscode and unblock packaging.
+- No functional changes; republish to fix packaging failure.
+
+## [1.1.1] - 2025-12-03
+
+- SecureZip view preview now deduplicates overlapping rules with priority `.securezipignore` > `.gitignore` > auto-excludes, listing suppressed sources in the tooltip and hiding comments/blank/unmatched entries to reduce noise.
+- Updated documentation to describe the new preview behavior and prioritization.
+
 ## [1.1.0] - 2025-11-27
 
 - New `.securezipignore` files now include a self-exclusion template by default so the ignore file itself is left out of exported archives.
