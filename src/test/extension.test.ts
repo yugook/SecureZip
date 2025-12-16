@@ -581,6 +581,57 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('SecureZip preview keeps priority when .securezipignore is missing', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        await fs.promises.rm(path.join(workspaceRoot, '.securezipignore'));
+
+        const gitignorePath = path.join(workspaceRoot, '.gitignore');
+        await fs.promises.writeFile(gitignorePath, 'node_modules/\n.env\n', 'utf8');
+        await initGitRepository(workspaceRoot);
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const messageLabels = previewItems
+                .filter((item) => (item as any).node?.kind === 'message')
+                .map(getTreeItemLabel);
+            const notCreatedLabel = localize(
+                'preview.message.notCreated',
+                'The .securezipignore file has not been created yet.',
+            );
+            assert.ok(messageLabels.includes(notCreatedLabel), 'Expected not-created message in preview');
+
+            const previewNodes = previewItems.filter((item) => (item as any).node?.kind === 'preview');
+            assert.ok(previewNodes.length > 0, 'Expected preview entries when .securezipignore is missing');
+
+            const nodeItem = previewNodes.find((item) => getTreeItemLabel(item).startsWith('node_modules'));
+            assert.ok(nodeItem, 'Expected node_modules to appear once after dedupe');
+            const tooltip = String((nodeItem as any).tooltip ?? '');
+            assert.ok(
+                tooltip.includes('auto exclude') || tooltip.includes('自動除外'),
+                'node_modules tooltip should mention suppressed auto exclude source',
+            );
+
+            const statuses = previewNodes.map((item) => (item as any).node?.status);
+            const firstAuto = statuses.findIndex((status) => status === 'auto');
+            const lastGit = statuses.reduce((last, status, index) => (status === 'git' ? index : last), -1);
+            if (firstAuto !== -1 && lastGit !== -1) {
+                assert.ok(lastGit < firstAuto, 'Auto excludes should follow gitignore entries when .securezipignore is missing');
+            }
+        } finally {
+            provider.dispose();
+        }
+    });
+
     test('allows wildcard re-include to restore nested secure-config secrets', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
