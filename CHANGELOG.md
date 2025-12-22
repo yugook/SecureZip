@@ -4,6 +4,10 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.1.4] - 2025-12-23
+
+- SecureZip preview keeps `.gitignore` entries ahead of auto excludes even when `.securezipignore` is missing, while still surfacing the not-created message.
+
 ## [1.1.3] - 2025-12-05
 
 - SecureZip view now keeps `.securezipignore` and `.gitignore` match counts in tooltips only, leaving labels concise.
