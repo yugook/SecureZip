@@ -8,6 +8,7 @@ import simpleGit, { SimpleGit } from 'simple-git';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { resolveFlags } from './flags';
 import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } from './ignore';
+import { registerIgnoreLanguageFeatures } from './ignoreLanguage';
 import { SecureZipViewProvider, ensureSecureZipIgnoreFile } from './view';
 import { localize } from './nls';
 
@@ -132,6 +133,8 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.window.showErrorMessage(localize('error.createIgnoreFailed', 'Failed to create .securezipignore: {0}', toErrorMessage(err)));
         }
     });
+
+    registerIgnoreLanguageFeatures(context);
 
     // Feature flags (build-time + settings), then gate the status bar button
     const cfg = vscode.workspace.getConfiguration('secureZip');
