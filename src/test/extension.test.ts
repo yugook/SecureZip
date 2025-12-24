@@ -856,6 +856,59 @@ suite('SecureZip Extension', function () {
         assert.ok(hoverText.includes('logs/'));
     });
 
+    test('securezipignore definition resolves file targets', async function () {
+        this.timeout(15000);
+        await stageFixture('simple-project');
+        await activateExtension();
+        const root = getWorkspaceRoot();
+        const doc = await writeIgnoreFile(['README.md']);
+        const definitions = await executeDefinition(doc.uri, new vscode.Position(0, 2));
+        const uris = definitionUris(definitions);
+        const expected = normalizeFsPath(path.join(root, 'README.md'));
+        assert.ok(
+            uris.some((uri) => normalizeFsPath(uri.fsPath) === expected),
+            'Expected definition to resolve README.md'
+        );
+    });
+
+    test('securezipignore definition ignores directory patterns', async function () {
+        this.timeout(15000);
+        await stageFixture('simple-project');
+        await activateExtension();
+        const root = getWorkspaceRoot();
+        await fs.promises.mkdir(path.join(root, 'logs'), { recursive: true });
+        const doc = await writeIgnoreFile(['logs/']);
+        const definitions = await executeDefinition(doc.uri, new vscode.Position(0, 2));
+        assert.strictEqual(definitions.length, 0);
+    });
+
+    test('securezipignore definition ignores glob and abstract patterns', async function () {
+        this.timeout(15000);
+        await stageFixture('simple-project');
+        await activateExtension();
+        const globDoc = await writeIgnoreFile(['**/*.log']);
+        const globDefs = await executeDefinition(globDoc.uri, new vscode.Position(0, 2));
+        assert.strictEqual(globDefs.length, 0);
+        const abstractDoc = await writeIgnoreFile(['*']);
+        const abstractDefs = await executeDefinition(abstractDoc.uri, new vscode.Position(0, 0));
+        assert.strictEqual(abstractDefs.length, 0);
+    });
+
+    test('securezipignore definition resolves negated file patterns', async function () {
+        this.timeout(15000);
+        await stageFixture('simple-project');
+        await activateExtension();
+        const root = getWorkspaceRoot();
+        const doc = await writeIgnoreFile(['!README.md']);
+        const definitions = await executeDefinition(doc.uri, new vscode.Position(0, 1));
+        const uris = definitionUris(definitions);
+        const expected = normalizeFsPath(path.join(root, 'README.md'));
+        assert.ok(
+            uris.some((uri) => normalizeFsPath(uri.fsPath) === expected),
+            'Expected definition to resolve negated README.md'
+        );
+    });
+
     test('reports an error when no files remain after excludes', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
@@ -1098,6 +1151,30 @@ async function executeHoverText(uri: vscode.Uri, position: vscode.Position): Pro
         await new Promise((resolve) => setTimeout(resolve, 50));
     }
     return lastText;
+}
+
+async function executeDefinition(uri: vscode.Uri, position: vscode.Position): Promise<(vscode.Location | vscode.LocationLink)[]> {
+    const result = await vscode.commands.executeCommand<
+        vscode.Location[] | vscode.LocationLink[] | vscode.Location | undefined
+    >('vscode.executeDefinitionProvider', uri, position);
+    if (!result) {
+        return [];
+    }
+    return Array.isArray(result) ? result : [result];
+}
+
+function definitionUris(definitions: (vscode.Location | vscode.LocationLink)[]): vscode.Uri[] {
+    return definitions.map((definition) => {
+        if ('targetUri' in definition) {
+            return definition.targetUri;
+        }
+        return definition.uri;
+    });
+}
+
+function normalizeFsPath(target: string): string {
+    const resolved = path.resolve(target);
+    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
 }
 
 interface ExportOverrides {
