@@ -4,6 +4,12 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.1.5] - 2026-01-14
+
+- Added `.securezipignore` hover previews for file, directory, and glob patterns, including file snippets.
+- Suppressed hover previews for sensitive auto-excluded paths to avoid leaking secrets.
+- Added F12 definition jumps for file patterns, with unit and integration coverage.
+
 ## [1.1.4] - 2025-12-23
 
 - SecureZip preview keeps `.gitignore` entries ahead of auto excludes even when `.securezipignore` is missing, while still surfacing the not-created message.
