@@ -64,7 +64,7 @@
 - Localization: `docs/localization.md`.
 - SBOM: `docs/sbom.md`.
 
-## TODO (project-specific)
-- [ ] List any directories that must never be edited.
-- [ ] Document any required environment variables or secrets.
-- [ ] Add a short "how to run the extension" note (F5 / debug config).
+## Project specifics
+- Do not edit generated directories: `dist/`, `out/`, `node_modules/`, `tmp/`, `.vscode-test/`, `.vscode-test-workspace/`.
+- Required env vars/secrets: none. Optional: `ELECTRON_ENABLE_LOGGING=1` for extra integration test logs.
+- Run the extension: in VS Code, use Run and Debug → `Run Extension` (F5). It launches an Extension Host and runs the `watch:esbuild` prelaunch task.
