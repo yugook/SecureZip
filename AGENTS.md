@@ -31,7 +31,7 @@
 ## Development workflow
 - Prefer editing `src/`, `docs/`, `i18n/`, and `src/test/` when changing behavior.
 - Use TypeScript, follow the configured ESLint rules, and add comments only when logic is non-obvious.
-- Prefer localized strings via `src/nls.ts`; avoid hardcoding UI text.
+- Prefer localized strings via `src/nls.ts` (see `docs/localization.md`); avoid hardcoding UI text.
 - Treat `dist/` and `out/` as generated outputs; do not hand-edit them.
 - Avoid committing build artifacts outside `dist/` (which is already tracked).
 - Keep localization in sync:
