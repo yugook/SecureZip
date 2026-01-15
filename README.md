@@ -27,6 +27,19 @@ SecureZip only offers the auto-commit step when it detects local changes. By def
 - `tracked` (default) – Stage edits/deletions to tracked files only.
 - `all` – Stage tracked and untracked files (`git add --all`).
 
+## 🏷 Tagging Mode
+SecureZip can tag exports for traceability. Choose the tagging behavior per export or set a default:
+
+```json
+{
+  "secureZip.tagging.mode": "ask"
+}
+```
+
+- `ask` (default) – Prompt to use the default tag, skip, or enter a custom tag.
+- `always` – Always create the default export tag.
+- `never` – Skip tagging entirely.
+
 ## 🛡 Ignore Rules
 SecureZip respects the following when selecting files to include:
 
@@ -136,6 +149,19 @@ SecureZip が未コミット変更を検出したときだけ自動コミット�
 
 - `tracked`（既定）– 追跡済みファイルの変更/削除のみをステージ。
 - `all` – 追跡済み＋未追跡ファイルをステージ（`git add --all` 相当）。
+
+## 🏷 タグ付けモード
+SecureZip はエクスポート時の追跡性向上のため、タグ付けの挙動を選択できます。
+
+```json
+{
+  "secureZip.tagging.mode": "ask"
+}
+```
+
+- `ask`（既定）– 毎回、デフォルトタグ/スキップ/カスタムを選択します。
+- `always` – 常にデフォルトタグを作成します。
+- `never` – タグ付けを行いません。
 
 ## 🛡 無視ルール
 SecureZip はアーカイブに含めるファイルを選ぶ際、次のルールを尊重します。

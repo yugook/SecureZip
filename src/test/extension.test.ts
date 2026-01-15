@@ -718,6 +718,7 @@ suite('SecureZip Extension', function () {
         const config = vscode.workspace.getConfiguration('secureZip');
         await config.update('autoCommit.stageMode', 'tracked', vscode.ConfigurationTarget.Workspace);
         await config.update('tagPrefix', 'export-tracked', vscode.ConfigurationTarget.Workspace);
+        await config.update('tagging.mode', 'always', vscode.ConfigurationTarget.Workspace);
 
         const warningMessages: string[] = [];
         const { outPath } = await exportAndCollect('securezip-auto-commit-tracked.zip', {
@@ -772,6 +773,7 @@ suite('SecureZip Extension', function () {
         const config = vscode.workspace.getConfiguration('secureZip');
         await config.update('autoCommit.stageMode', 'all', vscode.ConfigurationTarget.Workspace);
         await config.update('tagPrefix', 'export-all', vscode.ConfigurationTarget.Workspace);
+        await config.update('tagging.mode', 'always', vscode.ConfigurationTarget.Workspace);
 
         const warningMessages: string[] = [];
         const { outPath } = await exportAndCollect('securezip-auto-commit-all.zip', {
@@ -806,6 +808,26 @@ suite('SecureZip Extension', function () {
                 latestCommit.latest?.message.startsWith('[SecureZip] Automated commit for export:'),
                 'Latest commit should come from the auto-commit template'
             );
+        } finally {
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('tagging mode never skips tag creation', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const git = await initGitRepository(workspaceRoot);
+
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('tagging.mode', 'never', vscode.ConfigurationTarget.Workspace);
+
+        const { outPath } = await exportAndCollect('securezip-tagging-never.zip');
+
+        try {
+            const tags = await git.tags();
+            assert.strictEqual(tags.all.length, 0, 'Expected no tags when tagging mode is never');
         } finally {
             await removeIfExists(outPath);
         }
@@ -1088,6 +1110,7 @@ async function resetConfiguration() {
     await config.update('includeNodeModules', undefined, vscode.ConfigurationTarget.Workspace);
     await config.update('autoCommit.stageMode', undefined, vscode.ConfigurationTarget.Workspace);
     await config.update('tagPrefix', undefined, vscode.ConfigurationTarget.Workspace);
+    await config.update('tagging.mode', undefined, vscode.ConfigurationTarget.Workspace);
 }
 
 async function activateExtension(): Promise<void> {
