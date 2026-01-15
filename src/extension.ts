@@ -228,67 +228,57 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     try {
         const isRepo = await git.checkIsRepo();
         if (isRepo) {
-            const resolveTagPlan = async (): Promise<TagPlan> => {
-                if (taggingMode === 'never') {
-                    return emptyTagPlan;
-                }
-
-                let desiredTag: string | undefined = defaultTag;
-                let shouldCreate = true;
-
-                if (taggingMode === 'ask') {
-                    type TaggingPick = vscode.QuickPickItem & { value: 'default' | 'custom' | 'skip' };
-                    const TAG_OPTION_DEFAULT = localize('git.taggingOption.default', 'Create default tag');
-                    const TAG_OPTION_CUSTOM = localize('git.taggingOption.custom', 'Create custom tag');
-                    const TAG_OPTION_SKIP = localize('git.taggingOption.skip', 'Skip tagging');
-                    const selection = await vscode.window.showQuickPick<TaggingPick>(
-                        [
-                            {
-                                label: TAG_OPTION_DEFAULT,
-                                description: localize('git.taggingOption.defaultDescription', 'Use {0}', defaultTag),
-                                value: 'default',
-                            },
-                            {
-                                label: TAG_OPTION_CUSTOM,
-                                description: localize('git.taggingOption.customDescription', 'Enter a tag name'),
-                                value: 'custom',
-                            },
-                            {
-                                label: TAG_OPTION_SKIP,
-                                description: localize('git.taggingOption.skipDescription', 'Continue without tagging'),
-                                value: 'skip',
-                            },
-                        ],
+            const promptForTagSelection = async (): Promise<string | undefined> => {
+                type TaggingPick = vscode.QuickPickItem & { value: 'default' | 'custom' | 'skip' };
+                const TAG_OPTION_DEFAULT = localize('git.taggingOption.default', 'Create default tag');
+                const TAG_OPTION_CUSTOM = localize('git.taggingOption.custom', 'Create custom tag');
+                const TAG_OPTION_SKIP = localize('git.taggingOption.skip', 'Skip tagging');
+                const selection = await vscode.window.showQuickPick<TaggingPick>(
+                    [
                         {
-                            placeHolder: localize('git.taggingPrompt', 'Choose how to tag this export'),
+                            label: TAG_OPTION_DEFAULT,
+                            description: localize('git.taggingOption.defaultDescription', 'Use {0}', defaultTag),
+                            value: 'default',
                         },
-                    );
-                    if (!selection || selection.value === 'skip') {
-                        return emptyTagPlan;
-                    }
-                    if (selection.value === 'custom') {
-                        const customTag = await vscode.window.showInputBox({
-                            prompt: localize('git.taggingInputPrompt', 'Enter a tag name for this export'),
-                            placeHolder: localize('git.taggingInputPlaceholder', 'e.g. {0}', defaultTag),
-                            value: defaultTag,
-                            validateInput: (value) => {
-                                if (!value || !value.trim()) {
-                                    return localize('validation.tagRequired', 'Tag name is required.');
-                                }
-                                return undefined;
-                            },
-                        });
-                        if (!customTag || !customTag.trim()) {
-                            return emptyTagPlan;
-                        }
-                        desiredTag = customTag.trim();
-                    }
+                        {
+                            label: TAG_OPTION_CUSTOM,
+                            description: localize('git.taggingOption.customDescription', 'Enter a tag name'),
+                            value: 'custom',
+                        },
+                        {
+                            label: TAG_OPTION_SKIP,
+                            description: localize('git.taggingOption.skipDescription', 'Continue without tagging'),
+                            value: 'skip',
+                        },
+                    ],
+                    {
+                        placeHolder: localize('git.taggingPrompt', 'Choose how to tag this export'),
+                    },
+                );
+                if (!selection || selection.value === 'skip') {
+                    return undefined;
                 }
-
-                if (!desiredTag) {
-                    return emptyTagPlan;
+                if (selection.value === 'custom') {
+                    const customTag = await vscode.window.showInputBox({
+                        prompt: localize('git.taggingInputPrompt', 'Enter a tag name for this export'),
+                        placeHolder: localize('git.taggingInputPlaceholder', 'e.g. {0}', defaultTag),
+                        value: defaultTag,
+                        validateInput: (value) => {
+                            if (!value || !value.trim()) {
+                                return localize('validation.tagRequired', 'Tag name is required.');
+                            }
+                            return undefined;
+                        },
+                    });
+                    if (!customTag || !customTag.trim()) {
+                        return undefined;
+                    }
+                    return customTag.trim();
                 }
+                return defaultTag;
+            };
 
+            const resolveTagConflict = async (desiredTag: string): Promise<TagPlan> => {
                 try {
                     const tags = await git.tags();
                     const existing = new Set(tags.all);
@@ -305,19 +295,35 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
                             SKIP_OPTION,
                         );
                         if (conflictChoice === USE_EXISTING_OPTION) {
-                            shouldCreate = false;
-                        } else if (conflictChoice === CREATE_NEW_OPTION) {
-                            desiredTag = suggestedTag;
-                            shouldCreate = true;
-                        } else {
-                            return emptyTagPlan;
+                            return { tagName: desiredTag, shouldCreate: false };
                         }
+                        if (conflictChoice === CREATE_NEW_OPTION) {
+                            return { tagName: suggestedTag, shouldCreate: true };
+                        }
+                        return emptyTagPlan;
                     }
                 } catch (e) {
                     console.warn('[SecureZip] tag lookup failed, proceed without conflict check', e);
                 }
+                return { tagName: desiredTag, shouldCreate: true };
+            };
 
-                return { tagName: desiredTag, shouldCreate };
+            const resolveTagPlan = async (): Promise<TagPlan> => {
+                if (taggingMode === 'never') {
+                    return emptyTagPlan;
+                }
+
+                let desiredTag: string | undefined = defaultTag;
+
+                if (taggingMode === 'ask') {
+                    desiredTag = await promptForTagSelection();
+                }
+
+                if (!desiredTag) {
+                    return emptyTagPlan;
+                }
+
+                return resolveTagConflict(desiredTag);
             };
 
             const getTagPlan = async (): Promise<TagPlan> => {
