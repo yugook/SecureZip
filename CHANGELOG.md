@@ -4,6 +4,11 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.1.6] - 2026-01-16
+
+- Added a tagging mode setting so exports can ask, always tag, or skip tagging entirely.
+- Improved existing-tag handling with clearer choices to reuse, propose a new tag, or skip tagging.
+
 ## [1.1.5] - 2026-01-14
 
 - Added `.securezipignore` hover previews for file, directory, and glob patterns, including file snippets.
