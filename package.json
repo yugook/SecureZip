@@ -127,6 +127,21 @@
           "default": "export",
           "description": "%config.tagPrefix.description%"
         },
+        "secureZip.tagging.mode": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "always",
+            "never"
+          ],
+          "enumDescriptions": [
+            "%config.tagging.mode.enum.ask%",
+            "%config.tagging.mode.enum.always%",
+            "%config.tagging.mode.enum.never%"
+          ],
+          "default": "ask",
+          "description": "%config.tagging.mode.description%"
+        },
         "secureZip.additionalExcludes": {
           "type": "array",
           "items": {
