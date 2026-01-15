@@ -37,6 +37,7 @@
 - Keep localization in sync:
   - Runtime strings: `src/nls.ts` + `i18n/nls.bundle.*.json`.
   - Contribution strings: `package.nls.json` + `package.nls.ja.json`.
+- Keep `README.md` English/Japanese sections in sync when updating documentation.
 
 ## Safe changes
 - Avoid touching secret-bearing files, local configs, or `.vsix` artifacts unless explicitly asked.
