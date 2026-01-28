@@ -581,6 +581,57 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('SecureZip preview keeps priority when .securezipignore is missing', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        await fs.promises.rm(path.join(workspaceRoot, '.securezipignore'));
+
+        const gitignorePath = path.join(workspaceRoot, '.gitignore');
+        await fs.promises.writeFile(gitignorePath, 'node_modules/\n.env\n', 'utf8');
+        await initGitRepository(workspaceRoot);
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const messageLabels = previewItems
+                .filter((item) => (item as any).node?.kind === 'message')
+                .map(getTreeItemLabel);
+            const notCreatedLabel = localize(
+                'preview.message.notCreated',
+                'The .securezipignore file has not been created yet.',
+            );
+            assert.ok(messageLabels.includes(notCreatedLabel), 'Expected not-created message in preview');
+
+            const previewNodes = previewItems.filter((item) => (item as any).node?.kind === 'preview');
+            assert.ok(previewNodes.length > 0, 'Expected preview entries when .securezipignore is missing');
+
+            const nodeItem = previewNodes.find((item) => getTreeItemLabel(item).startsWith('node_modules'));
+            assert.ok(nodeItem, 'Expected node_modules to appear once after dedupe');
+            const tooltip = String((nodeItem as any).tooltip ?? '');
+            assert.ok(
+                tooltip.includes('auto exclude') || tooltip.includes('自動除外'),
+                'node_modules tooltip should mention suppressed auto exclude source',
+            );
+
+            const statuses = previewNodes.map((item) => (item as any).node?.status);
+            const firstAuto = statuses.findIndex((status) => status === 'auto');
+            const lastGit = statuses.reduce((last, status, index) => (status === 'git' ? index : last), -1);
+            if (firstAuto !== -1 && lastGit !== -1) {
+                assert.ok(lastGit < firstAuto, 'Auto excludes should follow gitignore entries when .securezipignore is missing');
+            }
+        } finally {
+            provider.dispose();
+        }
+    });
+
     test('allows wildcard re-include to restore nested secure-config secrets', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
@@ -667,6 +718,7 @@ suite('SecureZip Extension', function () {
         const config = vscode.workspace.getConfiguration('secureZip');
         await config.update('autoCommit.stageMode', 'tracked', vscode.ConfigurationTarget.Workspace);
         await config.update('tagPrefix', 'export-tracked', vscode.ConfigurationTarget.Workspace);
+        await config.update('tagging.mode', 'always', vscode.ConfigurationTarget.Workspace);
 
         const warningMessages: string[] = [];
         const { outPath } = await exportAndCollect('securezip-auto-commit-tracked.zip', {
@@ -721,6 +773,7 @@ suite('SecureZip Extension', function () {
         const config = vscode.workspace.getConfiguration('secureZip');
         await config.update('autoCommit.stageMode', 'all', vscode.ConfigurationTarget.Workspace);
         await config.update('tagPrefix', 'export-all', vscode.ConfigurationTarget.Workspace);
+        await config.update('tagging.mode', 'always', vscode.ConfigurationTarget.Workspace);
 
         const warningMessages: string[] = [];
         const { outPath } = await exportAndCollect('securezip-auto-commit-all.zip', {
@@ -758,6 +811,124 @@ suite('SecureZip Extension', function () {
         } finally {
             await removeIfExists(outPath);
         }
+    });
+
+    test('tagging mode never skips tag creation', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const git = await initGitRepository(workspaceRoot);
+
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('tagging.mode', 'never', vscode.ConfigurationTarget.Workspace);
+
+        const { outPath } = await exportAndCollect('securezip-tagging-never.zip');
+
+        try {
+            const tags = await git.tags();
+            assert.strictEqual(tags.all.length, 0, 'Expected no tags when tagging mode is never');
+        } finally {
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('securezipignore hover skips abstract patterns', async function () {
+        this.timeout(15000);
+        await stageFixture('simple-project');
+        await activateExtension();
+        const doc = await writeIgnoreFile(['*']);
+        const hovers = await executeHover(doc.uri, new vscode.Position(0, 0));
+        assert.strictEqual(hovers.length, 0);
+    });
+
+    test('securezipignore hover blocks sensitive previews', async function () {
+        this.timeout(15000);
+        await stageFixture('simple-project');
+        await activateExtension();
+        const doc = await writeIgnoreFile(['.env']);
+        const hoverText = await executeHoverText(doc.uri, new vscode.Position(0, 1));
+        assert.ok(
+            hoverText.includes('セキュリティ') || hoverText.toLowerCase().includes('security'),
+            `Expected security hover text to be present. hoverText=${JSON.stringify(hoverText)}`
+        );
+    });
+
+    test('securezipignore hover shows glob samples and count', async function () {
+        this.timeout(15000);
+        await stageFixture('simple-project');
+        await activateExtension();
+        const root = getWorkspaceRoot();
+        const logsDir = path.join(root, 'logs');
+        await fs.promises.mkdir(logsDir, { recursive: true });
+        await Promise.all([
+            fs.promises.writeFile(path.join(logsDir, 'a.txt'), 'a', 'utf8'),
+            fs.promises.writeFile(path.join(logsDir, 'b.txt'), 'b', 'utf8'),
+            fs.promises.writeFile(path.join(logsDir, 'c.txt'), 'c', 'utf8'),
+            fs.promises.writeFile(path.join(logsDir, 'd.txt'), 'd', 'utf8'),
+        ]);
+        const doc = await writeIgnoreFile(['logs/*.txt']);
+        const hoverText = await executeHoverText(doc.uri, new vscode.Position(0, 5));
+        assert.ok(hoverText.includes('logs/*.txt'));
+        assert.ok(hoverText.includes('3+'));
+        assert.ok(
+            hoverText.includes('More matches') || hoverText.includes('他にも一致があります'),
+            'Expected hover to mention more matches'
+        );
+        assert.ok(hoverText.includes('logs/'));
+    });
+
+    test('securezipignore definition resolves file targets', async function () {
+        this.timeout(15000);
+        await stageFixture('simple-project');
+        await activateExtension();
+        const root = getWorkspaceRoot();
+        const doc = await writeIgnoreFile(['README.md']);
+        const definitions = await executeDefinition(doc.uri, new vscode.Position(0, 2));
+        const uris = definitionUris(definitions);
+        const expected = normalizeFsPath(path.join(root, 'README.md'));
+        assert.ok(
+            uris.some((uri) => normalizeFsPath(uri.fsPath) === expected),
+            'Expected definition to resolve README.md'
+        );
+    });
+
+    test('securezipignore definition ignores directory patterns', async function () {
+        this.timeout(15000);
+        await stageFixture('simple-project');
+        await activateExtension();
+        const root = getWorkspaceRoot();
+        await fs.promises.mkdir(path.join(root, 'logs'), { recursive: true });
+        const doc = await writeIgnoreFile(['logs/']);
+        const definitions = await executeDefinition(doc.uri, new vscode.Position(0, 2));
+        assert.strictEqual(definitions.length, 0);
+    });
+
+    test('securezipignore definition ignores glob and abstract patterns', async function () {
+        this.timeout(15000);
+        await stageFixture('simple-project');
+        await activateExtension();
+        const globDoc = await writeIgnoreFile(['**/*.log']);
+        const globDefs = await executeDefinition(globDoc.uri, new vscode.Position(0, 2));
+        assert.strictEqual(globDefs.length, 0);
+        const abstractDoc = await writeIgnoreFile(['*']);
+        const abstractDefs = await executeDefinition(abstractDoc.uri, new vscode.Position(0, 0));
+        assert.strictEqual(abstractDefs.length, 0);
+    });
+
+    test('securezipignore definition resolves negated file patterns', async function () {
+        this.timeout(15000);
+        await stageFixture('simple-project');
+        await activateExtension();
+        const root = getWorkspaceRoot();
+        const doc = await writeIgnoreFile(['!README.md']);
+        const definitions = await executeDefinition(doc.uri, new vscode.Position(0, 1));
+        const uris = definitionUris(definitions);
+        const expected = normalizeFsPath(path.join(root, 'README.md'));
+        assert.ok(
+            uris.some((uri) => normalizeFsPath(uri.fsPath) === expected),
+            'Expected definition to resolve negated README.md'
+        );
     });
 
     test('reports an error when no files remain after excludes', async function () {
@@ -939,6 +1110,94 @@ async function resetConfiguration() {
     await config.update('includeNodeModules', undefined, vscode.ConfigurationTarget.Workspace);
     await config.update('autoCommit.stageMode', undefined, vscode.ConfigurationTarget.Workspace);
     await config.update('tagPrefix', undefined, vscode.ConfigurationTarget.Workspace);
+    await config.update('tagging.mode', undefined, vscode.ConfigurationTarget.Workspace);
+}
+
+async function activateExtension(): Promise<void> {
+    const extension = vscode.extensions.getExtension('yugook.securezip');
+    assert.ok(extension, 'SecureZip extension not found');
+    if (!extension.isActive) {
+        await extension.activate();
+    }
+}
+
+async function writeIgnoreFile(lines: string[]): Promise<vscode.TextDocument> {
+    const root = getWorkspaceRoot();
+    const file = path.join(root, '.securezipignore');
+    const text = `${lines.join('\n')}\n`;
+    await fs.promises.writeFile(file, text, 'utf8');
+    const document = await vscode.workspace.openTextDocument(file);
+    if (document.getText() !== text) {
+        const edit = new vscode.WorkspaceEdit();
+        const end = document.positionAt(document.getText().length);
+        edit.replace(document.uri, new vscode.Range(new vscode.Position(0, 0), end), text);
+        await vscode.workspace.applyEdit(edit);
+        await document.save();
+    }
+    await vscode.window.showTextDocument(document, { preview: false });
+    return document;
+}
+
+async function executeHover(uri: vscode.Uri, position: vscode.Position): Promise<vscode.Hover[]> {
+    const result = await vscode.commands.executeCommand<vscode.Hover[]>(
+        'vscode.executeHoverProvider',
+        uri,
+        position,
+    );
+    return Array.isArray(result) ? result : [];
+}
+
+async function executeHoverText(uri: vscode.Uri, position: vscode.Position): Promise<string> {
+    let lastText = '';
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        const hovers = await executeHover(uri, position);
+        const parts: string[] = [];
+        for (const hover of hovers) {
+            const contents = Array.isArray(hover.contents) ? hover.contents : [hover.contents];
+            for (const entry of contents) {
+                if (typeof entry === 'string') {
+                    parts.push(entry);
+                } else if (entry instanceof vscode.MarkdownString) {
+                    parts.push(entry.value);
+                } else if (entry && typeof entry === 'object' && 'value' in entry) {
+                    const value = (entry as { value?: string }).value;
+                    if (typeof value === 'string') {
+                        parts.push(value);
+                    }
+                }
+            }
+        }
+        lastText = parts.join('\n');
+        if (lastText || hovers.length > 0) {
+            return lastText;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return lastText;
+}
+
+async function executeDefinition(uri: vscode.Uri, position: vscode.Position): Promise<(vscode.Location | vscode.LocationLink)[]> {
+    const result = await vscode.commands.executeCommand<
+        vscode.Location[] | vscode.LocationLink[] | vscode.Location | undefined
+    >('vscode.executeDefinitionProvider', uri, position);
+    if (!result) {
+        return [];
+    }
+    return Array.isArray(result) ? result : [result];
+}
+
+function definitionUris(definitions: (vscode.Location | vscode.LocationLink)[]): vscode.Uri[] {
+    return definitions.map((definition) => {
+        if ('targetUri' in definition) {
+            return definition.targetUri;
+        }
+        return definition.uri;
+    });
+}
+
+function normalizeFsPath(target: string): string {
+    const resolved = path.resolve(target);
+    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
 }
 
 interface ExportOverrides {
