@@ -3,10 +3,19 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'securezip-test-'));
+const testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'securezip-test-'));
+const workspaceDir = path.join(testRoot, 'ws');
+const userDataDir = path.join(testRoot, 'user-data');
+const extensionsDir = path.join(testRoot, 'extensions');
+
+fs.mkdirSync(workspaceDir, { recursive: true });
+fs.mkdirSync(userDataDir, { recursive: true });
+fs.mkdirSync(extensionsDir, { recursive: true });
 
 const launchArgs = [
     workspaceDir,
+    `--user-data-dir=${userDataDir}`,
+    `--extensions-dir=${extensionsDir}`,
     '--disable-gpu',
     '--disable-features=CalculateNativeWinOcclusion',
     '--disable-dev-shm-usage',
