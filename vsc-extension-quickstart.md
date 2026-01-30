@@ -23,7 +23,7 @@
 
 1. In VS Code, open the workspace and press `F5` (Run Extension).
 2. In the Extension Host window, open the SecureZip view from the activity bar.
-3. Run **SecureZip: Export** from the command palette to exercise the workflow.
+3. Run **SecureZip: Export Project** from the command palette to exercise the workflow.
 
 ## Develop iteratively
 
