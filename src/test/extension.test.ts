@@ -183,6 +183,22 @@ async function collectZipHashes(zipPath: string) {
 suite('SecureZip Extension', function () {
     this.beforeEach(async () => {
         await resetConfiguration();
+        const windowOverrides = vscode.window as unknown as {
+            showWarningMessage: typeof vscode.window.showWarningMessage;
+        };
+        if (!originalShowWarningMessage) {
+            originalShowWarningMessage = windowOverrides.showWarningMessage;
+        }
+        windowOverrides.showWarningMessage = createUnexpectedWarningStub();
+    });
+    this.afterEach(() => {
+        if (!originalShowWarningMessage) {
+            return;
+        }
+        const windowOverrides = vscode.window as unknown as {
+            showWarningMessage: typeof vscode.window.showWarningMessage;
+        };
+        windowOverrides.showWarningMessage = originalShowWarningMessage;
     });
     test('exports expected contents for simple fixture project', async function () {
         this.timeout(30000);
@@ -267,7 +283,13 @@ suite('SecureZip Extension', function () {
         const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
         await fs.promises.appendFile(secureZipIgnorePath, '\n!/.git\n', 'utf8');
 
-        const { outPath, hashes } = await exportAndCollect('securezip-include-git.zip');
+        const { outPath, hashes } = await exportAndCollect('securezip-include-git.zip', {
+            showWarningMessage: createAllowedWarningStub([
+                {
+                    message: /git directory will be included|\\.git ディレクトリがエクスポートに含まれ/i,
+                },
+            ]),
+        });
         try {
             const expected = await loadExpectedHashes('simple-project', 'include-git');
             assert.deepStrictEqual(hashes, expected);
@@ -823,7 +845,14 @@ suite('SecureZip Extension', function () {
         const config = vscode.workspace.getConfiguration('secureZip');
         await config.update('tagging.mode', 'never', vscode.ConfigurationTarget.Workspace);
 
-        const { outPath } = await exportAndCollect('securezip-tagging-never.zip');
+        const { outPath } = await exportAndCollect('securezip-tagging-never.zip', {
+            showWarningMessage: createAllowedWarningStub([
+                {
+                    message: /Uncommitted changes detected|未コミットの変更/i,
+                    pick: /Proceed without Git actions|Git操作をスキップ/i,
+                },
+            ]),
+        });
 
         try {
             const tags = await git.tags();
@@ -1083,6 +1112,8 @@ async function initGitRepository(root: string): Promise<SimpleGit> {
     return git;
 }
 
+let originalShowWarningMessage: typeof vscode.window.showWarningMessage | undefined;
+
 function createAutoCommitWarningStub(messages: string[]): typeof vscode.window.showWarningMessage {
     return ((message: any, ...args: any[]) => {
         const text = typeof message === 'string' ? message : String(message);
@@ -1093,6 +1124,46 @@ function createAutoCommitWarningStub(messages: string[]): typeof vscode.window.s
         }
         const choice = args.slice(startIndex).find((item) => typeof item === 'string');
         return Promise.resolve(choice as any);
+    }) as typeof vscode.window.showWarningMessage;
+}
+
+function createAllowedWarningStub(
+    rules: Array<{ message: RegExp; pick?: RegExp }>
+): typeof vscode.window.showWarningMessage {
+    return ((message: any, ...args: any[]) => {
+        const text = typeof message === 'string' ? message : String(message ?? '');
+        let startIndex = 0;
+        if (args.length > 0 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
+            startIndex = 1;
+        }
+        const options = args.slice(startIndex).filter((item) => typeof item === 'string') as string[];
+        const rule = rules.find((entry) => entry.message.test(text));
+        if (!rule) {
+            const detail = options.length > 0 ? ` Options: ${options.join(', ')}` : '';
+            throw new Error(`Unexpected warning dialog during tests: ${text}${detail}`);
+        }
+        if (!rule.pick) {
+            return Promise.resolve(undefined as any);
+        }
+        const picked = options.find((option) => rule.pick!.test(option));
+        if (!picked) {
+            const detail = options.length > 0 ? ` Options: ${options.join(', ')}` : '';
+            throw new Error(`Expected warning option not found during tests: ${text}${detail}`);
+        }
+        return Promise.resolve(picked as any);
+    }) as typeof vscode.window.showWarningMessage;
+}
+
+function createUnexpectedWarningStub(): typeof vscode.window.showWarningMessage {
+    return ((message: any, ...args: any[]) => {
+        const text = typeof message === 'string' ? message : String(message ?? '');
+        let startIndex = 0;
+        if (args.length > 0 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
+            startIndex = 1;
+        }
+        const options = args.slice(startIndex).filter((item) => typeof item === 'string');
+        const detail = options.length > 0 ? ` Options: ${options.join(', ')}` : '';
+        throw new Error(`Unexpected warning dialog during tests: ${text}${detail}`);
     }) as typeof vscode.window.showWarningMessage;
 }
 
