@@ -183,6 +183,22 @@ async function collectZipHashes(zipPath: string) {
 suite('SecureZip Extension', function () {
     this.beforeEach(async () => {
         await resetConfiguration();
+        const windowOverrides = vscode.window as unknown as {
+            showWarningMessage: typeof vscode.window.showWarningMessage;
+        };
+        if (!originalShowWarningMessage) {
+            originalShowWarningMessage = windowOverrides.showWarningMessage;
+        }
+        windowOverrides.showWarningMessage = createUnexpectedWarningStub();
+    });
+    this.afterEach(() => {
+        if (!originalShowWarningMessage) {
+            return;
+        }
+        const windowOverrides = vscode.window as unknown as {
+            showWarningMessage: typeof vscode.window.showWarningMessage;
+        };
+        windowOverrides.showWarningMessage = originalShowWarningMessage;
     });
     test('exports expected contents for simple fixture project', async function () {
         this.timeout(30000);
@@ -267,7 +283,16 @@ suite('SecureZip Extension', function () {
         const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
         await fs.promises.appendFile(secureZipIgnorePath, '\n!/.git\n', 'utf8');
 
-        const { outPath, hashes } = await exportAndCollect('securezip-include-git.zip');
+        const { outPath, hashes } = await exportAndCollect('securezip-include-git.zip', {
+            showWarningMessage: createAllowedWarningStub([
+                {
+                    message: new RegExp(escapeRegExp(localize(
+                        'warning.gitIncluded',
+                        'Warning: The .git directory will be included in the export. Double-check before sharing.',
+                    )), 'i'),
+                },
+            ]),
+        });
         try {
             const expected = await loadExpectedHashes('simple-project', 'include-git');
             assert.deepStrictEqual(hashes, expected);
@@ -823,7 +848,20 @@ suite('SecureZip Extension', function () {
         const config = vscode.workspace.getConfiguration('secureZip');
         await config.update('tagging.mode', 'never', vscode.ConfigurationTarget.Workspace);
 
-        const { outPath } = await exportAndCollect('securezip-tagging-never.zip');
+        const { outPath } = await exportAndCollect('securezip-tagging-never.zip', {
+            showWarningMessage: createAllowedWarningStub([
+                {
+                    message: new RegExp(escapeRegExp(localize(
+                        'git.uncommittedWarning',
+                        'Uncommitted changes detected. Do you want to create an automatic commit before exporting?',
+                    )), 'i'),
+                    pick: new RegExp(escapeRegExp(localize(
+                        'git.skipOption',
+                        'Proceed without Git actions',
+                    )), 'i'),
+                },
+            ]),
+        });
 
         try {
             const tags = await git.tags();
@@ -1069,6 +1107,7 @@ async function ensureWorkspaceClean(root: string) {
     await Promise.all(
         entries.map((entry) => fs.promises.rm(path.join(normalizedRoot, entry), { recursive: true, force: true }))
     );
+    await fs.promises.mkdir(path.join(normalizedRoot, '.vscode'), { recursive: true });
 }
 
 async function initGitRepository(root: string): Promise<SimpleGit> {
@@ -1082,6 +1121,8 @@ async function initGitRepository(root: string): Promise<SimpleGit> {
     return git;
 }
 
+let originalShowWarningMessage: typeof vscode.window.showWarningMessage | undefined;
+
 function createAutoCommitWarningStub(messages: string[]): typeof vscode.window.showWarningMessage {
     return ((message: any, ...args: any[]) => {
         const text = typeof message === 'string' ? message : String(message);
@@ -1092,6 +1133,50 @@ function createAutoCommitWarningStub(messages: string[]): typeof vscode.window.s
         }
         const choice = args.slice(startIndex).find((item) => typeof item === 'string');
         return Promise.resolve(choice as any);
+    }) as typeof vscode.window.showWarningMessage;
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function createAllowedWarningStub(
+    rules: Array<{ message: RegExp; pick?: RegExp }>
+): typeof vscode.window.showWarningMessage {
+    return ((message: any, ...args: any[]) => {
+        const text = typeof message === 'string' ? message : String(message ?? '');
+        let startIndex = 0;
+        if (args.length > 0 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
+            startIndex = 1;
+        }
+        const options = args.slice(startIndex).filter((item) => typeof item === 'string') as string[];
+        const rule = rules.find((entry) => entry.message.test(text));
+        if (!rule) {
+            const detail = options.length > 0 ? ` Options: ${options.join(', ')}` : '';
+            throw new Error(`Unexpected warning dialog during tests: ${text}${detail}`);
+        }
+        if (!rule.pick) {
+            return Promise.resolve(undefined as any);
+        }
+        const picked = options.find((option) => rule.pick!.test(option));
+        if (!picked) {
+            const detail = options.length > 0 ? ` Options: ${options.join(', ')}` : '';
+            throw new Error(`Expected warning option not found during tests: ${text}${detail}`);
+        }
+        return Promise.resolve(picked as any);
+    }) as typeof vscode.window.showWarningMessage;
+}
+
+function createUnexpectedWarningStub(): typeof vscode.window.showWarningMessage {
+    return ((message: any, ...args: any[]) => {
+        const text = typeof message === 'string' ? message : String(message ?? '');
+        let startIndex = 0;
+        if (args.length > 0 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0])) {
+            startIndex = 1;
+        }
+        const options = args.slice(startIndex).filter((item) => typeof item === 'string');
+        const detail = options.length > 0 ? ` Options: ${options.join(', ')}` : '';
+        throw new Error(`Unexpected warning dialog during tests: ${text}${detail}`);
     }) as typeof vscode.window.showWarningMessage;
 }
 
