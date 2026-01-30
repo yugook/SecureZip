@@ -7,7 +7,7 @@
 
 **SecureZip** is a Visual Studio Code extension that lets you securely export your project as a clean ZIP archive.
 
-> Release 1.0.0 – stable export workflow with ignore tooling, auto-commit, and tagging.
+> Stable export workflow with ignore tooling, auto-commit, and tagging.
 
 ## ✨ Features
 - 📦 **Export to ZIP** – Create a ZIP of your project with one click.
@@ -130,7 +130,7 @@ SecureZip is distributed under the [MIT License](LICENSE).
 
 **SecureZip** は、プロジェクトを安全かつクリーンな ZIP アーカイブとしてエクスポートできる Visual Studio Code 拡張機能です。
 
-> リリース 1.0.0 – エクスポートの安定版フロー（ignore 対応、自動コミット、タグ付け）を提供します。
+> エクスポートの安定版フロー（ignore 対応、自動コミット、タグ付け）を提供します。
 
 ## ✨ 機能
 - 📦 **Export to ZIP** – プロジェクトをワンクリックで ZIP アーカイブとしてエクスポートします。
@@ -232,8 +232,7 @@ SecureZip は、ビルド時のデフォルトと実行時の上書きを組み�
 - VS Code Marketplace からインストール: [yugook.securezip](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
 - 最新 `.vsix` パッケージ: [GitHub Releases](https://github.com/yugook/SecureZip/releases/latest)
 
-## 📄 ライセンス
-SecureZip は [MIT License](LICENSE) で配布しています。
+## 🛠 開発者向けリソース
 - [コントリビュートガイド](CONTRIBUTING.md) – セットアップ、コーディング規約、PR チェックリスト。
 - [テストガイド](docs/testing.md) – 型チェック、lint、ユニット/インテグレーションテストの実行方法。
 - [リリース手順](docs/releasing.md) – プレビュー/安定版のブランチ戦略とバージョンルール。
@@ -241,3 +240,6 @@ SecureZip は [MIT License](LICENSE) で配布しています。
 - [ローカライズガイド](docs/localization.md) – 実行時・コントリビューション文字列への翻訳追加手順。
 - [SBOM 手順](docs/sbom.md) – `npm run sbom` の詳細と同梱される CycloneDX ファイルについて。
 - パッケージ前チェック: タグ/リリース前に `npm run package:verify` を実行して、VS Code エンジンの不整合で `vsce` が失敗しないか確認してください。
+
+## 📄 ライセンス
+SecureZip は [MIT License](LICENSE) で配布しています。
