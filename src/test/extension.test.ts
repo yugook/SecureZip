@@ -1069,6 +1069,7 @@ async function ensureWorkspaceClean(root: string) {
     await Promise.all(
         entries.map((entry) => fs.promises.rm(path.join(normalizedRoot, entry), { recursive: true, force: true }))
     );
+    await fs.promises.mkdir(path.join(normalizedRoot, '.vscode'), { recursive: true });
 }
 
 async function initGitRepository(root: string): Promise<SimpleGit> {
