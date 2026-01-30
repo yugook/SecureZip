@@ -2,7 +2,6 @@
 
 [![CodeQL](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml/badge.svg)](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml)
 [![CI](https://github.com/yugook/SecureZip/actions/workflows/ci.yml/badge.svg)](https://github.com/yugook/SecureZip/actions/workflows/ci.yml)
-[![Publish Release](https://github.com/yugook/SecureZip/actions/workflows/release.yml/badge.svg)](https://github.com/yugook/SecureZip/actions/workflows/release.yml)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/yugook.securezip?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
 
 **SecureZip** is a Visual Studio Code extension that lets you securely export your project as a clean ZIP archive.
@@ -110,7 +109,6 @@ Example `settings.json` override:
 
 ## 📥 Download
 - Install from the VS Code Marketplace: [yugook.securezip](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
-- Latest `.vsix` packages: [GitHub Releases](https://github.com/yugook/SecureZip/releases/latest)
 
 ## 🛠 Developer Resources
 - [Contributing guide](CONTRIBUTING.md) – setup, coding standards, and PR checklist.
@@ -230,7 +228,6 @@ SecureZip は、ビルド時のデフォルトと実行時の上書きを組み�
 
 ## 📥 ダウンロード
 - VS Code Marketplace からインストール: [yugook.securezip](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
-- 最新 `.vsix` パッケージ: [GitHub Releases](https://github.com/yugook/SecureZip/releases/latest)
 
 ## 🛠 開発者向けリソース
 - [コントリビュートガイド](CONTRIBUTING.md) – セットアップ、コーディング規約、PR チェックリスト。
