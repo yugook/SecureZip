@@ -7,10 +7,16 @@ const testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'securezip-test-'));
 const workspaceDir = path.join(testRoot, 'ws');
 const userDataDir = path.join(testRoot, 'user-data');
 const extensionsDir = path.join(testRoot, 'extensions');
+const vscodeDir = path.join(workspaceDir, '.vscode');
+const tasksFile = path.join(vscodeDir, 'tasks.json');
 
 fs.mkdirSync(workspaceDir, { recursive: true });
 fs.mkdirSync(userDataDir, { recursive: true });
 fs.mkdirSync(extensionsDir, { recursive: true });
+fs.mkdirSync(vscodeDir, { recursive: true });
+if (!fs.existsSync(tasksFile)) {
+    fs.writeFileSync(tasksFile, '{\n  "version": "2.0.0"\n}\n', 'utf8');
+}
 
 const launchArgs = [
     workspaceDir,
