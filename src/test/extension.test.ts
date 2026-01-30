@@ -286,7 +286,10 @@ suite('SecureZip Extension', function () {
         const { outPath, hashes } = await exportAndCollect('securezip-include-git.zip', {
             showWarningMessage: createAllowedWarningStub([
                 {
-                    message: /git directory will be included|\\.git ディレクトリがエクスポートに含まれ/i,
+                    message: new RegExp(escapeRegExp(localize(
+                        'warning.gitIncluded',
+                        'Warning: The .git directory will be included in the export. Double-check before sharing.',
+                    )), 'i'),
                 },
             ]),
         });
@@ -848,8 +851,14 @@ suite('SecureZip Extension', function () {
         const { outPath } = await exportAndCollect('securezip-tagging-never.zip', {
             showWarningMessage: createAllowedWarningStub([
                 {
-                    message: /Uncommitted changes detected|未コミットの変更/i,
-                    pick: /Proceed without Git actions|Git操作をスキップ/i,
+                    message: new RegExp(escapeRegExp(localize(
+                        'git.uncommittedWarning',
+                        'Uncommitted changes detected. Do you want to create an automatic commit before exporting?',
+                    )), 'i'),
+                    pick: new RegExp(escapeRegExp(localize(
+                        'git.skipOption',
+                        'Proceed without Git actions',
+                    )), 'i'),
                 },
             ]),
         });
@@ -1125,6 +1134,10 @@ function createAutoCommitWarningStub(messages: string[]): typeof vscode.window.s
         const choice = args.slice(startIndex).find((item) => typeof item === 'string');
         return Promise.resolve(choice as any);
     }) as typeof vscode.window.showWarningMessage;
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function createAllowedWarningStub(
