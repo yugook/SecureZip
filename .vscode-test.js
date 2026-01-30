@@ -22,6 +22,7 @@ const launchArgs = [
     workspaceDir,
     `--user-data-dir=${userDataDir}`,
     `--extensions-dir=${extensionsDir}`,
+    '--disable-extension=vscode.git',
     '--disable-gpu',
     '--disable-features=CalculateNativeWinOcclusion',
     '--disable-dev-shm-usage',
