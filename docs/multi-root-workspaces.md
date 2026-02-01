@@ -69,6 +69,9 @@ Notes:
   - Workspace ZIP.
 - If VS Code default is ambiguous (multiple selections), prompt for explicit
   target selection.
+- SecureZip view aligns with SCM multiple-repository behavior:
+  - When multiple Git repositories are present, display repo-level groups.
+  - Each group contains its own Guide / Actions / Preview / Recent sections.
 - Explorer context menu execution uses the clicked file/folder as the target
   for that invocation.
 
