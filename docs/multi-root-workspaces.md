@@ -67,11 +67,16 @@ Notes:
 - Export command prompts with:
   - VS Code default, or
   - Workspace ZIP.
+- If the workspace has a single folder, skip the export mode prompt and run the
+  default export flow.
+- Provide a dedicated command (`securezip.exportWorkspace`) that always exports
+  the entire workspace, even for single-folder workspaces.
 - If VS Code default is ambiguous (multiple selections), prompt for explicit
   target selection.
 - SecureZip view aligns with SCM multiple-repository behavior:
   - When multiple Git repositories are present, display repo-level groups.
   - Each group contains its own Guide / Actions / Preview / Recent sections.
+- Show the Workspace ZIP action only when the workspace has multiple folders.
 - Explorer context menu execution uses the clicked file/folder as the target
   for that invocation.
 
