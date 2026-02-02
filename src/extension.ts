@@ -224,6 +224,11 @@ export function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(statusBar);
 
         const updateStatusBar = async () => {
+            const workspaceCount = vscode.workspace.workspaceFolders?.length ?? 0;
+            if (workspaceCount <= 1) {
+                statusBar.text = '$(package) SecureZip';
+                return;
+            }
             const label = await getStatusBarTargetLabel();
             statusBar.text = `$(package) SecureZip - ${label}`;
         };
