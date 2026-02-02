@@ -11,9 +11,37 @@ import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } f
 import { registerIgnoreLanguageFeatures } from './ignoreLanguage';
 import { SecureZipViewProvider, ensureSecureZipIgnoreFile } from './view';
 import { localize } from './nls';
+import {
+    TargetGroup,
+    getDisplayName,
+    getWorkspaceRootLabel,
+    listWorkspaceFolders,
+    resolveDefaultTarget,
+    watchGitChanges,
+} from './targeting';
 
 type AutoCommitStageMode = 'tracked' | 'all';
 type TaggingMode = 'ask' | 'always' | 'never';
+type ExportMode = 'default' | 'workspace';
+
+type ExportCommandArgs = {
+    root?: string;
+    mode?: ExportMode;
+};
+
+type ExportTarget =
+    | { kind: 'single'; root: string; label: string }
+    | { kind: 'workspace'; roots: WorkspaceTarget[]; label: string };
+
+type WorkspaceTarget = {
+    root: string;
+    label: string;
+};
+
+type ZipEntry = {
+    absPath: string;
+    archivePath: string;
+};
 
 interface TagPlan {
     tagName?: string;
@@ -50,11 +78,11 @@ export function activate(context: vscode.ExtensionContext) {
     extensionContext = context;
     console.log('[SecureZip] activated.');
 
-    const disposable = vscode.commands.registerCommand('securezip.export', async () => {
+    const disposable = vscode.commands.registerCommand('securezip.export', async (args?: unknown) => {
         try {
             await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'SecureZip', cancellable: false }, async (progress) => {
                 progress.report({ message: localize('progress.preparing', 'Preparing...') });
-                await exportProject(progress);
+                await exportProject(progress, normalizeExportCommandArgs(args));
             });
         } catch (err: unknown) {
             console.error('[SecureZip] export failed', err);
@@ -106,18 +134,22 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    const openIgnore = vscode.commands.registerCommand('securezip.openIgnoreFile', async (target?: vscode.Uri) => {
-        const ws = vscode.workspace.workspaceFolders?.[0];
-        if (!ws) {
-            vscode.window.showErrorMessage(localize('error.workspaceMissing', 'No workspace folder is open.'));
+    const openIgnore = vscode.commands.registerCommand('securezip.openIgnoreFile', async (target?: unknown) => {
+        const targetUri = target instanceof vscode.Uri && target.scheme === 'file' ? target : undefined;
+        const overrideRoot = targetUri
+            ? (path.basename(targetUri.fsPath) === '.securezipignore' ? path.dirname(targetUri.fsPath) : targetUri.fsPath)
+            : normalizeRootOverride(target);
+        const root = overrideRoot ?? await resolveRootForCommand();
+        if (!root) {
+            const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
+            if (!hasWorkspace) {
+                vscode.window.showErrorMessage(localize('error.workspaceMissing', 'No workspace folder is open.'));
+            }
             return;
         }
-        const root = ws.uri.fsPath;
         try {
             await ensureSecureZipIgnoreFile(root);
-            const documentUri = target?.fsPath
-                ? target
-                : vscode.Uri.file(path.join(root, '.securezipignore'));
+            const documentUri = targetUri ?? vscode.Uri.file(path.join(root, '.securezipignore'));
             const doc = await vscode.workspace.openTextDocument(documentUri);
             await vscode.window.showTextDocument(doc, { preview: false });
             treeProvider?.refresh();
@@ -128,9 +160,12 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const createIgnore = vscode.commands.registerCommand('securezip.createIgnoreFile', async (rootOverride?: unknown) => {
-        const resolvedRoot = typeof rootOverride === 'string' ? rootOverride : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const resolvedRoot = normalizeRootOverride(rootOverride) ?? await resolveRootForCommand();
         if (!resolvedRoot) {
-            vscode.window.showErrorMessage(localize('error.workspaceMissing', 'No workspace folder is open.'));
+            const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
+            if (!hasWorkspace) {
+                vscode.window.showErrorMessage(localize('error.workspaceMissing', 'No workspace folder is open.'));
+            }
             return;
         }
 
@@ -171,11 +206,32 @@ export function activate(context: vscode.ExtensionContext) {
     // Status Bar button (bottom). Click to run export.
     if (flags.enableStatusBarButton) {
         const statusBar = vscode.window.createStatusBarItem('securezip.status', vscode.StatusBarAlignment.Right, 100);
-        statusBar.text = '$(package) SecureZip';
         statusBar.tooltip = localize('statusBar.tooltip', 'Export the project as a ZIP archive');
         statusBar.command = 'securezip.export';
         statusBar.show();
         context.subscriptions.push(statusBar);
+
+        const updateStatusBar = async () => {
+            const label = await getStatusBarTargetLabel();
+            statusBar.text = `$(package) SecureZip - ${label}`;
+        };
+
+        void updateStatusBar();
+        context.subscriptions.push(
+            vscode.window.onDidChangeActiveTextEditor(() => {
+                void updateStatusBar();
+            }),
+            vscode.workspace.onDidChangeWorkspaceFolders(() => {
+                void updateStatusBar();
+            }),
+        );
+        void watchGitChanges(() => {
+            void updateStatusBar();
+        }).then((disposable) => {
+            if (disposable) {
+                context.subscriptions.push(disposable);
+            }
+        });
     }
 
     treeProvider = new SecureZipViewProvider(context);
@@ -200,17 +256,167 @@ export function deactivate() {}
 let extensionContext: vscode.ExtensionContext | undefined;
 let treeProvider: SecureZipViewProvider | undefined;
 
-async function exportProject(progress: vscode.Progress<{ message?: string }>) {
-    const ws = vscode.workspace.workspaceFolders?.[0];
-    if (!ws) {
-        throw new Error(localize('error.workspaceMissing', 'No workspace folder is open.'));
+async function exportProject(
+    progress: vscode.Progress<{ message?: string }>,
+    args?: ExportCommandArgs,
+) {
+    const exportMode = args?.mode ?? await promptExportMode(args?.root);
+    if (!exportMode) {
+        return;
     }
-    const root = ws.uri.fsPath;
 
-    const cfg = vscode.workspace.getConfiguration('secureZip');
+    if (exportMode === 'workspace') {
+        await exportWorkspaceZip(progress);
+        return;
+    }
+
+    const target = await resolveSingleTarget(args?.root);
+    if (!target) {
+        return;
+    }
+    if (target.kind === 'workspace') {
+        await exportWorkspaceZip(progress);
+        return;
+    }
+
+    await exportSingleRoot(target.root, target.label, progress);
+}
+
+function normalizeExportCommandArgs(args: unknown): ExportCommandArgs | undefined {
+    if (!args) {
+        return undefined;
+    }
+    if (typeof args === 'string') {
+        return { root: args };
+    }
+    if (args instanceof vscode.Uri) {
+        return { root: args.fsPath };
+    }
+    if (typeof args === 'object') {
+        const input = args as { root?: unknown; mode?: unknown };
+        const root = input.root instanceof vscode.Uri
+            ? input.root.fsPath
+            : typeof input.root === 'string'
+                ? input.root
+                : undefined;
+        const mode = input.mode === 'default' || input.mode === 'workspace' ? input.mode : undefined;
+        return { root, mode };
+    }
+    return undefined;
+}
+
+async function promptExportMode(preferredRoot?: string): Promise<ExportMode | undefined> {
+    type ExportModePick = vscode.QuickPickItem & { value: ExportMode };
+    const defaultLabel = localize('export.mode.default', 'VS Code default');
+    const workspaceLabel = localize('export.mode.workspace', 'Workspace (all folders)');
+    const defaultDescription = preferredRoot
+        ? localize('export.mode.default.description', 'Use {0}', getDisplayName(preferredRoot))
+        : localize('export.mode.default.description.auto', 'Follow VS Code selection');
+    const workspaceDescription = localize('export.mode.workspace.description', 'Combine all workspace folders into one ZIP');
+
+    const selection = await vscode.window.showQuickPick<ExportModePick>(
+        [
+            { label: defaultLabel, description: defaultDescription, value: 'default' },
+            { label: workspaceLabel, description: workspaceDescription, value: 'workspace' },
+        ],
+        {
+            placeHolder: localize('export.mode.prompt', 'Choose export target'),
+        },
+    );
+    return selection?.value;
+}
+
+async function resolveSingleTarget(preferredRoot?: string): Promise<ExportTarget | undefined> {
+    if (preferredRoot) {
+        return { kind: 'single', root: preferredRoot, label: getDisplayName(preferredRoot) };
+    }
+
+    const resolved = await resolveDefaultTarget();
+    if (resolved.kind === 'repo' || resolved.kind === 'folder') {
+        return { kind: 'single', root: resolved.root, label: resolved.label };
+    }
+
+    if (resolved.kind === 'ambiguous') {
+        return promptForRepositoryChoice(resolved.candidates);
+    }
+
+    vscode.window.showErrorMessage(localize('error.workspaceMissing', 'No workspace folder is open.'));
+    return undefined;
+}
+
+async function promptForRepositoryChoice(candidates: TargetGroup[]): Promise<ExportTarget | undefined> {
+    if (candidates.length === 0) {
+        return undefined;
+    }
+
+    type RepoPick = vscode.QuickPickItem & { value: 'workspace' | 'root'; root?: string };
+    const picks: RepoPick[] = [];
+    const workspaceTargets = buildWorkspaceTargets();
+    if (workspaceTargets.length > 0) {
+        picks.push({
+            label: localize('export.selectRepository.workspace', 'Workspace ZIP'),
+            description: localize('export.selectRepository.workspace.description', 'Export all workspace folders'),
+            value: 'workspace',
+        });
+    }
+
+    for (const candidate of candidates) {
+        picks.push({
+            label: candidate.label,
+            description: candidate.root,
+            value: 'root',
+            root: candidate.root,
+        });
+    }
+
+    const selection = await vscode.window.showQuickPick(picks, {
+        placeHolder: localize('export.selectRepository.prompt', 'Select a repository to export'),
+    });
+    if (!selection) {
+        return undefined;
+    }
+    if (selection.value === 'workspace') {
+        return {
+            kind: 'workspace',
+            roots: workspaceTargets,
+            label: getWorkspaceRootLabel(),
+        };
+    }
+    if (!selection.root) {
+        return undefined;
+    }
+    return { kind: 'single', root: selection.root, label: getDisplayName(selection.root) };
+}
+
+function buildWorkspaceTargets(): WorkspaceTarget[] {
+    const folders = listWorkspaceFolders();
+    const counts = new Map<string, number>();
+    for (const folder of folders) {
+        counts.set(folder.label, (counts.get(folder.label) ?? 0) + 1);
+    }
+    const used = new Map<string, number>();
+    return folders.map((folder) => {
+        const total = counts.get(folder.label) ?? 0;
+        if (total <= 1) {
+            return { root: folder.root, label: folder.label };
+        }
+        const index = (used.get(folder.label) ?? 0) + 1;
+        used.set(folder.label, index);
+        const suffix = index === 1 ? '' : `-${index}`;
+        return { root: folder.root, label: `${folder.label}${suffix}` };
+    });
+}
+
+async function exportSingleRoot(
+    root: string,
+    label: string,
+    progress: vscode.Progress<{ message?: string }>,
+) {
+    const cfg = vscode.workspace.getConfiguration('secureZip', vscode.Uri.file(root));
     const tagPrefix = (cfg.get<string>('tagPrefix') || 'export').trim();
     const taggingMode = normalizeTaggingMode(cfg.get<string>('tagging.mode'));
-    const commitTemplate = cfg.get<string>('commitMessageTemplate') || '[SecureZip] Automated commit for export: ${date} ${time} (Branch: ${branch}, Tag: ${tag})';
+    const commitTemplate = cfg.get<string>('commitMessageTemplate')
+        || '[SecureZip] Automated commit for export: ${date} ${time} (Branch: ${branch}, Tag: ${tag})';
     const additionalExcludes = cfg.get<string[]>('additionalExcludes') || [];
     const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
     const stageModeSetting = cfg.get<AutoCommitStageMode>('autoCommit.stageMode');
@@ -222,7 +428,7 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     const emptyTagPlan: TagPlan = { tagName: undefined, shouldCreate: false };
     let tagPlan: TagPlan | null = taggingMode === 'never' ? emptyTagPlan : null;
 
-    // Git operations
+    // Git operations (single-root only)
     const git: SimpleGit = simpleGit({ baseDir: root });
     let branch = 'unknown';
     try {
@@ -440,39 +646,21 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         console.warn('[SecureZip] Git unavailable or failed, continue without Git ops', e);
     }
 
-    // Save target selection
-    const defaultName = `${path.basename(root)}-${fmt.compact}.zip`;
+    const defaultName = `${label}-${fmt.compact}.zip`;
     const targetUri = await vscode.window.showSaveDialog({
         defaultUri: vscode.Uri.file(path.join(root, defaultName)),
         filters: { 'ZIP Archive': ['zip'] },
-        saveLabel: localize('saveDialog.label', 'Export')
+        saveLabel: localize('saveDialog.label', 'Export'),
     });
     if (!targetUri) {
-        return; // user cancelled
+        return;
     }
 
-    // Files to include
     progress.report({ message: localize('progress.collectingFiles', 'Collecting files...') });
-    const { globby } = await import('globby');
-    const ignoreDefaults = resolveAutoExcludePatterns({ includeNodeModules });
+    const collection = await collectFilesForRoot(root, { additionalExcludes, includeNodeModules });
+    void treeProvider?.recordLastExport(root, collection.ignoreSnapshot);
 
-    // Load .securezipignore (root-level). Negated patterns are treated as re-includes after base filtering.
-    const szIgnore = await loadSecureZipIgnore(root);
-    const ignoreSnapshot = [
-        ...szIgnore.excludes,
-        ...szIgnore.includes.map((pattern) => `!${pattern}`),
-    ];
-    void treeProvider?.recordLastExport(ignoreSnapshot);
-    const includePatternSet = new Set(szIgnore.includes);
-    const hasGitRootInclude = includePatternSet.has('.git');
-    if (hasGitRootInclude) {
-        includePatternSet.add('.git/**');
-    }
-    const reincludePatterns = Array.from(includePatternSet);
-    const gitOverride = reincludePatterns.some(
-        (pattern) => pattern === '.git' || pattern === '.git/**' || pattern.startsWith('.git/'),
-    );
-    if (gitOverride) {
+    if (collection.gitOverride) {
         void vscode.window.showWarningMessage(
             localize(
                 'warning.gitIncluded',
@@ -481,8 +669,100 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         );
     }
 
+    if (collection.files.length === 0) {
+        throw new Error(localize('error.noFilesToArchive', 'No files were found to include in the archive.'));
+    }
+
+    const entries = collection.files.map((file) => ({
+        absPath: file,
+        archivePath: toArchivePath(path.relative(root, file)),
+    }));
+
+    progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
+    await createZipEntries(entries, targetUri.fsPath);
+
+    vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
+}
+
+async function exportWorkspaceZip(progress: vscode.Progress<{ message?: string }>) {
+    const targets = buildWorkspaceTargets();
+    if (targets.length === 0) {
+        throw new Error(localize('error.workspaceMissing', 'No workspace folder is open.'));
+    }
+
+    const now = new Date();
+    const fmt = formatDate(now);
+    const workspaceLabel = getWorkspaceRootLabel();
+    const defaultName = `${workspaceLabel}-${fmt.compact}.zip`;
+    const targetRoot = targets[0].root;
+    const targetUri = await vscode.window.showSaveDialog({
+        defaultUri: vscode.Uri.file(path.join(targetRoot, defaultName)),
+        filters: { 'ZIP Archive': ['zip'] },
+        saveLabel: localize('saveDialog.label', 'Export'),
+    });
+    if (!targetUri) {
+        return;
+    }
+
+    progress.report({ message: localize('progress.collectingFiles', 'Collecting files...') });
+    const entries: ZipEntry[] = [];
+
+    for (const target of targets) {
+        const cfg = vscode.workspace.getConfiguration('secureZip', vscode.Uri.file(target.root));
+        const additionalExcludes = cfg.get<string[]>('additionalExcludes') || [];
+        const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
+        const collection = await collectFilesForRoot(target.root, { additionalExcludes, includeNodeModules });
+        void treeProvider?.recordLastExport(target.root, collection.ignoreSnapshot);
+
+        if (collection.gitOverride) {
+            void vscode.window.showWarningMessage(
+                localize(
+                    'warning.gitIncluded',
+                    'Warning: The .git directory will be included in the export. Double-check before sharing.',
+                ),
+            );
+        }
+
+        for (const file of collection.files) {
+            const rel = toArchivePath(path.relative(target.root, file));
+            const archivePath = toArchivePath(path.posix.join(target.label, rel));
+            entries.push({ absPath: file, archivePath });
+        }
+    }
+
+    if (entries.length === 0) {
+        throw new Error(localize('error.noFilesToArchive', 'No files were found to include in the archive.'));
+    }
+
+    progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
+    await createZipEntries(entries, targetUri.fsPath);
+
+    vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
+}
+
+async function collectFilesForRoot(
+    root: string,
+    options: { additionalExcludes: string[]; includeNodeModules: boolean },
+): Promise<{ files: string[]; ignoreSnapshot: string[]; gitOverride: boolean }> {
+    const { globby } = await import('globby');
+    const ignoreDefaults = resolveAutoExcludePatterns({ includeNodeModules: options.includeNodeModules });
+    const szIgnore = await loadSecureZipIgnore(root);
+    const ignoreSnapshot = [
+        ...szIgnore.excludes,
+        ...szIgnore.includes.map((pattern) => `!${pattern}`),
+    ];
+
+    const includePatternSet = new Set(szIgnore.includes);
+    if (includePatternSet.has('.git')) {
+        includePatternSet.add('.git/**');
+    }
+    const reincludePatterns = Array.from(includePatternSet);
+    const gitOverride = reincludePatterns.some(
+        (pattern) => pattern === '.git' || pattern === '.git/**' || pattern.startsWith('.git/'),
+    );
+
     const patterns = ['**/*', '**/.*'];
-    const baseIgnore = [...ignoreDefaults, ...additionalExcludes, ...szIgnore.excludes];
+    const baseIgnore = [...ignoreDefaults, ...options.additionalExcludes, ...szIgnore.excludes];
     const baseFiles = await globby(patterns, {
         cwd: root,
         dot: true,
@@ -494,9 +774,8 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     });
 
     const fileSet = new Set<string>(baseFiles);
-    let hasFiles = baseFiles.length > 0;
 
-    if (includeNodeModules) {
+    if (options.includeNodeModules) {
         const nodeModuleFiles = await globby(['node_modules/**'], {
             cwd: root,
             dot: true,
@@ -509,22 +788,13 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         for (const file of nodeModuleFiles) {
             fileSet.add(file);
         }
-        if (!hasFiles && nodeModuleFiles.length > 0) {
-            hasFiles = true;
-        }
     }
 
-    if (!hasFiles) {
-        throw new Error(localize('error.noFilesToArchive', 'No files were found to include in the archive.'));
-    }
-
-    // Re-include patterns from .securezipignore (does not override .gitignore or hard ignores like .git/**)
     if (reincludePatterns.length > 0) {
         const reincluded = await globby(reincludePatterns, {
             cwd: root,
             dot: true,
             gitignore: true,
-            // Allow explicit !patterns to override SecureZip defaults and additional excludes
             ignore: [],
             onlyFiles: true,
             followSymbolicLinks: false,
@@ -535,13 +805,71 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
         }
     }
 
-    const finalFiles = Array.from(fileSet.values());
+    return { files: Array.from(fileSet.values()), ignoreSnapshot, gitOverride };
+}
 
-    // Create ZIP
-    progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
-    await createZip(root, finalFiles, targetUri.fsPath);
+function toArchivePath(relative: string): string {
+    return relative.replace(/\\+/g, '/');
+}
 
-    vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
+async function getStatusBarTargetLabel(): Promise<string> {
+    const resolved = await resolveDefaultTarget();
+    if (resolved.kind === 'repo' || resolved.kind === 'folder') {
+        return localize('statusBar.target.default', 'Auto: {0}', resolved.label);
+    }
+    if (resolved.kind === 'ambiguous') {
+        return localize('statusBar.target.ambiguous', 'Select target');
+    }
+    return localize('statusBar.target.none', 'No workspace');
+}
+
+function normalizeRootOverride(value: unknown): string | undefined {
+    if (!value) {
+        return undefined;
+    }
+    if (typeof value === 'string') {
+        return value;
+    }
+    if (value instanceof vscode.Uri) {
+        return value.fsPath;
+    }
+    if (typeof value === 'object') {
+        const input = value as { root?: unknown };
+        if (typeof input.root === 'string') {
+            return input.root;
+        }
+        if (input.root instanceof vscode.Uri) {
+            return input.root.fsPath;
+        }
+    }
+    return undefined;
+}
+
+async function resolveRootForCommand(): Promise<string | undefined> {
+    const resolved = await resolveDefaultTarget();
+    if (resolved.kind === 'repo' || resolved.kind === 'folder') {
+        return resolved.root;
+    }
+    if (resolved.kind === 'ambiguous') {
+        return promptForRootSelection(resolved.candidates);
+    }
+    return undefined;
+}
+
+async function promptForRootSelection(candidates: TargetGroup[]): Promise<string | undefined> {
+    if (candidates.length === 0) {
+        return undefined;
+    }
+    type RootPick = vscode.QuickPickItem & { root: string };
+    const picks: RootPick[] = candidates.map((candidate) => ({
+        label: candidate.label,
+        description: candidate.root,
+        root: candidate.root,
+    }));
+    const selection = await vscode.window.showQuickPick(picks, {
+        placeHolder: localize('prompt.selectTargetRoot', 'Select a target folder'),
+    });
+    return selection?.root;
 }
 
 async function handleAddToIgnore(target?: vscode.Uri) {
@@ -666,12 +994,14 @@ async function handleAddToIgnore(target?: vscode.Uri) {
 async function applyIgnorePatterns(patterns: string[], rootOverride?: string): Promise<AddPatternResult | undefined> {
     let targetRoot = rootOverride;
     if (!targetRoot) {
-        const ws = vscode.workspace.workspaceFolders?.[0];
-        if (!ws) {
-            vscode.window.showErrorMessage(localize('error.workspaceMissing', 'No workspace folder is open.'));
+        targetRoot = await resolveRootForCommand();
+        if (!targetRoot) {
+            const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
+            if (!hasWorkspace) {
+                vscode.window.showErrorMessage(localize('error.workspaceMissing', 'No workspace folder is open.'));
+            }
             return undefined;
         }
-        targetRoot = ws.uri.fsPath;
     }
 
     const result = await addPatternsToSecureZipIgnore(targetRoot, patterns);
@@ -721,7 +1051,7 @@ function formatDate(d: Date) {
     };
 }
 
-async function createZip(root: string, files: string[], outFile: string) {
+async function createZipEntries(entries: ZipEntry[], outFile: string) {
     await fs.promises.mkdir(path.dirname(outFile), { recursive: true });
 
     const output = fs.createWriteStream(outFile);
@@ -739,9 +1069,8 @@ async function createZip(root: string, files: string[], outFile: string) {
 
     archive.pipe(output);
 
-    for (const abs of files) {
-        const rel = path.relative(root, abs);
-        archive.file(abs, { name: rel });
+    for (const entry of entries) {
+        archive.file(entry.absPath, { name: entry.archivePath });
     }
 
     await archive.finalize();
