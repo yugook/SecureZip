@@ -1287,13 +1287,32 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                     arguments: [{ root }],
                 },
             }),
+        ];
+
+        const showWorkspaceExport = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
+        if (showWorkspaceExport) {
+            items.push(
+                new SecureZipTreeItem({
+                    kind: 'action',
+                    label: localize('actions.exportWorkspace.label', 'Export Workspace ZIP'),
+                    description: localize('actions.exportWorkspace.description', 'Combine all workspace folders'),
+                    icon: 'files',
+                    command: {
+                        command: 'securezip.exportWorkspace',
+                        title: 'SecureZip: Export Workspace ZIP',
+                    },
+                }),
+            );
+        }
+
+        items.push(
             new SecureZipTreeItem({
                 kind: 'action',
                 label: localize('actions.openIgnore.label', 'Open .securezipignore'),
                 command: openIgnoreCommand,
                 description: localize('actions.openIgnore.description', 'Edit the file in the editor'),
             }),
-        ];
+        );
 
         return items;
     }

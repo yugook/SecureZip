@@ -17,6 +17,7 @@
   ],
   "activationEvents": [
     "onCommand:securezip.export",
+    "onCommand:securezip.exportWorkspace",
     "onCommand:securezip.addToIgnore",
     "onCommand:securezip.addPattern",
     "onCommand:securezip.openIgnoreFile",
@@ -31,6 +32,10 @@
       {
         "command": "securezip.export",
         "title": "%command.export.title%"
+      },
+      {
+        "command": "securezip.exportWorkspace",
+        "title": "%command.exportWorkspace.title%"
       },
       {
         "command": "securezip.addToIgnore",

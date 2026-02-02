@@ -90,6 +90,18 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    const exportWorkspace = vscode.commands.registerCommand('securezip.exportWorkspace', async () => {
+        try {
+            await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'SecureZip', cancellable: false }, async (progress) => {
+                progress.report({ message: localize('progress.preparing', 'Preparing...') });
+                await exportProject(progress, { mode: 'workspace' });
+            });
+        } catch (err: unknown) {
+            console.error('[SecureZip] export workspace failed', err);
+            vscode.window.showErrorMessage(localize('error.exportFailed', 'SecureZip failed: {0}', toErrorMessage(err)));
+        }
+    });
+
     const addToIgnore = vscode.commands.registerCommand('securezip.addToIgnore', async (target?: vscode.Uri) => {
         try {
             await handleAddToIgnore(target);
@@ -240,6 +252,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         disposable,
+        exportWorkspace,
         addToIgnore,
         addPattern,
         applySuggested,
@@ -260,9 +273,17 @@ async function exportProject(
     progress: vscode.Progress<{ message?: string }>,
     args?: ExportCommandArgs,
 ) {
-    const exportMode = args?.mode ?? await promptExportMode(args?.root);
+    const workspaceCount = vscode.workspace.workspaceFolders?.length ?? 0;
+    let exportMode = args?.mode;
     if (!exportMode) {
-        return;
+        if (args?.root || workspaceCount <= 1) {
+            exportMode = 'default';
+        } else {
+            exportMode = await promptExportMode();
+            if (!exportMode) {
+                return;
+            }
+        }
     }
 
     if (exportMode === 'workspace') {
@@ -305,13 +326,11 @@ function normalizeExportCommandArgs(args: unknown): ExportCommandArgs | undefine
     return undefined;
 }
 
-async function promptExportMode(preferredRoot?: string): Promise<ExportMode | undefined> {
+async function promptExportMode(): Promise<ExportMode | undefined> {
     type ExportModePick = vscode.QuickPickItem & { value: ExportMode };
     const defaultLabel = localize('export.mode.default', 'VS Code default');
     const workspaceLabel = localize('export.mode.workspace', 'Workspace (all folders)');
-    const defaultDescription = preferredRoot
-        ? localize('export.mode.default.description', 'Use {0}', getDisplayName(preferredRoot))
-        : localize('export.mode.default.description.auto', 'Follow VS Code selection');
+    const defaultDescription = localize('export.mode.default.description.auto', 'Follow VS Code selection');
     const workspaceDescription = localize('export.mode.workspace.description', 'Combine all workspace folders into one ZIP');
 
     const selection = await vscode.window.showQuickPick<ExportModePick>(
