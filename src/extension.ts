@@ -8,10 +8,34 @@ import simpleGit, { SimpleGit } from 'simple-git';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { resolveFlags } from './flags';
 import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } from './ignore';
+import { registerIgnoreLanguageFeatures } from './ignoreLanguage';
 import { SecureZipViewProvider, ensureSecureZipIgnoreFile } from './view';
 import { localize } from './nls';
 
 type AutoCommitStageMode = 'tracked' | 'all';
+type TaggingMode = 'ask' | 'always' | 'never';
+
+interface TagPlan {
+    tagName?: string;
+    shouldCreate: boolean;
+}
+
+function normalizeTaggingMode(value?: string): TaggingMode {
+    if (value === 'always' || value === 'never') {
+        return value;
+    }
+    return 'ask';
+}
+
+function suggestTagName(base: string, existing: Set<string>): string {
+    let counter = 1;
+    let candidate = `${base}-${counter}`;
+    while (existing.has(candidate)) {
+        counter += 1;
+        candidate = `${base}-${counter}`;
+    }
+    return candidate;
+}
 
 function toErrorMessage(err: unknown): string {
     if (err instanceof Error && err.message) {
@@ -133,6 +157,8 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    registerIgnoreLanguageFeatures(context);
+
     // Feature flags (build-time + settings), then gate the status bar button
     const cfg = vscode.workspace.getConfiguration('secureZip');
     const settingsFlags = {
@@ -183,6 +209,7 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
 
     const cfg = vscode.workspace.getConfiguration('secureZip');
     const tagPrefix = (cfg.get<string>('tagPrefix') || 'export').trim();
+    const taggingMode = normalizeTaggingMode(cfg.get<string>('tagging.mode'));
     const commitTemplate = cfg.get<string>('commitMessageTemplate') || '[SecureZip] Automated commit for export: ${date} ${time} (Branch: ${branch}, Tag: ${tag})';
     const additionalExcludes = cfg.get<string[]>('additionalExcludes') || [];
     const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
@@ -191,7 +218,9 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
 
     const now = new Date();
     const fmt = formatDate(now);
-    const tag = `${tagPrefix}-${fmt.compact}`; // e.g., export-20250102-153012
+    const defaultTag = `${tagPrefix}-${fmt.compact}`; // e.g., export-20250102-153012
+    const emptyTagPlan: TagPlan = { tagName: undefined, shouldCreate: false };
+    let tagPlan: TagPlan | null = taggingMode === 'never' ? emptyTagPlan : null;
 
     // Git operations
     const git: SimpleGit = simpleGit({ baseDir: root });
@@ -199,6 +228,112 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
     try {
         const isRepo = await git.checkIsRepo();
         if (isRepo) {
+            const promptForTagSelection = async (): Promise<string | undefined> => {
+                type TaggingPick = vscode.QuickPickItem & { value: 'default' | 'custom' | 'skip' };
+                const TAG_OPTION_DEFAULT = localize('git.taggingOption.default', 'Create default tag');
+                const TAG_OPTION_CUSTOM = localize('git.taggingOption.custom', 'Create custom tag');
+                const TAG_OPTION_SKIP = localize('git.taggingOption.skip', 'Skip tagging');
+                const selection = await vscode.window.showQuickPick<TaggingPick>(
+                    [
+                        {
+                            label: TAG_OPTION_DEFAULT,
+                            description: localize('git.taggingOption.defaultDescription', 'Use {0}', defaultTag),
+                            value: 'default',
+                        },
+                        {
+                            label: TAG_OPTION_CUSTOM,
+                            description: localize('git.taggingOption.customDescription', 'Enter a tag name'),
+                            value: 'custom',
+                        },
+                        {
+                            label: TAG_OPTION_SKIP,
+                            description: localize('git.taggingOption.skipDescription', 'Continue without tagging'),
+                            value: 'skip',
+                        },
+                    ],
+                    {
+                        placeHolder: localize('git.taggingPrompt', 'Choose how to tag this export'),
+                    },
+                );
+                if (!selection || selection.value === 'skip') {
+                    return undefined;
+                }
+                if (selection.value === 'custom') {
+                    const customTag = await vscode.window.showInputBox({
+                        prompt: localize('git.taggingInputPrompt', 'Enter a tag name for this export'),
+                        placeHolder: localize('git.taggingInputPlaceholder', 'e.g. {0}', defaultTag),
+                        value: defaultTag,
+                        validateInput: (value) => {
+                            if (!value || !value.trim()) {
+                                return localize('validation.tagRequired', 'Tag name is required.');
+                            }
+                            return undefined;
+                        },
+                    });
+                    if (!customTag || !customTag.trim()) {
+                        return undefined;
+                    }
+                    return customTag.trim();
+                }
+                return defaultTag;
+            };
+
+            const resolveTagConflict = async (desiredTag: string): Promise<TagPlan> => {
+                try {
+                    const tags = await git.tags();
+                    const existing = new Set(tags.all);
+                    if (existing.has(desiredTag)) {
+                        const suggestedTag = suggestTagName(desiredTag, existing);
+                        const USE_EXISTING_OPTION = localize('git.tagConflict.useExisting', 'Use existing tag');
+                        const CREATE_NEW_OPTION = localize('git.tagConflict.createNew', 'Create new tag ({0})', suggestedTag);
+                        const SKIP_OPTION = localize('git.tagConflict.skip', 'Skip tagging');
+                        const conflictChoice = await vscode.window.showWarningMessage(
+                            localize('git.tagConflictMessage', 'Tag "{0}" already exists. What would you like to do?', desiredTag),
+                            { modal: true },
+                            USE_EXISTING_OPTION,
+                            CREATE_NEW_OPTION,
+                            SKIP_OPTION,
+                        );
+                        if (conflictChoice === USE_EXISTING_OPTION) {
+                            return { tagName: desiredTag, shouldCreate: false };
+                        }
+                        if (conflictChoice === CREATE_NEW_OPTION) {
+                            return { tagName: suggestedTag, shouldCreate: true };
+                        }
+                        return emptyTagPlan;
+                    }
+                } catch (e) {
+                    console.warn('[SecureZip] tag lookup failed, proceed without conflict check', e);
+                }
+                return { tagName: desiredTag, shouldCreate: true };
+            };
+
+            const resolveTagPlan = async (): Promise<TagPlan> => {
+                if (taggingMode === 'never') {
+                    return emptyTagPlan;
+                }
+
+                let desiredTag: string | undefined = defaultTag;
+
+                if (taggingMode === 'ask') {
+                    desiredTag = await promptForTagSelection();
+                }
+
+                if (!desiredTag) {
+                    return emptyTagPlan;
+                }
+
+                return resolveTagConflict(desiredTag);
+            };
+
+            const getTagPlan = async (): Promise<TagPlan> => {
+                if (tagPlan) {
+                    return tagPlan;
+                }
+                tagPlan = await resolveTagPlan();
+                return tagPlan;
+            };
+
             const status = await git.status();
             branch = status.current || branch;
 
@@ -224,12 +359,13 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
                     ? `${localize('git.autoCommitDetail.heading', 'Auto Commit details:')}\n- ${detailLines.join('\n- ')}`
                     : '';
                 const warningMessage = detailBlock ? `${baseWarning}\n\n${detailBlock}` : baseWarning;
+                const options = taggingMode === 'never'
+                    ? [AUTO_COMMIT_OPTION, SKIP_GIT_OPTION]
+                    : [AUTO_COMMIT_OPTION, TAG_ONLY_OPTION, SKIP_GIT_OPTION];
                 const choice = await vscode.window.showWarningMessage(
                     warningMessage,
                     { modal: true },
-                    AUTO_COMMIT_OPTION,
-                    TAG_ONLY_OPTION,
-                    SKIP_GIT_OPTION,
+                    ...options,
                 );
 
                 if (!choice) {
@@ -268,12 +404,13 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
                             : localize('warning.noChangesToCommit', 'No staged changes were found. Only modifications to tracked files are staged automatically (change the Auto Commit stage mode setting to include untracked files).');
                         vscode.window.showWarningMessage(noChangesMessage);
                     } else {
+                        const resolvedTagPlan = await getTagPlan();
                         const commitMessage = renderTemplate(commitTemplate, {
                             date: fmt.date,
                             time: fmt.time,
                             datetime: fmt.datetime,
                             branch,
-                            tag,
+                            tag: resolvedTagPlan.tagName ?? 'none',
                         });
                         await git.commit(commitMessage);
                         allowTagging = true;
@@ -285,12 +422,15 @@ async function exportProject(progress: vscode.Progress<{ message?: string }>) {
             }
 
             if (allowTagging) {
-                progress.report({ message: localize('progress.gitTagging', 'Git: creating export tag...') });
-                try {
-                    await git.addAnnotatedTag(tag, localize('git.tagAnnotation', 'SecureZip export: {0}', fmt.datetime));
-                } catch (e) {
-                    console.warn('[SecureZip] tag failed, continue without tag', e);
-                    vscode.window.showWarningMessage(localize('warning.tagFailed', 'Failed to create tag. Continuing without tagging.'));
+                const resolvedTagPlan = await getTagPlan();
+                if (resolvedTagPlan.tagName && resolvedTagPlan.shouldCreate) {
+                    progress.report({ message: localize('progress.gitTagging', 'Git: creating export tag...') });
+                    try {
+                        await git.addAnnotatedTag(resolvedTagPlan.tagName, localize('git.tagAnnotation', 'SecureZip export: {0}', fmt.datetime));
+                    } catch (e) {
+                        console.warn('[SecureZip] tag failed, continue without tag', e);
+                        vscode.window.showWarningMessage(localize('warning.tagFailed', 'Failed to create tag. Continuing without tagging.'));
+                    }
                 }
             } else {
                 console.log('[SecureZip] skip tagging because working tree remains dirty');

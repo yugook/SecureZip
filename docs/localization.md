@@ -23,7 +23,7 @@ VS Code contributions (commands, menus, settings) are localized via
 1. Add the key/value to `package.nls.json` (English). The key matches the
    placeholder used in `package.json`, e.g. `%command.export.title%`.
 2. Provide translations in `package.nls.ja.json`.
-3. Run `npm run lint` to ensure JSON formatting is valid.
+3. Validate the JSON (VS Code will flag invalid JSON, or use a JSON validator).
 
 ## Testing localization
 
