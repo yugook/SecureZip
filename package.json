@@ -3,7 +3,7 @@
   "displayName": "SecureZip",
   "description": "Securely export your project as a clean ZIP.",
   "publisher": "yugook",
-  "version": "1.1.3",
+  "version": "1.1.6",
   "icon": "resources/securezip.png",
   "repository": {
     "type": "git",
@@ -127,6 +127,21 @@
           "default": "export",
           "description": "%config.tagPrefix.description%"
         },
+        "secureZip.tagging.mode": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "always",
+            "never"
+          ],
+          "enumDescriptions": [
+            "%config.tagging.mode.enum.ask%",
+            "%config.tagging.mode.enum.always%",
+            "%config.tagging.mode.enum.never%"
+          ],
+          "default": "ask",
+          "description": "%config.tagging.mode.description%"
+        },
         "secureZip.additionalExcludes": {
           "type": "array",
           "items": {
@@ -173,8 +188,8 @@
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "test:unit": "npm run compile-tests && npx mocha out/test/flags.test.js out/test/ignore.test.js out/test/previewAutoExclude.test.js",
-    "coverage:unit": "npm run compile-tests && npx c8 --reporter=lcov --reporter=text-summary --all --include src --exclude 'src/test/**' --exclude 'dist/**' npx mocha out/test/flags.test.js out/test/ignore.test.js out/test/previewAutoExclude.test.js",
+    "test:unit": "npm run compile-tests && npx mocha out/test/flags.test.js out/test/ignore.test.js out/test/ignoreHoverRules.test.js out/test/previewAutoExclude.test.js",
+    "coverage:unit": "npm run compile-tests && npx c8 --reporter=lcov --reporter=text-summary --all --include src --exclude 'src/test/**' --exclude 'dist/**' npx mocha out/test/flags.test.js out/test/ignore.test.js out/test/ignoreHoverRules.test.js out/test/previewAutoExclude.test.js",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vscode-test",
@@ -185,14 +200,14 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@types/vscode": "^1.106.1",
-    "@typescript-eslint/eslint-plugin": "^8.47.0",
-    "@typescript-eslint/parser": "^8.46.2",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.49.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^2.15.0",
     "adm-zip": "^0.5.16",
     "esbuild": "^0.27.1",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.2",
     "npm-run-all": "^4.1.5",
     "typescript": "^5.9.3"
   },

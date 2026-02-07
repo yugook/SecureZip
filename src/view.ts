@@ -666,39 +666,6 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             return promise;
         };
 
-        if (!context.exists) {
-            if (previewSection) {
-                const totalVisible = autoResult.entries.length + gitResult.entries.length;
-                const totalHidden = autoResult.hiddenCount;
-                previewSection.description = totalHidden > 0
-                    ? localize('preview.summary.visibleHidden', '{0} shown · {1} hidden', totalVisible.toString(), totalHidden.toString())
-                    : localize('preview.status.notCreated', 'Not created');
-            }
-            const items: SecureZipTreeItem[] = [];
-            const totalHidden = autoResult.hiddenCount;
-            if (totalHidden > 0) {
-                items.push(
-                    new SecureZipTreeItem({
-                        kind: 'message',
-                        label: localize('preview.hiddenRules', '{0} unmatched rules hidden', totalHidden.toString()),
-                        tooltip: localize(
-                            'preview.hiddenRules.tooltip',
-                            'Rules with no matching files are hidden. Create matching files or adjust patterns to show them.',
-                        ),
-                    }),
-                );
-            }
-            items.push(
-                new SecureZipTreeItem({
-                    kind: 'message',
-                    label: localize('preview.message.notCreated', 'The .securezipignore file has not been created yet.'),
-                }),
-                ...autoResult.entries.map((entry) => this.entryToTreeItem(entry)),
-                ...gitResult.entries.map((entry) => this.entryToTreeItem(entry)),
-            );
-            return items;
-        }
-
         const occurrences = new Map<string, number>();
         const seen = new Map<string, number>();
 
@@ -774,19 +741,26 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             const bo = typeof b.order === 'number' ? b.order : Number.MAX_SAFE_INTEGER;
             return ao - bo;
         });
-        const items: SecureZipTreeItem[] = mergedList.map((entry) => this.entryToTreeItem(entry));
+        let items: SecureZipTreeItem[] = mergedList.map((entry) => this.entryToTreeItem(entry));
 
         const totalVisible = mergedList.length;
         const totalHidden = hiddenIgnoreCount + autoResult.hiddenCount;
 
         if (previewSection) {
-            previewSection.description = totalHidden > 0
-                ? localize('preview.summary.visibleHidden', '{0} shown · {1} hidden', totalVisible.toString(), totalHidden.toString())
-                : localize('preview.summary.visible', '{0} shown', totalVisible.toString());
+            if (!context.exists) {
+                previewSection.description = totalHidden > 0
+                    ? localize('preview.summary.visibleHidden', '{0} shown · {1} hidden', totalVisible.toString(), totalHidden.toString())
+                    : localize('preview.status.notCreated', 'Not created');
+            } else {
+                previewSection.description = totalHidden > 0
+                    ? localize('preview.summary.visibleHidden', '{0} shown · {1} hidden', totalVisible.toString(), totalHidden.toString())
+                    : localize('preview.summary.visible', '{0} shown', totalVisible.toString());
+            }
         }
 
+        const messageItems: SecureZipTreeItem[] = [];
         if (totalHidden > 0) {
-            items.unshift(
+            messageItems.push(
                 new SecureZipTreeItem({
                     kind: 'message',
                     label: localize('preview.hiddenRules', '{0} unmatched rules hidden', totalHidden.toString()),
@@ -798,14 +772,25 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             );
         }
 
-        return items.length > 0
-            ? items
-            : [
-                  new SecureZipTreeItem({
-                      kind: 'message',
-                      label: localize('preview.message.empty', '.securezipignore is empty'),
-                  }),
-              ];
+        if (!context.exists) {
+            messageItems.push(
+                new SecureZipTreeItem({
+                    kind: 'message',
+                    label: localize('preview.message.notCreated', 'The .securezipignore file has not been created yet.'),
+                }),
+            );
+        }
+
+        if (items.length === 0 && context.exists) {
+            items.push(
+                new SecureZipTreeItem({
+                    kind: 'message',
+                    label: localize('preview.message.empty', '.securezipignore is empty'),
+                }),
+            );
+        }
+
+        return [...messageItems, ...items];
     }
 
     private entryToTreeItem(entry: {
