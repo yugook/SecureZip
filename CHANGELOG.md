@@ -4,6 +4,15 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.1.7] - 2026-02-18
+
+- User-facing: Refined the extension icon for better visibility in the VS Code Marketplace.
+- User-facing: Updated documentation wording and download guidance to keep English/Japanese sections aligned and focused on Marketplace installation.
+- Developer-facing: Improved integration test stability by isolating VS Code test profiles, handling warning dialogs safely, and reducing Extension Host startup noise.
+- Developer-facing: Updated CI/release workflows to `actions/checkout@v6` and `actions/upload-artifact@v6`, and fixed preview-tag cleanup permissions.
+- Developer-facing: Updated build and security-related dependencies (`@vscode/vsce`, `esbuild`, `@typescript-eslint/eslint-plugin`, `lodash`, `qs`).
+- Developer-facing: Added `SECURITY.md` with a security policy template.
+
 ## [1.1.6] - 2026-01-16
 
 - Added a tagging mode setting so exports can ask, always tag, or skip tagging entirely.
