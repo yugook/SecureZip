@@ -973,13 +973,18 @@ suite('SecureZip Extension', function () {
         this.timeout(30000);
         await stageFixture('simple-project');
 
+        const root = getWorkspaceRoot();
+        const ignorePath = path.join(root, '.securezipignore');
+        const originalIgnore = await fs.promises.readFile(ignorePath, 'utf8');
         const config = vscode.workspace.getConfiguration('secureZip');
-        await config.update('additionalExcludes', ['**/*'], vscode.ConfigurationTarget.Workspace);
+        await config.update('additionalExcludes', ['**/*', '**/.*'], vscode.ConfigurationTarget.Workspace);
 
-        const outPath = path.join(getWorkspaceRoot(), 'securezip-empty.zip');
+        const outPath = path.join(root, 'securezip-empty.zip');
         const originalShowSaveDialog = vscode.window.showSaveDialog;
         const originalShowErrorMessage = vscode.window.showErrorMessage;
         const errors: string[] = [];
+
+        await fs.promises.writeFile(ignorePath, '# test: no re-include\n', 'utf8');
 
         (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog =
             async () => vscode.Uri.file(outPath);
@@ -992,6 +997,7 @@ suite('SecureZip Extension', function () {
         try {
             await vscode.commands.executeCommand('securezip.export');
         } finally {
+            await fs.promises.writeFile(ignorePath, originalIgnore, 'utf8');
             await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
             (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog = originalShowSaveDialog;
             (vscode.window as unknown as { showErrorMessage: typeof vscode.window.showErrorMessage }).showErrorMessage =
@@ -1001,6 +1007,26 @@ suite('SecureZip Extension', function () {
 
         assert.ok(errors.length > 0, 'Expected export to report an error');
         assert.match(errors[0], /No files were found to include in the archive/, 'Unexpected error message');
+    });
+
+    test('keeps .securezipignore re-includes effective under blanket excludes', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('additionalExcludes', ['**/*', '**/.*'], vscode.ConfigurationTarget.Workspace);
+
+        const { outPath, hashes } = await exportAndCollect('securezip-reinclude-under-blanket.zip');
+        try {
+            assert.deepStrictEqual(
+                Object.keys(hashes).sort(),
+                ['dist/release.txt'],
+                'Expected !dist/release.txt to survive blanket excludes'
+            );
+        } finally {
+            await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
+            await removeIfExists(outPath);
+        }
     });
 
     test('surfaces errors when ZIP archive creation fails', async function () {

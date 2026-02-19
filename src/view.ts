@@ -5,6 +5,7 @@ import simpleGit from 'simple-git';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { localize } from './nls';
+import { TargetGroup, listGitRepositories, listWorkspaceFolders, watchGitChanges } from './targeting';
 import {
     classifyAutoExcludePatterns,
     type AutoExcludePatternInfo,
@@ -25,6 +26,8 @@ type LastExportSnapshot = {
     patterns: string[];
 };
 
+type LastExportByRoot = Record<string, LastExportSnapshot>;
+
 type PreviewStatus = 'exclude' | 'include' | 'comment' | 'duplicate' | 'auto' | 'git';
 
 type PreviewSource = 'securezipignore' | 'gitignore' | 'auto';
@@ -41,7 +44,8 @@ type PreviewEntry = {
 };
 
 type TreeNode =
-    | { kind: 'section'; section: SectionId; description?: string }
+    | { kind: 'group'; group: TargetGroup }
+    | { kind: 'section'; section: SectionId; group: TargetGroup; description?: string }
     | { kind: 'message'; label: string; tooltip?: string }
     | { kind: 'suggestion'; label: string; pattern: string; detail?: string; alreadyExists: boolean; root?: string }
     | { kind: 'preview'; label: string; status: PreviewStatus; tooltip?: string; description?: string; sources?: PreviewSource[] }
@@ -55,6 +59,11 @@ class SecureZipTreeItem extends vscode.TreeItem {
         let collapsibleState: vscode.TreeItemCollapsibleState;
 
         switch (node.kind) {
+            case 'group': {
+                label = node.group.label;
+                collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
+                break;
+            }
             case 'section': {
                 const meta = SECTION_DEFS[node.section];
                 label = meta.label;
@@ -79,6 +88,11 @@ class SecureZipTreeItem extends vscode.TreeItem {
         this.node = node;
 
         switch (node.kind) {
+            case 'group': {
+                this.iconPath = new vscode.ThemeIcon(node.group.kind === 'repo' ? 'repo' : 'folder');
+                this.contextValue = `securezip.group.${node.group.kind}`;
+                break;
+            }
             case 'section': {
                 const meta = SECTION_DEFS[node.section];
                 this.iconPath = new vscode.ThemeIcon(meta.icon);
@@ -176,7 +190,7 @@ const ARTIFACT_CANDIDATES: ArtifactCandidate[] = [
 
 const WATCH_PATTERN = '**/.securezipignore';
 
-const LAST_EXPORT_STATE_KEY = 'securezip.lastExport';
+const LAST_EXPORT_STATE_KEY = 'securezip.lastExportByRoot';
 
 const GIT_IGNORE_PREVIEW_LIMIT = 5;
 const GIT_CHECK_IGNORE_PATH_LIMIT = 200;
@@ -204,9 +218,10 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
     private readonly disposables: vscode.Disposable[] = [];
-    private ignoreCache: { root: string; context: IgnoreContext } | undefined;
+    private ignoreCache = new Map<string, IgnoreContext>();
     private treeView: vscode.TreeView<SecureZipTreeItem> | undefined;
-    private readonly rootItems = new Map<SectionId, SecureZipTreeItem>();
+    private readonly groupItems = new Map<string, SecureZipTreeItem>();
+    private readonly sectionItems = new Map<string, SecureZipTreeItem>();
 
     constructor(private readonly context: vscode.ExtensionContext) {
         const watcher = vscode.workspace.createFileSystemWatcher(WATCH_PATTERN);
@@ -216,20 +231,27 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         this.disposables.push(watcher);
 
         this.disposables.push(vscode.workspace.onDidChangeWorkspaceFolders(() => this.refresh()));
+        void watchGitChanges(() => this.refresh()).then((disposable) => {
+            if (disposable) {
+                this.disposables.push(disposable);
+            }
+        });
     }
 
     dispose() {
-        this.ignoreCache = undefined;
+        this.ignoreCache.clear();
         for (const disposable of this.disposables) {
             disposable.dispose();
         }
         this.onDidChangeTreeDataEmitter.dispose();
-        this.rootItems.clear();
+        this.groupItems.clear();
+        this.sectionItems.clear();
     }
 
     refresh() {
-        this.ignoreCache = undefined;
-        this.rootItems.clear();
+        this.ignoreCache.clear();
+        this.groupItems.clear();
+        this.sectionItems.clear();
         this.onDidChangeTreeDataEmitter.fire();
     }
 
@@ -238,19 +260,27 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     }
 
     revealSection(section: SectionId) {
-        const item = this.rootItems.get(section);
-        if (!item || !this.treeView) {
+        if (!this.treeView) {
+            return;
+        }
+        const item = Array.from(this.sectionItems.values()).find(
+            (candidate) => candidate.node.kind === 'section' && candidate.node.section === section,
+        );
+        if (!item) {
             return;
         }
         void this.treeView.reveal(item, { expand: true, focus: true });
     }
 
-    async recordLastExport(patterns: string[]) {
+    async recordLastExport(root: string, patterns: string[]) {
         const sanitized = Array.from(new Set(patterns.map((p) => p.trim()).filter(Boolean)));
-        await this.context.workspaceState.update(LAST_EXPORT_STATE_KEY, {
+        const existing = this.context.workspaceState.get<LastExportByRoot>(LAST_EXPORT_STATE_KEY) ?? {};
+        const updated: LastExportByRoot = { ...existing };
+        updated[root] = {
             timestamp: Date.now(),
             patterns: sanitized,
-        } satisfies LastExportSnapshot);
+        };
+        await this.context.workspaceState.update(LAST_EXPORT_STATE_KEY, updated);
         this.refresh();
     }
 
@@ -259,8 +289,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     }
 
     async getChildren(element?: SecureZipTreeItem): Promise<SecureZipTreeItem[]> {
-        const workspaceFolder = this.primaryWorkspaceFolder;
-        if (!workspaceFolder) {
+        const groups = await this.resolveGroups();
+        if (groups.length === 0) {
             return [
                 new SecureZipTreeItem({
                     kind: 'message',
@@ -269,15 +299,21 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             ];
         }
 
+        const useGroups = groups.length > 1;
+
         if (!element) {
-            const sections: SectionId[] = ['guide', 'actions', 'preview', 'recentExports'];
-            const items = sections.map((section) => {
-                const node: TreeNode = { kind: 'section', section };
-                const item = new SecureZipTreeItem(node);
-                this.rootItems.set(section, item);
-                return item;
-            });
-            return items;
+            if (useGroups) {
+                return groups.map((group) => {
+                    const item = new SecureZipTreeItem({ kind: 'group', group });
+                    this.groupItems.set(group.id, item);
+                    return item;
+                });
+            }
+            return this.buildSectionItems(groups[0]);
+        }
+
+        if (element.node.kind === 'group') {
+            return this.buildSectionItems(element.node.group);
         }
 
         if (element.node.kind !== 'section') {
@@ -286,20 +322,39 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
         switch (element.node.section) {
             case 'guide':
-                return this.buildGuideItems(workspaceFolder);
+                return this.buildGuideItems(element.node.group, element);
             case 'actions':
-                return this.buildActionItems(workspaceFolder);
+                return this.buildActionItems(element.node.group);
             case 'preview':
-                return this.buildPreviewItems(workspaceFolder, element);
+                return this.buildPreviewItems(element.node.group, element);
             case 'recentExports':
-                return this.buildRecentExportItems(workspaceFolder);
+                return this.buildRecentExportItems(element.node.group, element);
             default:
                 return [];
         }
     }
 
-    private get primaryWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
-        return vscode.workspace.workspaceFolders?.[0];
+    private buildSectionItems(group: TargetGroup): SecureZipTreeItem[] {
+        const sections: SectionId[] = ['guide', 'actions', 'preview', 'recentExports'];
+        return sections.map((section) => {
+            const node: TreeNode = { kind: 'section', section, group };
+            const item = new SecureZipTreeItem(node);
+            const key = this.sectionKey(group.id, section);
+            this.sectionItems.set(key, item);
+            return item;
+        });
+    }
+
+    private sectionKey(groupId: string, section: SectionId): string {
+        return `${groupId}:${section}`;
+    }
+
+    private async resolveGroups(): Promise<TargetGroup[]> {
+        const repos = await listGitRepositories();
+        if (repos.length > 0) {
+            return repos;
+        }
+        return listWorkspaceFolders();
     }
 
     private formatTimestamp(timestamp: number): string {
@@ -308,9 +363,19 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
+    private resolveWorkspaceFolder(root: string): vscode.WorkspaceFolder | undefined {
+        return vscode.workspace.getWorkspaceFolder(vscode.Uri.file(root));
+    }
+
+    private getLastExportSnapshot(root: string): LastExportSnapshot | undefined {
+        const all = this.context.workspaceState.get<LastExportByRoot>(LAST_EXPORT_STATE_KEY);
+        return all?.[root];
+    }
+
     private async ensureIgnoreContext(root: string): Promise<IgnoreContext> {
-        if (this.ignoreCache && this.ignoreCache.root === root) {
-            return this.ignoreCache.context;
+        const cached = this.ignoreCache.get(root);
+        if (cached) {
+            return cached;
         }
 
         const filename = path.join(root, '.securezipignore');
@@ -333,14 +398,17 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             includes: new Set(parsed.includes.map((p) => p.trim())),
         };
 
-        this.ignoreCache = { root, context };
+        this.ignoreCache.set(root, context);
         return context;
     }
 
-    private async buildGuideItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
-        const root = workspaceFolder.uri.fsPath;
+    private async buildGuideItems(
+        group: TargetGroup,
+        sectionItem?: SecureZipTreeItem,
+    ): Promise<SecureZipTreeItem[]> {
+        const root = group.root;
         const context = await this.ensureIgnoreContext(root);
-        const snapshot = this.context.workspaceState.get<LastExportSnapshot>(LAST_EXPORT_STATE_KEY);
+        const snapshot = this.getLastExportSnapshot(root);
         const items: SecureZipTreeItem[] = [];
         let pendingTasks = 0;
         let warningCount = 0;
@@ -429,7 +497,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             );
         }
 
-        const guideSection = this.rootItems.get('guide');
+        const guideSection = sectionItem;
         if (guideSection) {
             if (warningCount > 0) {
                 const total = pendingTasks + warningCount;
@@ -446,12 +514,14 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         return items;
     }
 
-    private async buildRecentExportItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
-        const snapshot = this.context.workspaceState.get<LastExportSnapshot>(LAST_EXPORT_STATE_KEY);
+    private async buildRecentExportItems(
+        group: TargetGroup,
+        sectionItem?: SecureZipTreeItem,
+    ): Promise<SecureZipTreeItem[]> {
+        const snapshot = this.getLastExportSnapshot(group.root);
         if (!snapshot) {
-            const recentSection = this.rootItems.get('recentExports');
-            if (recentSection) {
-                recentSection.description = localize('recent.none', 'No history');
+            if (sectionItem) {
+                sectionItem.description = localize('recent.none', 'No history');
             }
             return [
                 new SecureZipTreeItem({
@@ -462,9 +532,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
 
         const description = this.formatTimestamp(snapshot.timestamp);
-        const recentSection = this.rootItems.get('recentExports');
-        if (recentSection) {
-            recentSection.description = description;
+        if (sectionItem) {
+            sectionItem.description = description;
         }
         return [
             new SecureZipTreeItem({
@@ -545,14 +614,15 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     }
 
     private async buildPreviewItems(
-        workspaceFolder: vscode.WorkspaceFolder,
+        group: TargetGroup,
         sectionItem?: SecureZipTreeItem,
     ): Promise<SecureZipTreeItem[]> {
-        const root = workspaceFolder.uri.fsPath;
+        const root = group.root;
+        const workspaceFolder = this.resolveWorkspaceFolder(root);
         const context = await this.ensureIgnoreContext(root);
-        const previewSection = sectionItem ?? this.rootItems.get('preview');
-        const autoResult = await this.buildAutoExcludePreviewItems(workspaceFolder, context);
-        const gitResult = await this.buildGitIgnorePreviewItems(workspaceFolder);
+        const previewSection = sectionItem;
+        const autoResult = await this.buildAutoExcludePreviewItems(root, context, workspaceFolder);
+        const gitResult = await this.buildGitIgnorePreviewItems(root);
         let hiddenIgnoreCount = 0;
 
         const sourcePriority: Record<PreviewSource, number> = {
@@ -829,11 +899,13 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     }
 
     private async buildAutoExcludePreviewItems(
-        workspaceFolder: vscode.WorkspaceFolder,
+        root: string,
         context: IgnoreContext,
+        workspaceFolder?: vscode.WorkspaceFolder,
     ): Promise<{ entries: PreviewEntry[]; hiddenCount: number; visibleCount: number }> {
-        const root = workspaceFolder.uri.fsPath;
-        const cfg = vscode.workspace.getConfiguration('secureZip', workspaceFolder.uri);
+        const cfg = workspaceFolder
+            ? vscode.workspace.getConfiguration('secureZip', workspaceFolder.uri)
+            : vscode.workspace.getConfiguration('secureZip');
         const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
         const autoPatterns = resolveAutoExcludePatterns({ includeNodeModules });
         if (autoPatterns.length === 0) {
@@ -1018,8 +1090,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         return { entries, hiddenCount, visibleCount };
     }
 
-    private async buildGitIgnorePreviewItems(workspaceFolder: vscode.WorkspaceFolder): Promise<{ entries: PreviewEntry[] }> {
-        const root = workspaceFolder.uri.fsPath;
+    private async buildGitIgnorePreviewItems(root: string): Promise<{ entries: PreviewEntry[] }> {
         const git = simpleGit(root);
 
         let isRepo = false;
@@ -1196,12 +1267,12 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         return { entries: previewEntries };
     }
 
-    private async buildActionItems(workspaceFolder: vscode.WorkspaceFolder): Promise<SecureZipTreeItem[]> {
-        const root = workspaceFolder.uri.fsPath;
+    private async buildActionItems(group: TargetGroup): Promise<SecureZipTreeItem[]> {
+        const root = group.root;
         const openIgnoreCommand: vscode.Command = {
             command: 'securezip.openIgnoreFile',
             title: localize('actions.openIgnore.title', 'Open .securezipignore'),
-            arguments: [vscode.Uri.file(path.join(root, '.securezipignore'))],
+            arguments: [root],
         };
 
         const items: SecureZipTreeItem[] = [
@@ -1213,15 +1284,35 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 command: {
                     command: 'securezip.export',
                     title: 'SecureZip: Export Project',
+                    arguments: [{ root }],
                 },
             }),
+        ];
+
+        const showWorkspaceExport = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
+        if (showWorkspaceExport) {
+            items.push(
+                new SecureZipTreeItem({
+                    kind: 'action',
+                    label: localize('actions.exportWorkspace.label', 'Export Workspace ZIP'),
+                    description: localize('actions.exportWorkspace.description', 'Combine all workspace folders'),
+                    icon: 'files',
+                    command: {
+                        command: 'securezip.exportWorkspace',
+                        title: 'SecureZip: Export Workspace ZIP',
+                    },
+                }),
+            );
+        }
+
+        items.push(
             new SecureZipTreeItem({
                 kind: 'action',
                 label: localize('actions.openIgnore.label', 'Open .securezipignore'),
                 command: openIgnoreCommand,
                 description: localize('actions.openIgnore.description', 'Edit the file in the editor'),
             }),
-        ];
+        );
 
         return items;
     }
