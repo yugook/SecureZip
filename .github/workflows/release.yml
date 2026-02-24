@@ -4,30 +4,31 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_run:
-    workflows:
-      - Auto Tag on Main
-    types:
-      - completed
+  workflow_call:
+    inputs:
+      tag_name:
+        description: 'Tag name to publish (e.g. v1.0.0)'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
   publish-release:
-    if: ${{ (github.event_name == 'push' && !endsWith(github.ref_name, '-preview')) || (github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Auto Tag on Main' && github.event.workflow_run.conclusion == 'success') }}
+    if: ${{ (github.event_name == 'push' && !endsWith(github.ref_name, '-preview')) || (github.event_name == 'workflow_call' && !endsWith(inputs.tag_name || '', '-preview')) }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22.20.0'
           cache: 'npm'
 
       - name: Install dependencies
@@ -73,7 +74,7 @@ jobs:
 
       - name: Upload VS Code logs
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: vscode-logs
           path: artifacts/vscode-logs

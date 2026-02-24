@@ -12,10 +12,13 @@ jobs:
   create-release-tag:
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.version.outputs.tag }}
+      should_publish: ${{ steps.skip.outputs.value == 'false' && steps.existing.outputs.value == 'false' }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -62,3 +65,11 @@ jobs:
         run: |
           git tag -a "$TAG_NAME" "$GITHUB_SHA" -m "Release $TAG_NAME"
           git push origin "$TAG_NAME"
+
+  publish-release:
+    needs: create-release-tag
+    if: ${{ needs.create-release-tag.outputs.should_publish == 'true' }}
+    uses: ./.github/workflows/release.yml
+    with:
+      tag_name: ${{ needs.create-release-tag.outputs.tag_name }}
+    secrets: inherit

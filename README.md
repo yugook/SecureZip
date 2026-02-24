@@ -1,22 +1,53 @@
 # SecureZip
 
 [![CodeQL](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml/badge.svg)](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml)
+[![CI](https://github.com/yugook/SecureZip/actions/workflows/ci.yml/badge.svg)](https://github.com/yugook/SecureZip/actions/workflows/ci.yml)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/yugook.securezip?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
 
 **SecureZip** is a Visual Studio Code extension that lets you securely export your project as a clean ZIP archive.
 
-> Release 1.0.0 – stable export workflow with ignore tooling, auto-commit, and tagging.
+> Stable export workflow with ignore tooling, auto-commit, and tagging.
 
 ## ✨ Features
 - 📦 **Export to ZIP** – Create a ZIP of your project with one click.
-- 🔄 **Optional Auto Commit** – Offer to commit tracked changes before export.
+- 🔄 **Optional Auto Commit** – Offer to commit tracked changes before export, with a toggle to include untracked files automatically.
 - 🏷 **Auto Tagging** – Tag the repository with the export timestamp for traceability.
 - 🧹 **Smart Ignore Support** – Respects `.gitignore` and project-specific `.securezipignore` to strip secrets and build artifacts.
+
+## ⚙️ Auto Commit Stage Mode
+SecureZip only offers the auto-commit step when it detects local changes. By default it stages tracked files via `git add --update`, matching the safe workflow shown in the warning dialog. If you prefer SecureZip to stage new files as well, switch the stage mode in your settings:
+
+```json
+{
+  "secureZip.autoCommit.stageMode": "all"
+}
+```
+
+- `tracked` (default) – Stage edits/deletions to tracked files only.
+- `all` – Stage tracked and untracked files (`git add --all`).
+
+## 🏷 Tagging Mode
+SecureZip can tag exports for traceability. Choose the tagging behavior per export or set a default:
+
+```json
+{
+  "secureZip.tagging.mode": "ask"
+}
+```
+
+- `ask` (default) – Prompt to use the default tag, skip, or enter a custom tag.
+- `always` – Always create the default export tag.
+- `never` – Skip tagging entirely.
 
 ## 🛡 Ignore Rules
 SecureZip respects the following when selecting files to include:
 
 - `.gitignore` – Acknowledged automatically.
 - `.securezipignore` – Project rules to exclude and re-include files for export.
+- Preview deduplication: the SecureZip view merges duplicates with priority
+  `.securezipignore` > `.gitignore` > auto-excludes, hides comments/blank lines
+  and unmatched entries, and shows suppressed sources in the tooltip (“Also
+  excluded by …”).
 
 `.securezipignore` syntax (gitignore-like subset):
 
@@ -76,27 +107,67 @@ Example `settings.json` override:
 - Password-protected archives
 - 🗂 **Manifest File** – Embed an `__export_manifest.json` with commit ID, tag, and export metadata (future candidate)
 
+## 📥 Download
+- Install from the VS Code Marketplace: [yugook.securezip](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
+
+## 🛠 Developer Resources
+- [Contributing guide](CONTRIBUTING.md) – setup, coding standards, and PR checklist.
+- [Testing guide](docs/testing.md) – how to run type checks, linters, unit, and integration tests.
+- [Release process](docs/releasing.md) – preview/stable branching strategy and versioning rules.
+- [Architecture overview](docs/architecture.md) – maps key modules and data flows.
+- [Multi-root workspaces](docs/multi-root-workspaces.md) – target resolution and workspace ZIP behavior.
+- [Localization guide](docs/localization.md) – adding translations for runtime and contribution strings.
+- [SBOM instructions](docs/sbom.md) – details about `npm run sbom` and the bundled CycloneDX file.
+- Packaging preflight: run `npm run package:verify` before tagging/release to catch VS Code engine mismatches for `vsce`.
+
+## 📄 License
+SecureZip is distributed under the [MIT License](LICENSE).
+
 ---
 
 # SecureZip（日本語）
 
-[![CodeQL](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml/badge.svg)](https://github.com/yugook/SecureZip/actions/workflows/codeql.yml)
-
 **SecureZip** は、プロジェクトを安全かつクリーンな ZIP アーカイブとしてエクスポートできる Visual Studio Code 拡張機能です。
 
-> リリース 1.0.0 – エクスポートの安定版フロー（ignore 対応、自動コミット、タグ付け）を提供します。
+> エクスポートの安定版フロー（ignore 対応、自動コミット、タグ付け）を提供します。
 
 ## ✨ 機能
 - 📦 **Export to ZIP** – プロジェクトをワンクリックで ZIP アーカイブとしてエクスポートします。
-- 🔄 **Auto Commit（任意設定）** – エクスポート前に追跡済み変更をコミットするよう確認します。
+- 🔄 **Auto Commit（任意設定）** – エクスポート前に追跡済み変更をコミットするよう確認し、必要であれば未追跡ファイルも自動ステージできます。
 - 🏷 **Auto Tagging** – エクスポート時刻を利用してリポジトリにタグを付けます。
 - 🧹 **スマートな除外サポート** – `.gitignore` と `.securezipignore` を尊重し、機密情報やビルド成果物を除外します。
+
+## ⚙️ Auto Commit ステージモード
+SecureZip が未コミット変更を検出したときだけ自動コミットを提案します。既定では `git add --update`（追跡済みファイルのみ）を実行しますが、設定で未追跡ファイルも含めるように切り替えられます。
+
+```json
+{
+  "secureZip.autoCommit.stageMode": "all"
+}
+```
+
+- `tracked`（既定）– 追跡済みファイルの変更/削除のみをステージ。
+- `all` – 追跡済み＋未追跡ファイルをステージ（`git add --all` 相当）。
+
+## 🏷 タグ付けモード
+SecureZip はエクスポート時の追跡性向上のため、タグ付けの挙動を選択できます。
+
+```json
+{
+  "secureZip.tagging.mode": "ask"
+}
+```
+
+- `ask`（既定）– 毎回、デフォルトタグ/スキップ/カスタムを選択します。
+- `always` – 常にデフォルトタグを作成します。
+- `never` – タグ付けを行いません。
 
 ## 🛡 無視ルール
 SecureZip はアーカイブに含めるファイルを選ぶ際、次のルールを尊重します。
 
 - `.gitignore` – 自動的に適用されます。
 - `.securezipignore` – エクスポート専用に除外や再包含を指定するプロジェクトルールです。
+- SecureZip ビューのプレビューでは、`.securezipignore` > `.gitignore` > 自動除外の優先順で同一パターンを1行にまとめ、コメント/空行や未マッチ行は表示しません（抑制された出典はツールチップに表示）。
 
 `.securezipignore` の構文（gitignore 互換のサブセット）:
 
@@ -155,3 +226,19 @@ SecureZip は、ビルド時のデフォルトと実行時の上書きを組み�
 - `audit` や `distribution` などのカスタム除外プロファイル
 - パスワード保護付きアーカイブ
 - 🗂 **Manifest File** – コミット ID、タグ、エクスポート情報を含む `__export_manifest.json` の埋め込み（将来的な候補）
+
+## 📥 ダウンロード
+- VS Code Marketplace からインストール: [yugook.securezip](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
+
+## 🛠 開発者向けリソース
+- [コントリビュートガイド](CONTRIBUTING.md) – セットアップ、コーディング規約、PR チェックリスト。
+- [テストガイド](docs/testing.md) – 型チェック、lint、ユニット/インテグレーションテストの実行方法。
+- [リリース手順](docs/releasing.md) – プレビュー/安定版のブランチ戦略とバージョンルール。
+- [アーキテクチャ概要](docs/architecture.md) – 主要モジュールとデータフローの説明。
+- [マルチルートワークスペース](docs/multi-root-workspaces.md) – ターゲット解決と Workspace ZIP の挙動。
+- [ローカライズガイド](docs/localization.md) – 実行時・コントリビューション文字列への翻訳追加手順。
+- [SBOM 手順](docs/sbom.md) – `npm run sbom` の詳細と同梱される CycloneDX ファイルについて。
+- パッケージ前チェック: タグ/リリース前に `npm run package:verify` を実行して、VS Code エンジンの不整合で `vsce` が失敗しないか確認してください。
+
+## 📄 ライセンス
+SecureZip は [MIT License](LICENSE) で配布しています。

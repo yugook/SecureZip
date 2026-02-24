@@ -3,20 +3,21 @@
   "displayName": "SecureZip",
   "description": "Securely export your project as a clean ZIP.",
   "publisher": "yugook",
-  "version": "1.0.6",
+  "version": "1.1.8",
   "icon": "resources/securezip.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/yugook/SecureZip.git"
   },
   "engines": {
-    "vscode": "^1.103.0"
+    "vscode": "^1.106.0"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
     "onCommand:securezip.export",
+    "onCommand:securezip.exportWorkspace",
     "onCommand:securezip.addToIgnore",
     "onCommand:securezip.addPattern",
     "onCommand:securezip.openIgnoreFile",
@@ -31,6 +32,10 @@
       {
         "command": "securezip.export",
         "title": "%command.export.title%"
+      },
+      {
+        "command": "securezip.exportWorkspace",
+        "title": "%command.exportWorkspace.title%"
       },
       {
         "command": "securezip.addToIgnore",
@@ -127,6 +132,21 @@
           "default": "export",
           "description": "%config.tagPrefix.description%"
         },
+        "secureZip.tagging.mode": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "always",
+            "never"
+          ],
+          "enumDescriptions": [
+            "%config.tagging.mode.enum.ask%",
+            "%config.tagging.mode.enum.always%",
+            "%config.tagging.mode.enum.never%"
+          ],
+          "default": "ask",
+          "description": "%config.tagging.mode.description%"
+        },
         "secureZip.additionalExcludes": {
           "type": "array",
           "items": {
@@ -139,18 +159,32 @@
           "type": "boolean",
           "default": false,
           "description": "%config.includeNodeModules.description%"
+        },
+        "secureZip.autoCommit.stageMode": {
+          "type": "string",
+          "enum": [
+            "tracked",
+            "all"
+          ],
+          "enumDescriptions": [
+            "%config.autoCommit.stageMode.enum.tracked%",
+            "%config.autoCommit.stageMode.enum.all%"
+          ],
+          "default": "tracked",
+          "description": "%config.autoCommit.stageMode.description%"
         }
       }
     }
   },
   "dependencies": {
     "archiver": "^7.0.1",
-    "globby": "^15.0.0",
-    "simple-git": "^3.27.0"
+    "globby": "^16.0.0",
+    "simple-git": "^3.30.0"
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "package:verify": "npm run compile && npx @vscode/vsce package --out tmp/securezip-verify.vsix --no-yarn && node -e \"require('fs').rmSync('tmp/securezip-verify.vsix',{force:true});\"",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
@@ -159,7 +193,8 @@
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "test:unit": "npm run compile-tests && npx mocha out/test/flags.test.js out/test/ignore.test.js",
+    "test:unit": "npm run compile-tests && npx mocha out/test/flags.test.js out/test/ignore.test.js out/test/ignoreHoverRules.test.js out/test/previewAutoExclude.test.js",
+    "coverage:unit": "npm run compile-tests && npx c8 --reporter=lcov --reporter=text-summary --all --include src --exclude 'src/test/**' --exclude 'dist/**' npx mocha out/test/flags.test.js out/test/ignore.test.js out/test/ignoreHoverRules.test.js out/test/previewAutoExclude.test.js",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vscode-test",
@@ -169,15 +204,34 @@
     "@types/adm-zip": "^0.5.7",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "@types/vscode": "^1.105.0",
-    "@typescript-eslint/eslint-plugin": "^8.39.0",
-    "@typescript-eslint/parser": "^8.39.0",
+    "@types/vscode": "^1.106.1",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.49.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.1",
     "adm-zip": "^0.5.16",
-    "esbuild": "^0.25.11",
-    "eslint": "^9.39.0",
+    "esbuild": "^0.27.2",
+    "eslint": "^9.39.2",
     "npm-run-all": "^4.1.5",
     "typescript": "^5.9.3"
+  },
+  "c8": {
+    "reporter": [
+      "text-summary",
+      "lcov"
+    ],
+    "all": true,
+    "include": [
+      "src/**/*.ts"
+    ],
+    "exclude": [
+      "src/test/**",
+      "dist/**",
+      "**/*.d.ts"
+    ],
+    "extension": [
+      ".ts"
+    ]
   }
 }

@@ -1,5 +1,6 @@
 {
   "command.export.title": "SecureZip: Export Project",
+  "command.exportWorkspace.title": "SecureZip: ワークスペース ZIP をエクスポート",
   "command.addToIgnore.title": "SecureZip: .securezipignore に追加",
   "command.addPattern.title": "SecureZip: パターンを追加",
   "command.applySuggestedPatterns.title": "SecureZip: 推奨パターンを一括追加",
@@ -9,6 +10,13 @@
   "config.enableStatusBarButton.description": "ステータスバーの SecureZip ボタンを表示する",
   "config.commitMessageTemplate.description": "自動コミット時のメッセージテンプレート。利用可能変数: ${date}, ${time}, ${datetime}, ${branch}, ${tag}",
   "config.tagPrefix.description": "自動作成するタグの接頭辞（例: export -> export-YYYYMMDD-HHmmss）",
+  "config.tagging.mode.description": "エクスポート時のタグ付け動作を選択します",
+  "config.tagging.mode.enum.ask": "毎回確認（デフォルトタグ/スキップ/カスタム）",
+  "config.tagging.mode.enum.always": "常にデフォルトタグを作成",
+  "config.tagging.mode.enum.never": "タグを作成しない",
   "config.additionalExcludes.description": "追加で除外したいglobパターン（.gitignoreは自動適用）",
-  "config.includeNodeModules.description": "node_modules を含めるか（既定では除外）"
+  "config.includeNodeModules.description": "node_modules を含めるか（既定では除外）",
+  "config.autoCommit.stageMode.description": "自動コミット前に SecureZip がステージする対象を選択します",
+  "config.autoCommit.stageMode.enum.tracked": "追跡済みファイルの変更/削除のみをステージ（git add --update）",
+  "config.autoCommit.stageMode.enum.all": "追跡済み＋未追跡の変更をステージ（git add --all）"
 }

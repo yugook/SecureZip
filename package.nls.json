@@ -1,5 +1,6 @@
 {
   "command.export.title": "SecureZip: Export Project",
+  "command.exportWorkspace.title": "SecureZip: Export Workspace ZIP",
   "command.addToIgnore.title": "SecureZip: Add to .securezipignore",
   "command.addPattern.title": "SecureZip: Add Pattern",
   "command.applySuggestedPatterns.title": "SecureZip: Add Recommended Patterns",
@@ -9,6 +10,13 @@
   "config.enableStatusBarButton.description": "Show the SecureZip button in the status bar",
   "config.commitMessageTemplate.description": "Template for automatic commits. Available variables: ${date}, ${time}, ${datetime}, ${branch}, ${tag}",
   "config.tagPrefix.description": "Prefix for automatically created tags (for example, export becomes export-YYYYMMDD-HHmmss)",
+  "config.tagging.mode.description": "Choose how SecureZip handles export tags",
+  "config.tagging.mode.enum.ask": "Ask every time (create default, skip, or custom)",
+  "config.tagging.mode.enum.always": "Always create the default export tag",
+  "config.tagging.mode.enum.never": "Never create export tags",
   "config.additionalExcludes.description": "Additional glob patterns to exclude (beyond .gitignore)",
-  "config.includeNodeModules.description": "Include node_modules in the export (excluded by default)"
+  "config.includeNodeModules.description": "Include node_modules in the export (excluded by default)",
+  "config.autoCommit.stageMode.description": "Choose how SecureZip stages changes before creating the optional auto-commit",
+  "config.autoCommit.stageMode.enum.tracked": "Stage modifications/deletions to tracked files only (git add --update)",
+  "config.autoCommit.stageMode.enum.all": "Stage tracked and untracked files (git add --all)"
 }

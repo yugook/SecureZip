@@ -4,6 +4,72 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.1.8] - 2026-02-19
+
+- Added full multi-root workspace support for target resolution and export behavior.
+- Added a dedicated `securezip.exportWorkspace` command to create a single ZIP from all workspace folders.
+- Updated the SecureZip view to group by repository/folder in multi-root workspaces with per-group Guide/Actions/Preview/Recent sections.
+- Restored single-folder behavior so the export mode prompt is skipped and the status bar keeps the classic label.
+- Improved empty-export handling to report a clear error when all files are excluded.
+- Added and aligned multi-root design documentation in `docs/multi-root-workspaces.md` and README links.
+
+## [1.1.7] - 2026-02-18
+
+- User-facing: Refined the extension icon for better visibility in the VS Code Marketplace.
+- User-facing: Updated documentation wording and download guidance to keep English/Japanese sections aligned and focused on Marketplace installation.
+- Developer-facing: Improved integration test stability by isolating VS Code test profiles, handling warning dialogs safely, and reducing Extension Host startup noise.
+- Developer-facing: Updated CI/release workflows to `actions/checkout@v6` and `actions/upload-artifact@v6`, and fixed preview-tag cleanup permissions.
+- Developer-facing: Updated build and security-related dependencies (`@vscode/vsce`, `esbuild`, `@typescript-eslint/eslint-plugin`, `lodash`, `qs`).
+- Developer-facing: Added `SECURITY.md` with a security policy template.
+
+## [1.1.6] - 2026-01-16
+
+- Added a tagging mode setting so exports can ask, always tag, or skip tagging entirely.
+- Improved existing-tag handling with clearer choices to reuse, propose a new tag, or skip tagging.
+
+## [1.1.5] - 2026-01-14
+
+- Added `.securezipignore` hover previews for file, directory, and glob patterns, including file snippets.
+- Suppressed hover previews for sensitive auto-excluded paths to avoid leaking secrets.
+- Added F12 definition jumps for file patterns, with unit and integration coverage.
+
+## [1.1.4] - 2025-12-23
+
+- SecureZip preview keeps `.gitignore` entries ahead of auto excludes even when `.securezipignore` is missing, while still surfacing the not-created message.
+
+## [1.1.3] - 2025-12-05
+
+- SecureZip view now keeps `.securezipignore` and `.gitignore` match counts in tooltips only, leaving labels concise.
+
+## [1.1.2] - 2025-12-03
+
+- Bumped VS Code engine requirement to ^1.106.0 to align with @types/vscode and unblock packaging.
+- No functional changes; republish to fix packaging failure.
+
+## [1.1.1] - 2025-12-03
+
+- SecureZip view preview now deduplicates overlapping rules with priority `.securezipignore` > `.gitignore` > auto-excludes, listing suppressed sources in the tooltip and hiding comments/blank/unmatched entries to reduce noise.
+- Updated documentation to describe the new preview behavior and prioritization.
+
+## [1.1.0] - 2025-11-27
+
+- New `.securezipignore` files now include a self-exclusion template by default so the ignore file itself is left out of exported archives.
+
+## [1.0.9] - 2025-11-18
+
+- Align the extension build/test/release pipeline with Node.js 22.20.0, matching the runtime used by the latest VS Code host.
+
+## [1.0.8] - 2025-11-17
+
+- Added the `secureZip.autoCommit.stageMode` setting to choose whether auto-commit stages tracked files only or all changes (tracked + untracked).
+- The auto-commit confirmation dialog now surfaces the selected stage mode and highlights pending untracked files so you know what will (and will not) be included.
+
+## [1.0.7] - 2025-11-03
+
+- Preview now surfaces `.gitignore` auto excludes, including live examples of matching files and re-include warnings.
+- Auto exclude defaults in the preview highlight patterns that are currently active, example matches, and those with no hits.
+- Added unit coverage for auto exclude ordering and an integration test ensuring the SecureZip view groups active vs inactive defaults correctly.
+
 ## [1.0.6] - 2025-10-21
 
 - Performance and stability improvements.
