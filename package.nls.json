@@ -1,5 +1,6 @@
 {
   "command.export.title": "SecureZip: Export Project",
+  "command.exportWorkspace.title": "SecureZip: Export Workspace ZIP",
   "command.addToIgnore.title": "SecureZip: Add to .securezipignore",
   "command.addPattern.title": "SecureZip: Add Pattern",
   "command.applySuggestedPatterns.title": "SecureZip: Add Recommended Patterns",

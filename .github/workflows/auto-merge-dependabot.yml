@@ -1,0 +1,101 @@
+name: Auto Merge Dependabot
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - labeled
+      - unlabeled
+
+jobs:
+  enable-auto-merge:
+    if: >
+      ${{ github.event.pull_request.user.login == 'dependabot[bot]' &&
+          github.event.pull_request.base.ref == 'main' &&
+          github.event.pull_request.draft == false &&
+          contains(github.event.pull_request.labels.*.name, 'safe-to-automerge') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Detect version update type
+        id: detect
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const title = process.env.PR_TITLE ?? '';
+          const body = process.env.PR_BODY ?? '';
+          const regex = / from ([0-9A-Za-z.+-]+) to ([0-9A-Za-z.+-]+)/;
+          const match = title.match(regex) || body.match(regex);
+
+          function normalizeVersion(raw) {
+            if (!raw) return null;
+            const cleaned = raw.replace(/^v/, '');
+            const core = cleaned.split(/[-+]/)[0];
+            if (!/^\d+(\.\d+)*$/.test(core)) return null;
+            const parts = core.split('.').map((part) => Number(part));
+            if (parts.some(Number.isNaN)) return null;
+            while (parts.length < 3) {
+              parts.push(0);
+            }
+            return parts.slice(0, 3);
+          }
+
+          let canAutomerge = false;
+          let level = 'unknown';
+
+          if (match) {
+            const fromVersion = normalizeVersion(match[1]);
+            const toVersion = normalizeVersion(match[2]);
+
+            if (fromVersion && toVersion) {
+              if (toVersion[0] > fromVersion[0]) {
+                level = 'major';
+              } else if (toVersion[0] === fromVersion[0] && toVersion[1] > fromVersion[1]) {
+                level = 'minor';
+                canAutomerge = true;
+              } else if (
+                toVersion[0] === fromVersion[0] &&
+                toVersion[1] === fromVersion[1] &&
+                toVersion[2] >= fromVersion[2]
+              ) {
+                level = 'patch';
+                canAutomerge = true;
+              }
+            }
+          }
+
+          const outputs = [`can-automerge=${canAutomerge}`, `update-level=${level}`];
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `${outputs.join('\n')}\n`);
+          NODE
+
+      - name: Remove auto-merge label for non-auto-mergeable updates
+        if: steps.detect.outputs.can-automerge != 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const labelName = 'safe-to-automerge';
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            try {
+              await github.rest.issues.removeLabel({ owner, repo, issue_number, name: labelName });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+      - name: Enable auto-merge
+        if: steps.detect.outputs.can-automerge == 'true'
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-number: ${{ github.event.pull_request.number }}
+          merge-method: merge
