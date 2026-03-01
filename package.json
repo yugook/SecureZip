@@ -179,7 +179,7 @@
   "dependencies": {
     "archiver": "^7.0.1",
     "globby": "^16.1.0",
-    "simple-git": "^3.32.2"
+    "simple-git": "^3.32.3"
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
