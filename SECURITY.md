@@ -27,6 +27,6 @@ If private reporting is unavailable, open a regular issue and share only non-sen
 
 - Initial acknowledgment target: within **72 hours**.
 - Triage and severity assessment: as soon as possible, based on maintainer availability.
-- Fixes are typically released in the latest supported patch version.
+- Fixes are released as new patch versions on the supported release line.
 
 Please do **not** publicly disclose exploit details until a fix or mitigation is available.
