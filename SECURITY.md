@@ -6,7 +6,7 @@ SecureZip is currently maintained as a single active release line.
 
 | Version | Supported |
 | --- | --- |
-| 1.1.x (latest patch) | ✅ |
+| 1.1.x | ✅ |
 | < 1.1.0 | ❌ |
 
 ### What "supported" means
