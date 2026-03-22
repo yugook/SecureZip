@@ -115,6 +115,7 @@ Example `settings.json` override:
 - [Testing guide](docs/testing.md) – how to run type checks, linters, unit, and integration tests.
 - [Release process](docs/releasing.md) – preview/stable branching strategy and versioning rules.
 - [Architecture overview](docs/architecture.md) – maps key modules and data flows.
+- [Multi-root workspaces](docs/multi-root-workspaces.md) – target resolution and workspace ZIP behavior.
 - [Localization guide](docs/localization.md) – adding translations for runtime and contribution strings.
 - [SBOM instructions](docs/sbom.md) – details about `npm run sbom` and the bundled CycloneDX file.
 - Packaging preflight: run `npm run package:verify` before tagging/release to catch VS Code engine mismatches for `vsce`.
@@ -234,6 +235,7 @@ SecureZip は、ビルド時のデフォルトと実行時の上書きを組み�
 - [テストガイド](docs/testing.md) – 型チェック、lint、ユニット/インテグレーションテストの実行方法。
 - [リリース手順](docs/releasing.md) – プレビュー/安定版のブランチ戦略とバージョンルール。
 - [アーキテクチャ概要](docs/architecture.md) – 主要モジュールとデータフローの説明。
+- [マルチルートワークスペース](docs/multi-root-workspaces.md) – ターゲット解決と Workspace ZIP の挙動。
 - [ローカライズガイド](docs/localization.md) – 実行時・コントリビューション文字列への翻訳追加手順。
 - [SBOM 手順](docs/sbom.md) – `npm run sbom` の詳細と同梱される CycloneDX ファイルについて。
 - パッケージ前チェック: タグ/リリース前に `npm run package:verify` を実行して、VS Code エンジンの不整合で `vsce` が失敗しないか確認してください。
