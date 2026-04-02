@@ -178,6 +178,7 @@
   },
   "dependencies": {
     "archiver": "^7.0.1",
+    "archiver-zip-encrypted": "^2.0.0",
     "globby": "^16.2.0",
     "simple-git": "^3.33.0"
   },
@@ -198,7 +199,8 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vscode-test",
-    "sbom": "node scripts/generate-sbom.cjs"
+    "sbom": "node scripts/generate-sbom.cjs",
+    "poc:zip-encrypted": "node scripts/poc-zip-encrypted.cjs"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.8",
