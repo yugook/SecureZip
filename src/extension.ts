@@ -98,6 +98,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     const exportEncrypted = vscode.commands.registerCommand('securezip.exportEncrypted', async () => {
         await runExportCommandWithLock('export encrypted', async () => {
+            const password = await promptEncryptedZipPassword();
+            if (!password) {
+                vscode.window.showInformationMessage(localize('info.exportCancelled', 'SecureZip export was cancelled.'));
+                return;
+            }
             await vscode.window.showInformationMessage(
                 localize(
                     'info.exportEncryptedPending',
@@ -109,6 +114,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     const exportWorkspaceEncrypted = vscode.commands.registerCommand('securezip.exportWorkspaceEncrypted', async () => {
         await runExportCommandWithLock('export workspace encrypted', async () => {
+            const password = await promptEncryptedZipPassword();
+            if (!password) {
+                vscode.window.showInformationMessage(localize('info.exportCancelled', 'SecureZip export was cancelled.'));
+                return;
+            }
             await vscode.window.showInformationMessage(
                 localize(
                     'info.exportEncryptedPending',
@@ -307,6 +317,53 @@ async function runExportCommandWithLock(taskName: string, task: () => Promise<vo
         vscode.window.showErrorMessage(localize('error.exportFailed', 'SecureZip failed: {0}', toErrorMessage(err)));
     } finally {
         isExportRunning = false;
+    }
+}
+
+async function promptEncryptedZipPassword(): Promise<string | undefined> {
+    while (true) {
+        const password = await vscode.window.showInputBox({
+            prompt: localize('input.encryptionPassword.prompt', 'Enter a password for the encrypted ZIP.'),
+            placeHolder: localize('input.encryptionPassword.placeholder', 'Required'),
+            password: true,
+            validateInput: (value) => {
+                if (!value.trim()) {
+                    return localize('validation.passwordRequired', 'Password is required.');
+                }
+                return undefined;
+            },
+        });
+
+        if (password === undefined) {
+            return undefined;
+        }
+
+        if (!password.trim()) {
+            continue;
+        }
+
+        const confirmation = await vscode.window.showInputBox({
+            prompt: localize('input.encryptionPasswordConfirm.prompt', 'Re-enter the password to confirm.'),
+            placeHolder: localize('input.encryptionPasswordConfirm.placeholder', 'Confirm password'),
+            password: true,
+            validateInput: (value) => {
+                if (!value.trim()) {
+                    return localize('validation.passwordConfirmRequired', 'Password confirmation is required.');
+                }
+                return undefined;
+            },
+        });
+
+        if (confirmation === undefined) {
+            return undefined;
+        }
+
+        if (password !== confirmation) {
+            await vscode.window.showErrorMessage(localize('error.passwordMismatch', 'Passwords do not match. Please try again.'));
+            continue;
+        }
+
+        return password;
     }
 }
 
