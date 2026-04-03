@@ -79,45 +79,43 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('[SecureZip] activated.');
 
     const disposable = vscode.commands.registerCommand('securezip.export', async (args?: unknown) => {
-        try {
+        await runExportCommandWithLock('export', async () => {
             await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'SecureZip', cancellable: false }, async (progress) => {
                 progress.report({ message: localize('progress.preparing', 'Preparing...') });
                 await exportProject(progress, normalizeExportCommandArgs(args));
             });
-        } catch (err: unknown) {
-            console.error('[SecureZip] export failed', err);
-            vscode.window.showErrorMessage(localize('error.exportFailed', 'SecureZip failed: {0}', toErrorMessage(err)));
-        }
+        });
     });
 
     const exportWorkspace = vscode.commands.registerCommand('securezip.exportWorkspace', async () => {
-        try {
+        await runExportCommandWithLock('export workspace', async () => {
             await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'SecureZip', cancellable: false }, async (progress) => {
                 progress.report({ message: localize('progress.preparing', 'Preparing...') });
                 await exportProject(progress, { mode: 'workspace' });
             });
-        } catch (err: unknown) {
-            console.error('[SecureZip] export workspace failed', err);
-            vscode.window.showErrorMessage(localize('error.exportFailed', 'SecureZip failed: {0}', toErrorMessage(err)));
-        }
+        });
     });
 
     const exportEncrypted = vscode.commands.registerCommand('securezip.exportEncrypted', async () => {
-        vscode.window.showInformationMessage(
-            localize(
-                'info.exportEncryptedPending',
-                'Encrypted ZIP export is being prepared and will be enabled in a later task.',
-            ),
-        );
+        await runExportCommandWithLock('export encrypted', async () => {
+            await vscode.window.showInformationMessage(
+                localize(
+                    'info.exportEncryptedPending',
+                    'Encrypted ZIP export is being prepared and will be enabled in a later task.',
+                ),
+            );
+        });
     });
 
     const exportWorkspaceEncrypted = vscode.commands.registerCommand('securezip.exportWorkspaceEncrypted', async () => {
-        vscode.window.showInformationMessage(
-            localize(
-                'info.exportEncryptedPending',
-                'Encrypted ZIP export is being prepared and will be enabled in a later task.',
-            ),
-        );
+        await runExportCommandWithLock('export workspace encrypted', async () => {
+            await vscode.window.showInformationMessage(
+                localize(
+                    'info.exportEncryptedPending',
+                    'Encrypted ZIP export is being prepared and will be enabled in a later task.',
+                ),
+            );
+        });
     });
 
     const addToIgnore = vscode.commands.registerCommand('securezip.addToIgnore', async (target?: vscode.Uri) => {
@@ -293,6 +291,24 @@ export function deactivate() {}
 
 let extensionContext: vscode.ExtensionContext | undefined;
 let treeProvider: SecureZipViewProvider | undefined;
+let isExportRunning = false;
+
+async function runExportCommandWithLock(taskName: string, task: () => Promise<void>): Promise<void> {
+    if (isExportRunning) {
+        vscode.window.showWarningMessage(localize('warning.exportAlreadyRunning', 'Export is already running.'));
+        return;
+    }
+
+    isExportRunning = true;
+    try {
+        await task();
+    } catch (err: unknown) {
+        console.error(`[SecureZip] ${taskName} failed`, err);
+        vscode.window.showErrorMessage(localize('error.exportFailed', 'SecureZip failed: {0}', toErrorMessage(err)));
+    } finally {
+        isExportRunning = false;
+    }
+}
 
 async function exportProject(
     progress: vscode.Progress<{ message?: string }>,
