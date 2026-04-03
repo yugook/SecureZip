@@ -44,6 +44,7 @@
   "git.autoCommitDetail.untracked": "未追跡ファイルが {0} 件検出されました。設定を変更しない限り自動コミットには含まれません。",
   "info.exportCancelled": "SecureZip をキャンセルしました。",
   "info.exportCompleted": "SecureZip 完了: {0}",
+  "info.exportEncryptedPending": "暗号化 ZIP エクスポートは準備中です。後続タスクで有効になります。",
   "info.ignoreAlreadyExists": ".securezipignore は既に存在しています",
   "info.ignoreCreated": ".securezipignore を作成しました",
   "info.noSuggestedPatterns": "追加できる推奨パターンはありません",

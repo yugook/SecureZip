@@ -102,6 +102,24 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    const exportEncrypted = vscode.commands.registerCommand('securezip.exportEncrypted', async () => {
+        vscode.window.showInformationMessage(
+            localize(
+                'info.exportEncryptedPending',
+                'Encrypted ZIP export is being prepared and will be enabled in a later task.',
+            ),
+        );
+    });
+
+    const exportWorkspaceEncrypted = vscode.commands.registerCommand('securezip.exportWorkspaceEncrypted', async () => {
+        vscode.window.showInformationMessage(
+            localize(
+                'info.exportEncryptedPending',
+                'Encrypted ZIP export is being prepared and will be enabled in a later task.',
+            ),
+        );
+    });
+
     const addToIgnore = vscode.commands.registerCommand('securezip.addToIgnore', async (target?: vscode.Uri) => {
         try {
             await handleAddToIgnore(target);
@@ -258,6 +276,8 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         disposable,
         exportWorkspace,
+        exportEncrypted,
+        exportWorkspaceEncrypted,
         addToIgnore,
         addPattern,
         applySuggested,
