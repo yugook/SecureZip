@@ -18,6 +18,8 @@
   "activationEvents": [
     "onCommand:securezip.export",
     "onCommand:securezip.exportWorkspace",
+    "onCommand:securezip.exportEncrypted",
+    "onCommand:securezip.exportWorkspaceEncrypted",
     "onCommand:securezip.addToIgnore",
     "onCommand:securezip.addPattern",
     "onCommand:securezip.openIgnoreFile",
@@ -36,6 +38,14 @@
       {
         "command": "securezip.exportWorkspace",
         "title": "%command.exportWorkspace.title%"
+      },
+      {
+        "command": "securezip.exportEncrypted",
+        "title": "%command.exportEncrypted.title%"
+      },
+      {
+        "command": "securezip.exportWorkspaceEncrypted",
+        "title": "%command.exportWorkspaceEncrypted.title%"
       },
       {
         "command": "securezip.addToIgnore",
@@ -101,9 +111,14 @@
           "group": "navigation@0"
         },
         {
-          "command": "securezip.openIgnoreFile",
+          "command": "securezip.exportEncrypted",
           "when": "view == securezip.view",
           "group": "navigation@1"
+        },
+        {
+          "command": "securezip.openIgnoreFile",
+          "when": "view == securezip.view",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -178,6 +193,7 @@
   },
   "dependencies": {
     "archiver": "^7.0.1",
+    "archiver-zip-encrypted": "^2.0.0",
     "globby": "^16.2.0",
     "simple-git": "^3.33.0"
   },
@@ -198,7 +214,8 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vscode-test",
-    "sbom": "node scripts/generate-sbom.cjs"
+    "sbom": "node scripts/generate-sbom.cjs",
+    "poc:zip-encrypted": "node scripts/poc-zip-encrypted.cjs"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.8",
