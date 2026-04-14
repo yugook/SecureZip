@@ -66,6 +66,7 @@
   "ignore.hover.glob.more": "他にも一致があります。",
   "progress.collectingFiles": "ファイルを収集中…",
   "progress.creatingZip": "ZIP を作成中…",
+  "progress.creatingZipWithCount": "ZIP を作成中… ({0}/{1})",
   "progress.gitPreparingCommit": "Git: 自動コミットを準備中…",
   "progress.gitTagging": "Git: タグを作成中…",
   "progress.preparing": "準備中…",
