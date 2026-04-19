@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:1ff021f6-80be-4056-8b37-8fd6abcbe1bc",
+  "serialNumber": "urn:uuid:b0994758-2ad5-4a28-863c-08b3aa581e52",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-02-18T13:17:14.967Z",
+    "timestamp": "2026-04-02T14:27:20.204Z",
     "lifecycles": [
       {
         "phase": "pre-build"
@@ -19,13 +19,13 @@
       }
     ],
     "component": {
-      "bom-ref": "securezip@1.1.7",
+      "bom-ref": "securezip@1.1.8",
       "type": "application",
       "name": "SecureZip",
-      "version": "1.1.7",
+      "version": "1.1.8",
       "scope": "required",
       "description": "Securely export your project as a clean ZIP.",
-      "purl": "pkg:npm/securezip@1.1.7",
+      "purl": "pkg:npm/securezip@1.1.8",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -182,6 +182,39 @@
       ]
     },
     {
+      "bom-ref": "aes-js@3.1.2",
+      "type": "library",
+      "name": "aes-js",
+      "version": "3.1.2",
+      "scope": "required",
+      "purl": "pkg:npm/aes-js@3.1.2",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/aes-js"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/aes-js/-/aes-js-3.1.2.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "7b9a446b69019c13a047863fa76d29b245c8ef8504cfb75ef19195a39f1ab0eb6f4951b96006c97842cf6713a6b7e067cf7ad7ef9dd82a17c89f85f89753cf45"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
       "bom-ref": "archiver@7.0.1",
       "type": "library",
       "name": "archiver",
@@ -237,6 +270,39 @@
         {
           "alg": "SHA-512",
           "content": "c2e2c93262014180ac1998182d3cb9148076a45e8b7dbe9c5cc485f10cb0c24deddb4cd69c08bbccb71015d29098807cc32669639111dfcc74f066f0b51d9c2c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "archiver-zip-encrypted@2.0.0",
+      "type": "library",
+      "name": "archiver-zip-encrypted",
+      "version": "2.0.0",
+      "scope": "required",
+      "purl": "pkg:npm/archiver-zip-encrypted@2.0.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/archiver-zip-encrypted"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/archiver-zip-encrypted/-/archiver-zip-encrypted-2.0.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "4093e430f6f77c7c149d7a599736f0befce0cebe1b28af3829cf8ef3ea11b6c1332ea2be8b0257ca027e987a2e1342d612d47404db3a3b2b3fe3c872441e713b"
         }
       ],
       "licenses": [
@@ -342,6 +408,39 @@
         {
           "license": {
             "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "brace-expansion@2.0.3",
+      "type": "library",
+      "name": "brace-expansion",
+      "version": "2.0.3",
+      "scope": "required",
+      "purl": "pkg:npm/brace-expansion@2.0.3",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/brace-expansion"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-2.0.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "30257f7d82446eac7af1a139f24bf6700fe48a4cb51bcbeec77391ebf8db4be8c831effa7c959ad034f3254eddaa28ce598c078b5b76f4595f608f6ecadaa5a4"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
           }
         }
       ]
@@ -644,12 +743,12 @@
       ]
     },
     {
-      "bom-ref": "globby@16.0.0",
+      "bom-ref": "globby@16.2.0",
       "type": "library",
       "name": "globby",
-      "version": "16.0.0",
+      "version": "16.2.0",
       "scope": "required",
-      "purl": "pkg:npm/globby@16.0.0",
+      "purl": "pkg:npm/globby@16.2.0",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -659,13 +758,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/globby/-/globby-16.0.0.tgz"
+          "url": "https://registry.npmjs.org/globby/-/globby-16.2.0.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "7a3cb84c91606bdf725ba434ba1337a456b0296666b59cd90ffbff1b0239fbd6c2579130f83da948d0fa5bb7d47ace54ca4a92b099147f115575187b435f8fdd"
+          "content": "42b2626b6a837f9041fd5e876250d3b342349416a1ca32f3a46420dca4fb16709d4e89c0c8fcb646d63cd369b693800bc7a0e9ef9d9ff365ac39ccc456bde5e9"
         }
       ],
       "licenses": [
@@ -1007,12 +1106,12 @@
       ]
     },
     {
-      "bom-ref": "minimatch@5.1.6",
+      "bom-ref": "minimatch@5.1.8",
       "type": "library",
       "name": "minimatch",
-      "version": "5.1.6",
+      "version": "5.1.8",
       "scope": "required",
-      "purl": "pkg:npm/minimatch@5.1.6",
+      "purl": "pkg:npm/minimatch@5.1.8",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -1022,13 +1121,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/minimatch/-/minimatch-5.1.6.tgz"
+          "url": "https://registry.npmjs.org/minimatch/-/minimatch-5.1.8.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "94ac15ff56eba46ea6054147b5becd526b400426f65996669b6c0d88e0398406fc55d092e01dddb4c5b2bdca1589c730016fc23844635cbb74ccfd735d4376ea"
+          "content": "ed1377e6f8adf037817259287ce566058d1e0c065941dd47ce6ba445d4b2cfde42461f054f9e1eaa76e3d24ad0af79ab1d1eac7d1c989328700568e8579baa95"
         }
       ],
       "licenses": [
@@ -1040,12 +1139,12 @@
       ]
     },
     {
-      "bom-ref": "simple-git@3.30.0",
+      "bom-ref": "simple-git@3.33.0",
       "type": "library",
       "name": "simple-git",
-      "version": "3.30.0",
+      "version": "3.33.0",
       "scope": "required",
-      "purl": "pkg:npm/simple-git@3.30.0",
+      "purl": "pkg:npm/simple-git@3.33.0",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -1055,13 +1154,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/simple-git/-/simple-git-3.30.0.tgz"
+          "url": "https://registry.npmjs.org/simple-git/-/simple-git-3.33.0.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "aba971c83b029846a5fcc10684fd5a572437a319da8069410ce552201e175152e5d62661d0f6a1e9e6c2f55e3105aa7f45f80fd96948f042acd164b4acc1091e"
+          "content": "0f857fb460b6b23b28361a0cc9b2b21a813ebfc03ad2145ac0a435885440d73c2e0e01990812780723b367927c8e805b8b839a9b4aa23c7f868739920706c99e"
         }
       ],
       "licenses": [
@@ -1240,11 +1339,12 @@
   ],
   "dependencies": [
     {
-      "ref": "securezip@1.1.7",
+      "ref": "securezip@1.1.8",
       "dependsOn": [
         "archiver@7.0.1",
-        "globby@16.0.0",
-        "simple-git@3.30.0"
+        "archiver-zip-encrypted@2.0.0",
+        "globby@16.2.0",
+        "simple-git@3.33.0"
       ]
     },
     {
@@ -1264,6 +1364,10 @@
       "dependsOn": [
         "event-target-shim@5.0.1"
       ]
+    },
+    {
+      "ref": "aes-js@3.1.2",
+      "dependsOn": []
     },
     {
       "ref": "archiver@7.0.1",
@@ -1286,6 +1390,18 @@
       ]
     },
     {
+      "ref": "archiver-zip-encrypted@2.0.0",
+      "dependsOn": [
+        "aes-js@3.1.2",
+        "archiver@7.0.1",
+        "archiver-utils@5.0.2",
+        "buffer-crc32@1.0.0",
+        "compress-commons@6.0.2",
+        "crc32-stream@6.0.0",
+        "zip-stream@6.0.1"
+      ]
+    },
+    {
       "ref": "async@3.2.6",
       "dependsOn": []
     },
@@ -1295,6 +1411,10 @@
     },
     {
       "ref": "bare-events@2.8.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "brace-expansion@2.0.3",
       "dependsOn": []
     },
     {
@@ -1344,7 +1464,7 @@
       "dependsOn": []
     },
     {
-      "ref": "globby@16.0.0",
+      "ref": "globby@16.2.0",
       "dependsOn": [
         "@sindresorhus/merge-streams@4.0.0",
         "is-path-inside@4.0.0",
@@ -1403,15 +1523,17 @@
     {
       "ref": "readdir-glob@1.1.3",
       "dependsOn": [
-        "minimatch@5.1.6"
+        "minimatch@5.1.8"
       ]
     },
     {
-      "ref": "minimatch@5.1.6",
-      "dependsOn": []
+      "ref": "minimatch@5.1.8",
+      "dependsOn": [
+        "brace-expansion@2.0.3"
+      ]
     },
     {
-      "ref": "simple-git@3.30.0",
+      "ref": "simple-git@3.33.0",
       "dependsOn": [
         "@kwsites/file-exists@1.1.1",
         "@kwsites/promise-deferred@1.1.1"
