@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import archiver from 'archiver';
 import zipEncrypted from 'archiver-zip-encrypted';
 import simpleGit, { SimpleGit } from 'simple-git';
@@ -1199,9 +1200,36 @@ function formatDate(d: Date) {
 }
 
 async function createZipEntries(entries: ZipEntry[], outFile: string, options: ZipCreationOptions) {
-    await fs.promises.mkdir(path.dirname(outFile), { recursive: true });
+    const outDir = path.dirname(outFile);
+    await fs.promises.mkdir(outDir, { recursive: true });
 
-    const output = fs.createWriteStream(outFile);
+    const tempPath = buildTempArchivePath(outFile);
+
+    try {
+        await writeArchiveToFile(entries, tempPath, options);
+    } catch (err) {
+        await cleanupTempArchive(tempPath);
+        throw err;
+    }
+
+    try {
+        await fs.promises.rename(tempPath, outFile);
+    } catch (err) {
+        // Existing outFile is preserved because rename failed before replacing it.
+        await cleanupTempArchive(tempPath);
+        throw err;
+    }
+}
+
+function buildTempArchivePath(outFile: string): string {
+    const dir = path.dirname(outFile);
+    const base = path.basename(outFile);
+    const unique = `${process.pid}-${crypto.randomBytes(6).toString('hex')}`;
+    return path.join(dir, `.${base}.${unique}.partial`);
+}
+
+async function writeArchiveToFile(entries: ZipEntry[], tempPath: string, options: ZipCreationOptions): Promise<void> {
+    const output = fs.createWriteStream(tempPath);
     const archive = options.mode === 'encrypted'
         ? (() => {
             ensureZipEncryptedFormatRegistered();
@@ -1231,4 +1259,16 @@ async function createZipEntries(entries: ZipEntry[], outFile: string, options: Z
 
     await archive.finalize();
     await closed;
+}
+
+async function cleanupTempArchive(tempPath: string): Promise<void> {
+    try {
+        await fs.promises.rm(tempPath, { force: true });
+    } catch (err) {
+        const message = toErrorMessage(err);
+        console.warn('[SecureZip] failed to clean up temporary archive:', tempPath, message);
+        vscode.window.showWarningMessage(
+            localize('warning.cleanupTempFailed', 'Failed to delete temporary archive: {0}', tempPath),
+        );
+    }
 }

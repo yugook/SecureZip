@@ -92,6 +92,7 @@
   "validation.passwordRequired": "パスワードを入力してください",
   "validation.passwordConfirmRequired": "確認用パスワードを入力してください",
   "validation.tagRequired": "タグ名を入力してください",
+  "warning.cleanupTempFailed": "一時ファイルの削除に失敗しました: {0}",
   "warning.commitFailed": "自動コミットに失敗しました（署名設定などを確認）。コミットなしで続行します。",
   "warning.fileSchemeOnly": "ファイルシステム上の項目のみ追加できます",
   "warning.exportAlreadyRunning": "エクスポートは既に実行中です。",
