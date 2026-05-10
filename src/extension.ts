@@ -3,7 +3,9 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import archiver from 'archiver';
+import zipEncrypted from 'archiver-zip-encrypted';
 import simpleGit, { SimpleGit } from 'simple-git';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { resolveFlags } from './flags';
@@ -23,10 +25,12 @@ import {
 type AutoCommitStageMode = 'tracked' | 'all';
 type TaggingMode = 'ask' | 'always' | 'never';
 type ExportMode = 'default' | 'workspace';
+type ZipMode = 'plain' | 'encrypted';
 
 type ExportCommandArgs = {
     root?: string;
     mode?: ExportMode;
+    zip?: ZipCreationOptions;
 };
 
 type ExportTarget =
@@ -43,10 +47,17 @@ type ZipEntry = {
     archivePath: string;
 };
 
+type ZipCreationOptions =
+    | { mode: 'plain' }
+    | { mode: 'encrypted'; password: string };
+
 interface TagPlan {
     tagName?: string;
     shouldCreate: boolean;
 }
+
+const ZIP_ENCRYPTED_FORMAT = 'zip-encrypted';
+let isZipEncryptedFormatReady = false;
 
 function normalizeTaggingMode(value?: string): TaggingMode {
     if (value === 'always' || value === 'never') {
@@ -79,27 +90,56 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('[SecureZip] activated.');
 
     const disposable = vscode.commands.registerCommand('securezip.export', async (args?: unknown) => {
-        try {
+        await runExportCommandWithLock('export', async () => {
             await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'SecureZip', cancellable: false }, async (progress) => {
                 progress.report({ message: localize('progress.preparing', 'Preparing...') });
                 await exportProject(progress, normalizeExportCommandArgs(args));
             });
-        } catch (err: unknown) {
-            console.error('[SecureZip] export failed', err);
-            vscode.window.showErrorMessage(localize('error.exportFailed', 'SecureZip failed: {0}', toErrorMessage(err)));
-        }
+        });
     });
 
     const exportWorkspace = vscode.commands.registerCommand('securezip.exportWorkspace', async () => {
-        try {
+        await runExportCommandWithLock('export workspace', async () => {
             await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'SecureZip', cancellable: false }, async (progress) => {
                 progress.report({ message: localize('progress.preparing', 'Preparing...') });
                 await exportProject(progress, { mode: 'workspace' });
             });
-        } catch (err: unknown) {
-            console.error('[SecureZip] export workspace failed', err);
-            vscode.window.showErrorMessage(localize('error.exportFailed', 'SecureZip failed: {0}', toErrorMessage(err)));
-        }
+        });
+    });
+
+    const exportEncrypted = vscode.commands.registerCommand('securezip.exportEncrypted', async (args?: unknown) => {
+        await runExportCommandWithLock('export encrypted', async () => {
+            const password = await promptEncryptedZipPassword();
+            if (!password) {
+                vscode.window.showInformationMessage(localize('info.exportCancelled', 'SecureZip export was cancelled.'));
+                return;
+            }
+            const commandArgs = normalizeExportCommandArgs(args) ?? {};
+            await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'SecureZip', cancellable: false }, async (progress) => {
+                progress.report({ message: localize('progress.preparing', 'Preparing...') });
+                await exportProject(progress, {
+                    ...commandArgs,
+                    zip: { mode: 'encrypted', password },
+                });
+            });
+        });
+    });
+
+    const exportWorkspaceEncrypted = vscode.commands.registerCommand('securezip.exportWorkspaceEncrypted', async () => {
+        await runExportCommandWithLock('export workspace encrypted', async () => {
+            const password = await promptEncryptedZipPassword();
+            if (!password) {
+                vscode.window.showInformationMessage(localize('info.exportCancelled', 'SecureZip export was cancelled.'));
+                return;
+            }
+            await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'SecureZip', cancellable: false }, async (progress) => {
+                progress.report({ message: localize('progress.preparing', 'Preparing...') });
+                await exportProject(progress, {
+                    mode: 'workspace',
+                    zip: { mode: 'encrypted', password },
+                });
+            });
+        });
     });
 
     const addToIgnore = vscode.commands.registerCommand('securezip.addToIgnore', async (target?: vscode.Uri) => {
@@ -258,6 +298,8 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         disposable,
         exportWorkspace,
+        exportEncrypted,
+        exportWorkspaceEncrypted,
         addToIgnore,
         addPattern,
         applySuggested,
@@ -273,11 +315,89 @@ export function deactivate() {}
 
 let extensionContext: vscode.ExtensionContext | undefined;
 let treeProvider: SecureZipViewProvider | undefined;
+let isExportRunning = false;
+
+async function runExportCommandWithLock(taskName: string, task: () => Promise<void>): Promise<void> {
+    if (isExportRunning) {
+        vscode.window.showWarningMessage(localize('warning.exportAlreadyRunning', 'Export is already running.'));
+        return;
+    }
+
+    isExportRunning = true;
+    try {
+        await task();
+    } catch (err: unknown) {
+        console.error(`[SecureZip] ${taskName} failed`, err);
+        vscode.window.showErrorMessage(localize('error.exportFailed', 'SecureZip failed: {0}', toErrorMessage(err)));
+    } finally {
+        isExportRunning = false;
+    }
+}
+
+function ensureZipEncryptedFormatRegistered(): void {
+    if (isZipEncryptedFormatReady) {
+        return;
+    }
+
+    if (!archiver.isRegisteredFormat(ZIP_ENCRYPTED_FORMAT)) {
+        archiver.registerFormat(ZIP_ENCRYPTED_FORMAT, zipEncrypted);
+    }
+
+    isZipEncryptedFormatReady = true;
+}
+
+async function promptEncryptedZipPassword(): Promise<string | undefined> {
+    while (true) {
+        const password = await vscode.window.showInputBox({
+            prompt: localize('input.encryptionPassword.prompt', 'Enter a password for the encrypted ZIP.'),
+            placeHolder: localize('input.encryptionPassword.placeholder', 'Required'),
+            password: true,
+            validateInput: (value) => {
+                if (!value.trim()) {
+                    return localize('validation.passwordRequired', 'Password is required.');
+                }
+                return undefined;
+            },
+        });
+
+        if (password === undefined) {
+            return undefined;
+        }
+
+        if (!password.trim()) {
+            continue;
+        }
+
+        const confirmation = await vscode.window.showInputBox({
+            prompt: localize('input.encryptionPasswordConfirm.prompt', 'Re-enter the password to confirm.'),
+            placeHolder: localize('input.encryptionPasswordConfirm.placeholder', 'Confirm password'),
+            password: true,
+            validateInput: (value) => {
+                if (!value.trim()) {
+                    return localize('validation.passwordConfirmRequired', 'Password confirmation is required.');
+                }
+                return undefined;
+            },
+        });
+
+        if (confirmation === undefined) {
+            return undefined;
+        }
+
+        if (password !== confirmation) {
+            await vscode.window.showErrorMessage(localize('error.passwordMismatch', 'Passwords do not match. Please try again.'));
+            continue;
+        }
+
+        return password;
+    }
+}
 
 async function exportProject(
     progress: vscode.Progress<{ message?: string }>,
     args?: ExportCommandArgs,
 ) {
+    const zipOptions: ZipCreationOptions = args?.zip ?? { mode: 'plain' };
     const workspaceCount = vscode.workspace.workspaceFolders?.length ?? 0;
     let exportMode = args?.mode;
     if (!exportMode) {
@@ -292,7 +412,7 @@ async function exportProject(
     }
 
     if (exportMode === 'workspace') {
-        await exportWorkspaceZip(progress);
+        await exportWorkspaceZip(progress, zipOptions);
         return;
     }
 
@@ -301,11 +421,11 @@ async function exportProject(
         return;
     }
     if (target.kind === 'workspace') {
-        await exportWorkspaceZip(progress);
+        await exportWorkspaceZip(progress, zipOptions);
         return;
     }
 
-    await exportSingleRoot(target.root, target.label, progress);
+    await exportSingleRoot(target.root, target.label, progress, zipOptions);
 }
 
 function normalizeExportCommandArgs(args: unknown): ExportCommandArgs | undefined {
@@ -435,6 +555,7 @@ async function exportSingleRoot(
     root: string,
     label: string,
     progress: vscode.Progress<{ message?: string }>,
+    zipOptions: ZipCreationOptions,
 ) {
     const cfg = vscode.workspace.getConfiguration('secureZip', vscode.Uri.file(root));
     const tagPrefix = (cfg.get<string>('tagPrefix') || 'export').trim();
@@ -703,12 +824,15 @@ async function exportSingleRoot(
     }));
 
     progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
-    await createZipEntries(entries, targetUri.fsPath);
+    await createZipEntries(entries, targetUri.fsPath, zipOptions);
 
     vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
 }
 
-async function exportWorkspaceZip(progress: vscode.Progress<{ message?: string }>) {
+async function exportWorkspaceZip(
+    progress: vscode.Progress<{ message?: string }>,
+    zipOptions: ZipCreationOptions,
+) {
     const targets = buildWorkspaceTargets();
     if (targets.length === 0) {
         throw new Error(localize('error.workspaceMissing', 'No workspace folder is open.'));
@@ -759,7 +883,7 @@ async function exportWorkspaceZip(progress: vscode.Progress<{ message?: string }
     }
 
     progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
-    await createZipEntries(entries, targetUri.fsPath);
+    await createZipEntries(entries, targetUri.fsPath, zipOptions);
 
     vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
 }
@@ -1075,11 +1199,47 @@ function formatDate(d: Date) {
     };
 }
 
-async function createZipEntries(entries: ZipEntry[], outFile: string) {
-    await fs.promises.mkdir(path.dirname(outFile), { recursive: true });
+async function createZipEntries(entries: ZipEntry[], outFile: string, options: ZipCreationOptions) {
+    const outDir = path.dirname(outFile);
+    await fs.promises.mkdir(outDir, { recursive: true });
 
-    const output = fs.createWriteStream(outFile);
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    const tempPath = buildTempArchivePath(outFile);
+
+    try {
+        await writeArchiveToFile(entries, tempPath, options);
+    } catch (err) {
+        await cleanupTempArchive(tempPath);
+        throw err;
+    }
+
+    try {
+        await fs.promises.rename(tempPath, outFile);
+    } catch (err) {
+        // Existing outFile is preserved because rename failed before replacing it.
+        await cleanupTempArchive(tempPath);
+        throw err;
+    }
+}
+
+function buildTempArchivePath(outFile: string): string {
+    const dir = path.dirname(outFile);
+    const base = path.basename(outFile);
+    const unique = `${process.pid}-${crypto.randomBytes(6).toString('hex')}`;
+    return path.join(dir, `.${base}.${unique}.partial`);
+}
+
+async function writeArchiveToFile(entries: ZipEntry[], tempPath: string, options: ZipCreationOptions): Promise<void> {
+    const output = fs.createWriteStream(tempPath);
+    const archive = options.mode === 'encrypted'
+        ? (() => {
+            ensureZipEncryptedFormatRegistered();
+            return archiver(ZIP_ENCRYPTED_FORMAT, {
+                zlib: { level: 9 },
+                encryptionMethod: 'aes256',
+                password: options.password,
+            });
+        })()
+        : archiver('zip', { zlib: { level: 9 } });
 
     const closed = new Promise<void>((resolve, reject) => {
         output.on('close', () => resolve());
@@ -1099,4 +1259,16 @@ async function createZipEntries(entries: ZipEntry[], outFile: string) {
 
     await archive.finalize();
     await closed;
+}
+
+async function cleanupTempArchive(tempPath: string): Promise<void> {
+    try {
+        await fs.promises.rm(tempPath, { force: true });
+    } catch (err) {
+        const message = toErrorMessage(err);
+        console.warn('[SecureZip] failed to clean up temporary archive:', tempPath, message);
+        vscode.window.showWarningMessage(
+            localize('warning.cleanupTempFailed', 'Failed to delete temporary archive: {0}', tempPath),
+        );
+    }
 }

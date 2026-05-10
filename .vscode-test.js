@@ -33,7 +33,7 @@ if (process.env.SECUREZIP_TEST_VERBOSE === '1') {
 }
 
 module.exports = defineConfig({
-    files: 'out/test/extension.test.js',
+    files: ['out/test/extension.test.js', 'out/test/extension.encrypted.test.js'],
     extensionDevelopmentPath: __dirname,
     launchArgs,
     mocha: {

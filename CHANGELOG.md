@@ -4,6 +4,14 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.2.1] - Unreleased
+
+- Added `SecureZip: Export Encrypted ZIP` and `SecureZip: Export Workspace Encrypted ZIP` commands that produce password-protected archives using WinZip AES-256 (method 99).
+- Encrypted export prompts twice for the password (entry + confirmation), re-prompts on mismatch, and aborts cleanly without writing any file when either prompt is cancelled.
+- Output is staged in a temporary `.partial` file and renamed atomically on success; failures during write or rename clean up the temp file and preserve the existing ZIP at the destination.
+- Concurrent export invocations are now rejected with an "Export is already running" warning so two runs cannot interleave.
+- Documented WinZip AES-256 compatibility, the metadata that the format does *not* protect (filenames, sizes, structure), and the case where Git auto-commit/tag may already be applied if a later step fails.
+
 ## [1.1.8] - 2026-02-19
 
 - Added full multi-root workspace support for target resolution and export behavior.

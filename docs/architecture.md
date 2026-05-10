@@ -7,8 +7,12 @@ find the right files when adding features or debugging.
 
 - `src/extension.ts` is the activation entry. It registers commands declared in
   `package.json`:
-  - `securezip.export` – orchestrates the export workflow (progress UI,
+  - `securezip.export` – orchestrates the plain export workflow (progress UI,
     `.securezipignore` loading, archiver, git tagging/commits).
+  - `securezip.exportWorkspace` – plain export for the multi-root workspace.
+  - `securezip.exportEncrypted` / `securezip.exportWorkspaceEncrypted` – the
+    same workflows wrapped with the password prompt described under
+    [Encrypted export](#encrypted-export-pipeline).
   - `securezip.addToIgnore`, `securezip.addPattern`,
     `securezip.applySuggestedPatterns` – helpers that modify ignore rules.
   - `securezip.openIgnoreFile`, `securezip.createIgnoreFile` – file utilities.
@@ -16,6 +20,44 @@ find the right files when adding features or debugging.
   operations.
 - Feature flags come from `src/flags.ts`, mixing build-time defines
   (`__BUILD_FLAGS__` via `esbuild.js`) and runtime settings.
+
+## Encrypted export pipeline
+
+- The `exportEncrypted` / `exportWorkspaceEncrypted` commands reuse the regular
+  export flow but inject a `ZipCreationOptions` of `{ mode: 'encrypted',
+  password }` after a two-step prompt (`promptEncryptedZipPassword`).
+  Cancellation at either step returns `undefined` and short-circuits the
+  command before any file is written.
+- Encryption is provided by `archiver-zip-encrypted` registered as the
+  `zip-encrypted` archiver format with `encryptionMethod: 'aes256'`. The format
+  is registered lazily via `ensureZipEncryptedFormatRegistered`, which guards
+  against `archiver`'s "format already registered" error when the user runs
+  multiple encrypted exports in one session.
+
+### Failure semantics
+
+`createZipEntries` writes to a temporary `.<basename>.<pid>-<rand>.partial` in
+the destination directory and renames it onto the final path on success.
+
+- If `writeArchiveToFile` fails, the temp file is removed via
+  `cleanupTempArchive` and the original error is re-thrown. Any pre-existing
+  ZIP at the destination is untouched because the rename never runs.
+- If the rename itself fails, the temp file is removed for the same reason and
+  the original ZIP is preserved.
+- The Git auto-commit and tag steps run **before** the archive is written, so
+  a failure inside `createZipEntries` (or during password prompting) can leave
+  newly-created commits/tags in the repository. This is documented for users
+  in the README; downstream tooling should assume Git side-effects may persist
+  even when the ZIP is missing.
+
+### Concurrency lock
+
+`runExportCommandWithLock` wraps every export command. It maintains a single
+process-wide `isExportRunning` boolean: when a command starts it flips the flag
+to `true`; a second invocation that arrives while the flag is set surfaces a
+warning (`warning.exportAlreadyRunning`) and returns immediately without
+running the wrapped task. The flag is cleared in a `finally` block so an
+exception in the inner task always releases the lock.
 
 ## Ignore and exclude handling
 
