@@ -1,11 +1,12 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 const archiver = require('archiver');
 const zipEncrypted = require('archiver-zip-encrypted');
 
 const ZIP_ENCRYPTED_FORMAT = 'zip-encrypted';
-const PASSWORD = 'securezip-poc-password';
+const PASSWORD = process.env.SECUREZIP_POC_PASSWORD || crypto.randomBytes(24).toString('base64url');
 
 function ensureZipEncryptedFormatRegistered() {
   if (!archiver.isRegisteredFormat(ZIP_ENCRYPTED_FORMAT)) {

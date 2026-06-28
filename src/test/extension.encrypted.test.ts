@@ -204,13 +204,21 @@ suite('SecureZip Encrypted Export', function () {
         let inputCallCount = 0;
         let saveDialogCalls = 0;
         const win = getWindow();
-        win.showInputBox = (async () => {
-            if (inputCallCount >= inputValues.length) {
-                throw new Error(`Unexpected showInputBox call (#${inputCallCount + 1}).`);
+        win.showInputBox = (async (options?: vscode.InputBoxOptions) => {
+            while (true) {
+                if (inputCallCount >= inputValues.length) {
+                    throw new Error(`Unexpected showInputBox value (#${inputCallCount + 1}).`);
+                }
+                const value = inputValues[inputCallCount];
+                inputCallCount += 1;
+                if (value === undefined) {
+                    return undefined;
+                }
+                const validation = await Promise.resolve(options?.validateInput?.(value) as unknown);
+                if (!validation) {
+                    return value;
+                }
             }
-            const value = inputValues[inputCallCount];
-            inputCallCount += 1;
-            return value;
         }) as typeof vscode.window.showInputBox;
         win.showSaveDialog = (async () => {
             saveDialogCalls += 1;
@@ -222,7 +230,7 @@ suite('SecureZip Encrypted Export', function () {
         try {
             await vscode.commands.executeCommand('securezip.exportEncrypted');
 
-            assert.strictEqual(inputCallCount, 3, 'Blank password input should trigger another password prompt');
+            assert.strictEqual(inputCallCount, 3, 'Blank password input should be rejected before export continues');
             assert.strictEqual(saveDialogCalls, 1, 'Save dialog should appear only after a non-empty confirmed password');
             assert.ok(await pathExists(outPath), 'Encrypted ZIP should be created after a valid password is provided');
             const entries = inspectZip(outPath);

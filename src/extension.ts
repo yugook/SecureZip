@@ -373,10 +373,6 @@ async function promptEncryptedZipPassword(): Promise<string | undefined> {
             return undefined;
         }
 
-        if (!password.trim()) {
-            continue;
-        }
-
         const confirmation = await vscode.window.showInputBox({
             prompt: localize('input.encryptionPasswordConfirm.prompt', 'Re-enter the password to confirm.'),
             placeHolder: localize('input.encryptionPasswordConfirm.placeholder', 'Confirm password'),
@@ -1275,16 +1271,17 @@ async function writeArchiveToFile(
     progress: ExportProgress,
 ): Promise<void> {
     const output = fs.createWriteStream(tempPath);
+    const archiverOptions = { zlib: { level: 9 } };
     const archive = options.mode === 'encrypted'
         ? (() => {
             ensureZipEncryptedFormatRegistered();
             return archiver(ZIP_ENCRYPTED_FORMAT, {
-                zlib: { level: 9 },
+                ...archiverOptions,
                 encryptionMethod: 'aes256',
                 password: options.password,
             });
         })()
-        : archiver('zip', { zlib: { level: 9 } });
+        : archiver('zip', archiverOptions);
 
     const closed = new Promise<void>((resolve, reject) => {
         output.on('close', () => resolve());
