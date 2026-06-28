@@ -43,6 +43,15 @@ type ZipEntry = {
     archivePath: string;
 };
 
+type ExportProgress = vscode.Progress<{ message?: string; increment?: number }>;
+
+type ArchiveProgressEvent = {
+    entries?: {
+        processed?: number;
+        total?: number;
+    };
+};
+
 interface TagPlan {
     tagName?: string;
     shouldCreate: boolean;
@@ -275,7 +284,7 @@ let extensionContext: vscode.ExtensionContext | undefined;
 let treeProvider: SecureZipViewProvider | undefined;
 
 async function exportProject(
-    progress: vscode.Progress<{ message?: string }>,
+    progress: ExportProgress,
     args?: ExportCommandArgs,
 ) {
     const workspaceCount = vscode.workspace.workspaceFolders?.length ?? 0;
@@ -434,7 +443,7 @@ function buildWorkspaceTargets(): WorkspaceTarget[] {
 async function exportSingleRoot(
     root: string,
     label: string,
-    progress: vscode.Progress<{ message?: string }>,
+    progress: ExportProgress,
 ) {
     const cfg = vscode.workspace.getConfiguration('secureZip', vscode.Uri.file(root));
     const tagPrefix = (cfg.get<string>('tagPrefix') || 'export').trim();
@@ -703,12 +712,12 @@ async function exportSingleRoot(
     }));
 
     progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
-    await createZipEntries(entries, targetUri.fsPath);
+    await createZipEntries(entries, targetUri.fsPath, progress);
 
     vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
 }
 
-async function exportWorkspaceZip(progress: vscode.Progress<{ message?: string }>) {
+async function exportWorkspaceZip(progress: ExportProgress) {
     const targets = buildWorkspaceTargets();
     if (targets.length === 0) {
         throw new Error(localize('error.workspaceMissing', 'No workspace folder is open.'));
@@ -759,7 +768,7 @@ async function exportWorkspaceZip(progress: vscode.Progress<{ message?: string }
     }
 
     progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
-    await createZipEntries(entries, targetUri.fsPath);
+    await createZipEntries(entries, targetUri.fsPath, progress);
 
     vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
 }
@@ -1075,7 +1084,7 @@ function formatDate(d: Date) {
     };
 }
 
-async function createZipEntries(entries: ZipEntry[], outFile: string) {
+async function createZipEntries(entries: ZipEntry[], outFile: string, progress: ExportProgress) {
     await fs.promises.mkdir(path.dirname(outFile), { recursive: true });
 
     const output = fs.createWriteStream(outFile);
@@ -1093,10 +1102,40 @@ async function createZipEntries(entries: ZipEntry[], outFile: string) {
 
     archive.pipe(output);
 
+    const totalEntries = entries.length;
+    let processedEntries = 0;
+    let lastPercent = 0;
+    const reportZipProgress = (processed: number) => {
+        if (totalEntries === 0) {
+            return;
+        }
+
+        const boundedProcessed = Math.min(Math.max(processed, 0), totalEntries);
+        const percent = Math.floor((boundedProcessed / totalEntries) * 100);
+        if (percent <= lastPercent) {
+            return;
+        }
+        // ZIP creation currently owns the determinate progress range.
+        progress.report({
+            increment: percent - lastPercent,
+            message: localize('progress.creatingZipWithCount', 'Creating ZIP archive... ({0}/{1})', boundedProcessed, totalEntries),
+        });
+        lastPercent = percent;
+    };
+    archive.on('progress', (event: ArchiveProgressEvent) => {
+        const processed = event.entries?.processed;
+        if (typeof processed !== 'number' || processed <= processedEntries) {
+            return;
+        }
+        processedEntries = processed;
+        reportZipProgress(processedEntries);
+    });
+
     for (const entry of entries) {
         archive.file(entry.absPath, { name: entry.archivePath });
     }
 
     await archive.finalize();
     await closed;
+    reportZipProgress(totalEntries);
 }
