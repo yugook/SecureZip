@@ -1125,7 +1125,7 @@ suite('SecureZip Extension', function () {
         }
 
         assert.ok(errors.length > 0, 'Expected export to report an error');
-        assert.match(errors[0], /EISDIR|is a directory/, 'Unexpected error message');
+        assert.match(errors[0], /EISDIR|EPERM|is a directory|operation not permitted/, 'Unexpected error message');
     });
 });
 

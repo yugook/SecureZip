@@ -151,14 +151,22 @@ suite('SecureZip Encrypted Export', function () {
         const outPath = path.join(getWorkspaceRoot(), 'securezip-encrypted-single.zip');
 
         const win = getWindow();
+        const infos: string[] = [];
         win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
         win.showSaveDialog = (async () => vscode.Uri.file(outPath)) as typeof vscode.window.showSaveDialog;
-        win.showInformationMessage = (async () => undefined) as typeof vscode.window.showInformationMessage;
+        win.showInformationMessage = ((message: unknown, ..._items: unknown[]) => {
+            infos.push(typeof message === 'string' ? message : String(message ?? ''));
+            return Promise.resolve(undefined);
+        }) as typeof vscode.window.showInformationMessage;
         win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
 
         try {
             await vscode.commands.executeCommand('securezip.exportEncrypted');
             assert.ok(await pathExists(outPath), 'Encrypted ZIP should be created');
+            assert.ok(
+                infos.some((message) => /encrypted zip created|暗号化 ZIP を作成しました/i.test(message)),
+                `Completion message should identify encrypted export. Captured: ${JSON.stringify(infos)}`,
+            );
             const entries = inspectZip(outPath);
             assert.ok(entries.length > 0, 'Encrypted ZIP should contain entries');
             for (const entry of entries) {
@@ -167,6 +175,50 @@ suite('SecureZip Encrypted Export', function () {
             }
             const partials = await listPartialFiles(path.dirname(outPath));
             assert.deepStrictEqual(partials, [], 'No .partial files should remain after success');
+        } finally {
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('exportEncrypted keeps prompting on blank password input instead of creating a plain ZIP', async function () {
+        this.timeout(30000);
+        await stageSimpleProject();
+        const root = getWorkspaceRoot();
+        const outPath = path.join(root, 'securezip-blank-password.zip');
+
+        const inputValues: Array<string | undefined> = ['   ', PASSWORD, PASSWORD];
+        let inputCallCount = 0;
+        let saveDialogCalls = 0;
+        const win = getWindow();
+        win.showInputBox = (async () => {
+            if (inputCallCount >= inputValues.length) {
+                throw new Error(`Unexpected showInputBox call (#${inputCallCount + 1}).`);
+            }
+            const value = inputValues[inputCallCount];
+            inputCallCount += 1;
+            return value;
+        }) as typeof vscode.window.showInputBox;
+        win.showSaveDialog = (async () => {
+            saveDialogCalls += 1;
+            return vscode.Uri.file(outPath);
+        }) as typeof vscode.window.showSaveDialog;
+        win.showInformationMessage = (async () => undefined) as typeof vscode.window.showInformationMessage;
+        win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
+
+        try {
+            await vscode.commands.executeCommand('securezip.exportEncrypted');
+
+            assert.strictEqual(inputCallCount, 3, 'Blank password input should trigger another password prompt');
+            assert.strictEqual(saveDialogCalls, 1, 'Save dialog should appear only after a non-empty confirmed password');
+            assert.ok(await pathExists(outPath), 'Encrypted ZIP should be created after a valid password is provided');
+            const entries = inspectZip(outPath);
+            assert.ok(entries.length > 0, 'ZIP should contain entries');
+            for (const entry of entries) {
+                assert.strictEqual(entry.encrypted, true, `${entry.name} should be encrypted`);
+                assert.strictEqual(entry.method, 99, `${entry.name} should use WinZip AES (method 99)`);
+            }
+            const partials = await listPartialFiles(root);
+            assert.deepStrictEqual(partials, [], 'No partial files should remain after blank input recovery');
         } finally {
             await removeIfExists(outPath);
         }

@@ -402,6 +402,27 @@ async function promptEncryptedZipPassword(): Promise<string | undefined> {
     }
 }
 
+function getCreatingZipMessage(options: ZipCreationOptions): string {
+    if (options.mode === 'encrypted') {
+        return localize('progress.creatingEncryptedZip', 'Creating encrypted ZIP archive...');
+    }
+    return localize('progress.creatingZip', 'Creating ZIP archive...');
+}
+
+function getCreatingZipWithCountMessage(options: ZipCreationOptions, processed: number, total: number): string {
+    if (options.mode === 'encrypted') {
+        return localize('progress.creatingEncryptedZipWithCount', 'Creating encrypted ZIP archive... ({0}/{1})', processed, total);
+    }
+    return localize('progress.creatingZipWithCount', 'Creating ZIP archive... ({0}/{1})', processed, total);
+}
+
+function getExportCompletedMessage(options: ZipCreationOptions, fileName: string): string {
+    if (options.mode === 'encrypted') {
+        return localize('info.encryptedExportCompleted', 'Encrypted ZIP created: {0}', fileName);
+    }
+    return localize('info.exportCompleted', 'SecureZip completed: {0}', fileName);
+}
+
 async function exportProject(
     progress: ExportProgress,
     args?: ExportCommandArgs,
@@ -832,10 +853,10 @@ async function exportSingleRoot(
         archivePath: toArchivePath(path.relative(root, file)),
     }));
 
-    progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
+    progress.report({ message: getCreatingZipMessage(zipOptions) });
     await createZipEntries(entries, targetUri.fsPath, zipOptions, progress);
 
-    vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
+    vscode.window.showInformationMessage(getExportCompletedMessage(zipOptions, path.basename(targetUri.fsPath)));
 }
 
 async function exportWorkspaceZip(
@@ -891,10 +912,10 @@ async function exportWorkspaceZip(
         throw new Error(localize('error.noFilesToArchive', 'No files were found to include in the archive.'));
     }
 
-    progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
+    progress.report({ message: getCreatingZipMessage(zipOptions) });
     await createZipEntries(entries, targetUri.fsPath, zipOptions, progress);
 
-    vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
+    vscode.window.showInformationMessage(getExportCompletedMessage(zipOptions, path.basename(targetUri.fsPath)));
 }
 
 async function collectFilesForRoot(
@@ -1287,7 +1308,7 @@ async function writeArchiveToFile(
         // ZIP creation currently owns the determinate progress range.
         progress.report({
             increment: percent - lastPercent,
-            message: localize('progress.creatingZipWithCount', 'Creating ZIP archive... ({0}/{1})', boundedProcessed, totalEntries),
+            message: getCreatingZipWithCountMessage(options, boundedProcessed, totalEntries),
         });
         lastPercent = percent;
     };
