@@ -346,6 +346,48 @@ suite('SecureZip Encrypted Export', function () {
         }
     });
 
+    test('exportEncrypted excludes the destination archive when it is reached through another file identity path', async function () {
+        this.timeout(30000);
+        await stageSimpleProject();
+        const root = getWorkspaceRoot();
+        const inTreePath = path.join(root, 'securezip-hardlink-output.zip');
+        const aliasDir = path.join(path.dirname(root), 'securezip-output-alias');
+        const outPath = path.join(aliasDir, 'securezip-hardlink-output.zip');
+
+        await fs.promises.writeFile(inTreePath, 'previous archive bytes\n', 'utf8');
+        await fs.promises.mkdir(aliasDir, { recursive: true });
+        try {
+            await fs.promises.link(inTreePath, outPath);
+        } catch (err: unknown) {
+            await removeIfExists(aliasDir);
+            const code = (err as NodeJS.ErrnoException)?.code;
+            if (code === 'EPERM' || code === 'EACCES' || code === 'ENOTSUP' || code === 'EXDEV') {
+                this.skip();
+            }
+            throw err;
+        }
+
+        const win = getWindow();
+        win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
+        win.showSaveDialog = (async () => vscode.Uri.file(outPath)) as typeof vscode.window.showSaveDialog;
+        win.showInformationMessage = (async () => undefined) as typeof vscode.window.showInformationMessage;
+        win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
+
+        try {
+            await vscode.commands.executeCommand('securezip.exportEncrypted');
+            assert.ok(await pathExists(outPath), 'Encrypted ZIP should replace the output alias');
+            const entries = inspectZip(outPath);
+            assert.ok(entries.length > 0, 'Replacement ZIP should contain project entries');
+            assert.ok(
+                !entries.some((entry) => entry.name === path.basename(inTreePath)),
+                'Replacement ZIP must not embed the previous archive reached through a file alias',
+            );
+        } finally {
+            await removeIfExists(aliasDir);
+            await removeIfExists(inTreePath);
+        }
+    });
+
     test('exportEncrypted excludes leftover SecureZip partial archives', async function () {
         this.timeout(30000);
         await stageSimpleProject();

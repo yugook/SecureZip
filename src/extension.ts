@@ -51,6 +51,12 @@ type ExistingArchiveMetadata = {
     mode: number;
 };
 
+type PathIdentity = {
+    normalizedPath: string;
+    realPath?: string;
+    fileId?: string;
+};
+
 type ZipCreationOptions =
     | { mode: 'plain' }
     | { mode: 'encrypted'; password: string };
@@ -852,7 +858,8 @@ async function exportSingleRoot(
     }
 
     const outFile = targetUri.fsPath;
-    const entries = collection.files.filter((file) => shouldIncludeArchiveEntry(file, outFile)).map((file) => ({
+    const archiveFiles = await filterArchiveFiles(collection.files, outFile);
+    const entries = archiveFiles.map((file) => ({
         absPath: file,
         archivePath: toArchivePath(path.relative(root, file)),
     }));
@@ -910,10 +917,8 @@ async function exportWorkspaceZip(
             );
         }
 
-        for (const file of collection.files) {
-            if (!shouldIncludeArchiveEntry(file, outFile)) {
-                continue;
-            }
+        const archiveFiles = await filterArchiveFiles(collection.files, outFile);
+        for (const file of archiveFiles) {
             const rel = toArchivePath(path.relative(target.root, file));
             const archivePath = toArchivePath(path.posix.join(target.label, rel));
             entries.push({ absPath: file, archivePath });
@@ -1276,17 +1281,70 @@ function buildTempArchivePath(outFile: string): string {
     return path.join(dir, `.${base}.${unique}.partial`);
 }
 
-function shouldIncludeArchiveEntry(filePath: string, outFile: string): boolean {
-    return !isSameFilePath(filePath, outFile) && !isSecureZipPartialArchivePath(filePath);
+async function filterArchiveFiles(files: string[], outFile: string): Promise<string[]> {
+    const outFileIdentity = await resolvePathIdentity(outFile);
+    const filtered: string[] = [];
+
+    for (const file of files) {
+        if (await shouldIncludeArchiveEntry(file, outFileIdentity)) {
+            filtered.push(file);
+        }
+    }
+
+    return filtered;
 }
 
-function isSameFilePath(a: string, b: string): boolean {
-    return normalizePathForComparison(a) === normalizePathForComparison(b);
+async function shouldIncludeArchiveEntry(filePath: string, outFileIdentity: PathIdentity): Promise<boolean> {
+    if (isSecureZipPartialArchivePath(filePath)) {
+        return false;
+    }
+    if (normalizePathForComparison(filePath) === outFileIdentity.normalizedPath) {
+        return false;
+    }
+    if (!outFileIdentity.realPath && !outFileIdentity.fileId) {
+        return true;
+    }
+
+    const fileIdentity = await resolvePathIdentity(filePath);
+    return !isSamePathIdentity(fileIdentity, outFileIdentity);
 }
 
 function normalizePathForComparison(filePath: string): string {
     const resolved = path.normalize(path.resolve(filePath));
     return process.platform === 'win32' || process.platform === 'darwin' ? resolved.toLowerCase() : resolved;
+}
+
+async function resolvePathIdentity(filePath: string): Promise<PathIdentity> {
+    const identity: PathIdentity = {
+        normalizedPath: normalizePathForComparison(filePath),
+    };
+
+    try {
+        identity.realPath = normalizePathForComparison(await fs.promises.realpath(filePath));
+    } catch {
+        // Identity comparison is best-effort; string comparison remains the fallback.
+    }
+
+    try {
+        const stat = await fs.promises.stat(filePath);
+        identity.fileId = getStatFileId(stat);
+    } catch {
+        // Identity comparison is best-effort; string comparison remains the fallback.
+    }
+
+    return identity;
+}
+
+function isSamePathIdentity(a: PathIdentity, b: PathIdentity): boolean {
+    return (a.realPath !== undefined && a.realPath === b.realPath)
+        || (a.fileId !== undefined && a.fileId === b.fileId);
+}
+
+function getStatFileId(stat: fs.Stats): string | undefined {
+    if (!stat.isFile() || stat.ino === 0) {
+        return undefined;
+    }
+    return `${stat.dev}:${stat.ino}`;
 }
 
 function isSecureZipPartialArchivePath(filePath: string): boolean {
