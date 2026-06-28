@@ -195,7 +195,7 @@
     "archiver": "^7.0.1",
     "archiver-zip-encrypted": "^2.0.0",
     "globby": "^16.2.0",
-    "simple-git": "^3.33.0"
+    "simple-git": "^3.36.0"
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -222,14 +222,14 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@types/vscode": "^1.110.0",
-    "@typescript-eslint/eslint-plugin": "^8.57.2",
-    "@typescript-eslint/parser": "^8.57.2",
+    "@typescript-eslint/eslint-plugin": "^8.61.1",
+    "@typescript-eslint/parser": "^8.59.4",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
-    "@vscode/vsce": "^3.7.1",
-    "adm-zip": "^0.5.16",
-    "esbuild": "^0.27.4",
-    "eslint": "^10.1.0",
+    "@vscode/vsce": "^3.9.2",
+    "adm-zip": "^0.5.17",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.5.0",
     "npm-run-all": "^4.1.5",
     "typescript": "^5.9.3"
   },

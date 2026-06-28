@@ -51,6 +51,15 @@ type ZipCreationOptions =
     | { mode: 'plain' }
     | { mode: 'encrypted'; password: string };
 
+type ExportProgress = vscode.Progress<{ message?: string; increment?: number }>;
+
+type ArchiveProgressEvent = {
+    entries?: {
+        processed?: number;
+        total?: number;
+    };
+};
+
 interface TagPlan {
     tagName?: string;
     shouldCreate: boolean;
@@ -394,7 +403,7 @@ async function promptEncryptedZipPassword(): Promise<string | undefined> {
 }
 
 async function exportProject(
-    progress: vscode.Progress<{ message?: string }>,
+    progress: ExportProgress,
     args?: ExportCommandArgs,
 ) {
     const zipOptions: ZipCreationOptions = args?.zip ?? { mode: 'plain' };
@@ -554,7 +563,7 @@ function buildWorkspaceTargets(): WorkspaceTarget[] {
 async function exportSingleRoot(
     root: string,
     label: string,
-    progress: vscode.Progress<{ message?: string }>,
+    progress: ExportProgress,
     zipOptions: ZipCreationOptions,
 ) {
     const cfg = vscode.workspace.getConfiguration('secureZip', vscode.Uri.file(root));
@@ -824,13 +833,13 @@ async function exportSingleRoot(
     }));
 
     progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
-    await createZipEntries(entries, targetUri.fsPath, zipOptions);
+    await createZipEntries(entries, targetUri.fsPath, zipOptions, progress);
 
     vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
 }
 
 async function exportWorkspaceZip(
-    progress: vscode.Progress<{ message?: string }>,
+    progress: ExportProgress,
     zipOptions: ZipCreationOptions,
 ) {
     const targets = buildWorkspaceTargets();
@@ -883,7 +892,7 @@ async function exportWorkspaceZip(
     }
 
     progress.report({ message: localize('progress.creatingZip', 'Creating ZIP archive...') });
-    await createZipEntries(entries, targetUri.fsPath, zipOptions);
+    await createZipEntries(entries, targetUri.fsPath, zipOptions, progress);
 
     vscode.window.showInformationMessage(localize('info.exportCompleted', 'SecureZip completed: {0}', path.basename(targetUri.fsPath)));
 }
@@ -1199,14 +1208,18 @@ function formatDate(d: Date) {
     };
 }
 
-async function createZipEntries(entries: ZipEntry[], outFile: string, options: ZipCreationOptions) {
-    const outDir = path.dirname(outFile);
-    await fs.promises.mkdir(outDir, { recursive: true });
+async function createZipEntries(
+    entries: ZipEntry[],
+    outFile: string,
+    options: ZipCreationOptions,
+    progress: ExportProgress,
+) {
+    await fs.promises.mkdir(path.dirname(outFile), { recursive: true });
 
     const tempPath = buildTempArchivePath(outFile);
 
     try {
-        await writeArchiveToFile(entries, tempPath, options);
+        await writeArchiveToFile(entries, tempPath, options, progress);
     } catch (err) {
         await cleanupTempArchive(tempPath);
         throw err;
@@ -1228,7 +1241,12 @@ function buildTempArchivePath(outFile: string): string {
     return path.join(dir, `.${base}.${unique}.partial`);
 }
 
-async function writeArchiveToFile(entries: ZipEntry[], tempPath: string, options: ZipCreationOptions): Promise<void> {
+async function writeArchiveToFile(
+    entries: ZipEntry[],
+    tempPath: string,
+    options: ZipCreationOptions,
+    progress: ExportProgress,
+): Promise<void> {
     const output = fs.createWriteStream(tempPath);
     const archive = options.mode === 'encrypted'
         ? (() => {
@@ -1253,12 +1271,42 @@ async function writeArchiveToFile(entries: ZipEntry[], tempPath: string, options
 
     archive.pipe(output);
 
+    const totalEntries = entries.length;
+    let processedEntries = 0;
+    let lastPercent = 0;
+    const reportZipProgress = (processed: number) => {
+        if (totalEntries === 0) {
+            return;
+        }
+
+        const boundedProcessed = Math.min(Math.max(processed, 0), totalEntries);
+        const percent = Math.floor((boundedProcessed / totalEntries) * 100);
+        if (percent <= lastPercent) {
+            return;
+        }
+        // ZIP creation currently owns the determinate progress range.
+        progress.report({
+            increment: percent - lastPercent,
+            message: localize('progress.creatingZipWithCount', 'Creating ZIP archive... ({0}/{1})', boundedProcessed, totalEntries),
+        });
+        lastPercent = percent;
+    };
+    archive.on('progress', (event: ArchiveProgressEvent) => {
+        const processed = event.entries?.processed;
+        if (typeof processed !== 'number' || processed <= processedEntries) {
+            return;
+        }
+        processedEntries = processed;
+        reportZipProgress(processedEntries);
+    });
+
     for (const entry of entries) {
         archive.file(entry.absPath, { name: entry.archivePath });
     }
 
     await archive.finalize();
     await closed;
+    reportZipProgress(totalEntries);
 }
 
 async function cleanupTempArchive(tempPath: string): Promise<void> {

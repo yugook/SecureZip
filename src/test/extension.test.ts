@@ -117,6 +117,10 @@ async function hydrateFixture(name: string, destination: string) {
 }
 
 async function hydrateSimpleProject(root: string) {
+    await normalizeFixtureFile(path.join(root, '.securezipignore'));
+    await normalizeFixtureFile(path.join(root, 'README.md'));
+    await normalizeFixtureFile(path.join(root, 'src', 'index.ts'));
+
     const distDir = path.join(root, 'dist');
     await fs.promises.mkdir(distDir, { recursive: true });
     const releaseFile = path.join(distDir, 'release.txt');
@@ -155,6 +159,11 @@ async function hydrateSimpleProject(root: string) {
     await fs.promises.writeFile(path.join(gitDir, 'HEAD'), headContent, 'utf8');
     await fs.promises.writeFile(path.join(gitDir, 'config'), configContent, 'utf8');
     await fs.promises.writeFile(path.join(gitDir, 'refs', 'heads', 'main'), refContent, 'utf8');
+}
+
+async function normalizeFixtureFile(file: string) {
+    const contents = await fs.promises.readFile(file, 'utf8');
+    await fs.promises.writeFile(file, contents.replace(/\r\n/g, '\n'), 'utf8');
 }
 
 async function loadExpectedHashes(name: string, variant?: string) {
@@ -215,6 +224,49 @@ suite('SecureZip Extension', function () {
             await removeIfExists(outPath);
         }
         log('test: export simple fixture - completed');
+    });
+
+    test('reports ZIP creation progress as archive entries are processed', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const progressReports: ProgressReport[] = [];
+        const { outPath } = await exportAndCollect('securezip-progress.zip', {
+            withProgress: createProgressRecorder(progressReports),
+        });
+        try {
+            const expectedCount = Object.keys(await loadExpectedHashes('simple-project')).length;
+            const expectedFinalMessage = localize(
+                'progress.creatingZipWithCount',
+                'Creating ZIP archive... ({0}/{1})',
+                expectedCount.toString(),
+                expectedCount.toString(),
+            );
+            const zipReports = progressReports.filter((report) => /\(\d+\/\d+\)$/.test(report.message ?? ''));
+            assert.ok(zipReports.length > 0, 'Expected ZIP creation progress reports');
+            assert.strictEqual(zipReports.at(-1)?.message, expectedFinalMessage);
+
+            let lastProcessed = 0;
+            let totalIncrement = 0;
+            for (const report of zipReports) {
+                const match = report.message?.match(/\((\d+)\/(\d+)\)$/);
+                assert.ok(match, `Unexpected progress message: ${report.message ?? '<missing>'}`);
+                const processed = Number(match[1]);
+                const total = Number(match[2]);
+                assert.strictEqual(total, expectedCount);
+                assert.ok(processed >= lastProcessed, 'Progress counts should be monotonic');
+                lastProcessed = processed;
+
+                const increment = report.increment;
+                assert.ok(typeof increment === 'number', 'Progress report should include an increment');
+                assert.ok(increment > 0, 'Progress increments should be positive');
+                totalIncrement += increment;
+                assert.ok(totalIncrement <= 100, 'Progress increments should not exceed 100%');
+            }
+            assert.strictEqual(totalIncrement, 100);
+        } finally {
+            await removeIfExists(outPath);
+        }
     });
 
     test('Export cancels cleanly when save dialog returns undefined', async function () {
@@ -982,7 +1034,9 @@ suite('SecureZip Extension', function () {
         const outPath = path.join(root, 'securezip-empty.zip');
         const originalShowSaveDialog = vscode.window.showSaveDialog;
         const originalShowErrorMessage = vscode.window.showErrorMessage;
+        const originalWithProgress = vscode.window.withProgress;
         const errors: string[] = [];
+        const progressReports: ProgressReport[] = [];
 
         await fs.promises.writeFile(ignorePath, '# test: no re-include\n', 'utf8');
 
@@ -993,6 +1047,8 @@ suite('SecureZip Extension', function () {
                 errors.push(message);
                 return Promise.resolve(items[0] as any);
             };
+        (vscode.window as unknown as { withProgress: typeof vscode.window.withProgress }).withProgress =
+            createProgressRecorder(progressReports);
 
         try {
             await vscode.commands.executeCommand('securezip.export');
@@ -1002,11 +1058,20 @@ suite('SecureZip Extension', function () {
             (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog = originalShowSaveDialog;
             (vscode.window as unknown as { showErrorMessage: typeof vscode.window.showErrorMessage }).showErrorMessage =
                 originalShowErrorMessage;
+            (vscode.window as unknown as { withProgress: typeof vscode.window.withProgress }).withProgress = originalWithProgress;
             await removeIfExists(outPath);
         }
 
         assert.ok(errors.length > 0, 'Expected export to report an error');
         assert.match(errors[0], /No files were found to include in the archive/, 'Unexpected error message');
+        assert.ok(
+            progressReports.every((report) => report.increment === undefined || Number.isFinite(report.increment)),
+            'Progress increments should never be NaN'
+        );
+        assert.ok(
+            progressReports.every((report) => !/\(0\/0\)$/.test(report.message ?? '')),
+            'Empty exports should not report ZIP entry progress'
+        );
     });
 
     test('keeps .securezipignore re-includes effective under blanket excludes', async function () {
@@ -1313,6 +1378,26 @@ function normalizeFsPath(target: string): string {
 
 interface ExportOverrides {
     showWarningMessage?: typeof vscode.window.showWarningMessage;
+    withProgress?: typeof vscode.window.withProgress;
+}
+
+type ProgressReport = {
+    message?: string;
+    increment?: number;
+};
+
+function createProgressRecorder(reports: ProgressReport[]): typeof vscode.window.withProgress {
+    return (async (_options, task) => {
+        const tokenSource = new vscode.CancellationTokenSource();
+        try {
+            const progress: vscode.Progress<ProgressReport> = {
+                report: (value) => reports.push({ ...value }),
+            };
+            return await task(progress, tokenSource.token);
+        } finally {
+            tokenSource.dispose();
+        }
+    }) as typeof vscode.window.withProgress;
 }
 
 async function exportAndCollect(outFileName: string, overrides?: ExportOverrides) {
@@ -1320,13 +1405,18 @@ async function exportAndCollect(outFileName: string, overrides?: ExportOverrides
     const windowOverrides = vscode.window as unknown as {
         showSaveDialog: typeof vscode.window.showSaveDialog;
         showWarningMessage: typeof vscode.window.showWarningMessage;
+        withProgress: typeof vscode.window.withProgress;
     };
     const originalShowSaveDialog = windowOverrides.showSaveDialog;
     const originalShowWarningMessage = windowOverrides.showWarningMessage;
+    const originalWithProgress = windowOverrides.withProgress;
     log('executing securezip.export with saved dialog stub');
     windowOverrides.showSaveDialog = async () => vscode.Uri.file(outPath);
     if (overrides?.showWarningMessage) {
         windowOverrides.showWarningMessage = overrides.showWarningMessage;
+    }
+    if (overrides?.withProgress) {
+        windowOverrides.withProgress = overrides.withProgress;
     }
 
     try {
@@ -1338,6 +1428,7 @@ async function exportAndCollect(outFileName: string, overrides?: ExportOverrides
     } finally {
         windowOverrides.showSaveDialog = originalShowSaveDialog;
         windowOverrides.showWarningMessage = originalShowWarningMessage;
+        windowOverrides.withProgress = originalWithProgress;
     }
 
     const stat = await fs.promises.stat(outPath);
@@ -1362,8 +1453,9 @@ async function removeIfExists(target: string) {
 }
 
 function validateWorkspaceRoot(root: string): void {
-    const normalized = path.resolve(root);
-    const filesystemRoot = path.parse(normalized).root;
+    const resolved = path.resolve(root);
+    const normalized = normalizeFsPath(resolved);
+    const filesystemRoot = normalizeFsPath(path.parse(resolved).root);
     assert.notStrictEqual(
         normalized,
         filesystemRoot,
@@ -1371,7 +1463,7 @@ function validateWorkspaceRoot(root: string): void {
     );
 
     if (expectedWorkspaceRoot) {
-        const normalizedExpected = path.resolve(expectedWorkspaceRoot);
+        const normalizedExpected = normalizeFsPath(path.resolve(expectedWorkspaceRoot));
         if (normalized === normalizedExpected) {
             return;
         }
