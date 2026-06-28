@@ -1311,7 +1311,7 @@ async function shouldIncludeArchiveEntry(filePath: string, outFileIdentity: Path
 
 function normalizePathForComparison(filePath: string): string {
     const resolved = path.normalize(path.resolve(filePath));
-    return process.platform === 'win32' || process.platform === 'darwin' ? resolved.toLowerCase() : resolved;
+    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
 }
 
 async function resolvePathIdentity(filePath: string): Promise<PathIdentity> {
