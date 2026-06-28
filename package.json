@@ -116,9 +116,14 @@
           "group": "navigation@1"
         },
         {
-          "command": "securezip.openIgnoreFile",
+          "command": "securezip.exportWorkspaceEncrypted",
           "when": "view == securezip.view",
           "group": "navigation@2"
+        },
+        {
+          "command": "securezip.openIgnoreFile",
+          "when": "view == securezip.view",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [

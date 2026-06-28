@@ -8,7 +8,7 @@
   "command.applySuggestedPatterns.title": "SecureZip: 推奨パターンを一括追加",
   "command.openIgnoreFile.title": "SecureZip: .securezipignore を開く",
   "command.createIgnoreFile.title": "SecureZip: .securezipignore を作成",
-  "viewsWelcome.main": "プロジェクトを安全にZIP化します。\\n[エクスポートを実行](command:securezip.export)",
+  "viewsWelcome.main": "プロジェクトを安全にZIP化します。\\n[ZIP をエクスポート](command:securezip.export)\\n[暗号化 ZIP をエクスポート](command:securezip.exportEncrypted)",
   "config.enableStatusBarButton.description": "ステータスバーの SecureZip ボタンを表示する",
   "config.commitMessageTemplate.description": "自動コミット時のメッセージテンプレート。利用可能変数: ${date}, ${time}, ${datetime}, ${branch}, ${tag}",
   "config.tagPrefix.description": "自動作成するタグの接頭辞（例: export -> export-YYYYMMDD-HHmmss）",

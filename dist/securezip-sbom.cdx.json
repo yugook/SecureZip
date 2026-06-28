@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:b0994758-2ad5-4a28-863c-08b3aa581e52",
+  "serialNumber": "urn:uuid:09e70b1e-17eb-4a9f-869b-094e8592db9f",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-04-02T14:27:20.204Z",
+    "timestamp": "2026-06-28T04:07:19.926Z",
     "lifecycles": [
       {
         "phase": "pre-build"
@@ -15,7 +15,7 @@
       {
         "vendor": "npm",
         "name": "cli",
-        "version": "10.9.3"
+        "version": "10.9.0"
       }
     ],
     "component": {
@@ -105,6 +105,72 @@
         {
           "alg": "SHA-512",
           "content": "19a1d89be7343bd323651bb4a278060516e29eef2054031dd946638e2ea3566a8ab5996e667a6d5c65a1cf513c8fc0f61c9ddfff2331280502d1bfb9ef09dc23"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@simple-git/args-pathspec@1.0.3",
+      "type": "library",
+      "name": "@simple-git/args-pathspec",
+      "version": "1.0.3",
+      "scope": "required",
+      "purl": "pkg:npm/%40simple-git/args-pathspec@1.0.3",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@simple-git/args-pathspec"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@simple-git/args-pathspec/-/args-pathspec-1.0.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "9e024c68796c5834df8f2abd17754843c6fb3576c12eae63f62e5b27a5cb62d0faaa50d74fb7dd298d8ab1c596505f2dd7cc71d39d98fcf50ed4ad5345cf7228"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@simple-git/argv-parser@1.1.0",
+      "type": "library",
+      "name": "@simple-git/argv-parser",
+      "version": "1.1.0",
+      "scope": "required",
+      "purl": "pkg:npm/%40simple-git/argv-parser@1.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@simple-git/argv-parser"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@simple-git/argv-parser/-/argv-parser-1.1.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "b1428ebb695be6f1885800cd34ba6c7328f4ec301e41953728b6e71364e3e77b56e816c340a325cb60827e7478a18ceab5110b08f59fc1a3e0f90d13f2a7ca06"
         }
       ],
       "licenses": [
@@ -1139,12 +1205,12 @@
       ]
     },
     {
-      "bom-ref": "simple-git@3.33.0",
+      "bom-ref": "simple-git@3.36.0",
       "type": "library",
       "name": "simple-git",
-      "version": "3.33.0",
+      "version": "3.36.0",
       "scope": "required",
-      "purl": "pkg:npm/simple-git@3.33.0",
+      "purl": "pkg:npm/simple-git@3.36.0",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -1154,13 +1220,13 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/simple-git/-/simple-git-3.33.0.tgz"
+          "url": "https://registry.npmjs.org/simple-git/-/simple-git-3.36.0.tgz"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "0f857fb460b6b23b28361a0cc9b2b21a813ebfc03ad2145ac0a435885440d73c2e0e01990812780723b367927c8e805b8b839a9b4aa23c7f868739920706c99e"
+          "content": "7064232e32bc6f1270e10b984fb8311f0dff228b951126e16a14ac1eb5fdecccc22f582edaeee8cb7f16e8bd9920610211f2011b805a6ec5833e307124436ff5"
         }
       ],
       "licenses": [
@@ -1344,7 +1410,7 @@
         "archiver@7.0.1",
         "archiver-zip-encrypted@2.0.0",
         "globby@16.2.0",
-        "simple-git@3.33.0"
+        "simple-git@3.36.0"
       ]
     },
     {
@@ -1354,6 +1420,16 @@
     {
       "ref": "@kwsites/promise-deferred@1.1.1",
       "dependsOn": []
+    },
+    {
+      "ref": "@simple-git/args-pathspec@1.0.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "@simple-git/argv-parser@1.1.0",
+      "dependsOn": [
+        "@simple-git/args-pathspec@1.0.3"
+      ]
     },
     {
       "ref": "@sindresorhus/merge-streams@4.0.0",
@@ -1533,10 +1609,12 @@
       ]
     },
     {
-      "ref": "simple-git@3.33.0",
+      "ref": "simple-git@3.36.0",
       "dependsOn": [
         "@kwsites/file-exists@1.1.1",
-        "@kwsites/promise-deferred@1.1.1"
+        "@kwsites/promise-deferred@1.1.1",
+        "@simple-git/args-pathspec@1.0.3",
+        "@simple-git/argv-parser@1.1.0"
       ]
     },
     {
