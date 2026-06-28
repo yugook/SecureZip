@@ -614,6 +614,14 @@ async function exportSingleRoot(
                 const TAG_OPTION_DEFAULT = localize('git.taggingOption.default', 'Create default tag');
                 const TAG_OPTION_CUSTOM = localize('git.taggingOption.custom', 'Create custom tag');
                 const TAG_OPTION_SKIP = localize('git.taggingOption.skip', 'Skip tagging');
+                const quickPickOptions: vscode.QuickPickOptions = zipOptions.mode === 'encrypted'
+                    ? {
+                        title: localize('git.taggingEncryptedTitle', 'Encrypted ZIP export'),
+                        placeHolder: localize('git.taggingEncryptedPrompt', 'Encrypted ZIP export: choose how to tag this export'),
+                    }
+                    : {
+                        placeHolder: localize('git.taggingPrompt', 'Choose how to tag this export'),
+                    };
                 const selection = await vscode.window.showQuickPick<TaggingPick>(
                     [
                         {
@@ -632,9 +640,7 @@ async function exportSingleRoot(
                             value: 'skip',
                         },
                     ],
-                    {
-                        placeHolder: localize('git.taggingPrompt', 'Choose how to tag this export'),
-                    },
+                    quickPickOptions,
                 );
                 if (!selection || selection.value === 'skip') {
                     return undefined;

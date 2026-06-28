@@ -31,6 +31,8 @@
   "git.taggingOption.skip": "タグ付けしない",
   "git.taggingOption.skipDescription": "タグなしで続行",
   "git.taggingPrompt": "このエクスポートのタグ付け方法を選択してください",
+  "git.taggingEncryptedTitle": "暗号化 ZIP エクスポート",
+  "git.taggingEncryptedPrompt": "暗号化 ZIP エクスポート: タグ付け方法を選択してください",
   "git.taggingInputPrompt": "このエクスポートのタグ名を入力してください",
   "git.taggingInputPlaceholder": "例: {0}",
   "git.tagConflictMessage": "タグ「{0}」は既に存在します。どうしますか？",

@@ -2,12 +2,14 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import AdmZip from 'adm-zip';
+import simpleGit from 'simple-git';
 import * as vscode from 'vscode';
 
 const fixturesRoot = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures');
 
 type WindowMutable = {
     showInputBox: typeof vscode.window.showInputBox;
+    showQuickPick: typeof vscode.window.showQuickPick;
     showSaveDialog: typeof vscode.window.showSaveDialog;
     showInformationMessage: typeof vscode.window.showInformationMessage;
     showWarningMessage: typeof vscode.window.showWarningMessage;
@@ -98,6 +100,7 @@ function inspectZip(zipPath: string): Array<{ name: string; encrypted: boolean; 
 
 interface SnapshotState {
     showInputBox: typeof vscode.window.showInputBox;
+    showQuickPick: typeof vscode.window.showQuickPick;
     showSaveDialog: typeof vscode.window.showSaveDialog;
     showInformationMessage: typeof vscode.window.showInformationMessage;
     showWarningMessage: typeof vscode.window.showWarningMessage;
@@ -108,6 +111,7 @@ function snapshotWindow(): SnapshotState {
     const win = getWindow();
     return {
         showInputBox: win.showInputBox,
+        showQuickPick: win.showQuickPick,
         showSaveDialog: win.showSaveDialog,
         showInformationMessage: win.showInformationMessage,
         showWarningMessage: win.showWarningMessage,
@@ -118,6 +122,7 @@ function snapshotWindow(): SnapshotState {
 function restoreWindow(snapshot: SnapshotState): void {
     const win = getWindow();
     win.showInputBox = snapshot.showInputBox;
+    win.showQuickPick = snapshot.showQuickPick;
     win.showSaveDialog = snapshot.showSaveDialog;
     win.showInformationMessage = snapshot.showInformationMessage;
     win.showWarningMessage = snapshot.showWarningMessage;
@@ -127,6 +132,15 @@ function restoreWindow(snapshot: SnapshotState): void {
 async function listPartialFiles(dir: string): Promise<string[]> {
     const entries = await fs.promises.readdir(dir);
     return entries.filter((entry) => entry.endsWith('.partial'));
+}
+
+async function initGitRepository(root: string): Promise<void> {
+    const git = simpleGit({ baseDir: root });
+    await git.init();
+    await git.addConfig('user.email', 'securezip-tests@example.com');
+    await git.addConfig('user.name', 'SecureZip Tests');
+    await git.add('.');
+    await git.commit('Fixture base commit');
 }
 
 suite('SecureZip Encrypted Export', function () {
@@ -220,6 +234,53 @@ suite('SecureZip Encrypted Export', function () {
             const partials = await listPartialFiles(root);
             assert.deepStrictEqual(partials, [], 'No partial files should remain after blank input recovery');
         } finally {
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('exportEncrypted reminds users about encryption during tag selection', async function () {
+        this.timeout(30000);
+        await stageSimpleProject();
+        const root = getWorkspaceRoot();
+        const outPath = path.join(root, 'securezip-encrypted-tag-reminder.zip');
+
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('tagging.mode', 'ask', vscode.ConfigurationTarget.Workspace);
+        await initGitRepository(root);
+
+        const quickPickOptions: vscode.QuickPickOptions[] = [];
+        const win = getWindow();
+        win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
+        win.showQuickPick = ((items: readonly unknown[], options?: vscode.QuickPickOptions) => {
+            quickPickOptions.push(options ?? {});
+            const skip = items.find((item) => (item as { value?: string }).value === 'skip');
+            return Promise.resolve(skip);
+        }) as typeof vscode.window.showQuickPick;
+        win.showSaveDialog = (async () => vscode.Uri.file(outPath)) as typeof vscode.window.showSaveDialog;
+        win.showInformationMessage = (async () => undefined) as typeof vscode.window.showInformationMessage;
+        win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
+
+        try {
+            await vscode.commands.executeCommand('securezip.exportEncrypted');
+
+            assert.ok(quickPickOptions.length > 0, 'Encrypted export should show the tag selection QuickPick');
+            const reminderText = quickPickOptions
+                .map((option) => `${option.title ?? ''} ${option.placeHolder ?? ''}`)
+                .join('\n');
+            assert.match(
+                reminderText,
+                /encrypted zip export|暗号化 ZIP エクスポート/i,
+                `Tag selection should remind users this is encrypted. Captured: ${JSON.stringify(quickPickOptions)}`,
+            );
+            assert.ok(await pathExists(outPath), 'Encrypted ZIP should be created after skipping tagging');
+            const entries = inspectZip(outPath);
+            assert.ok(entries.length > 0, 'ZIP should contain entries');
+            for (const entry of entries) {
+                assert.strictEqual(entry.encrypted, true, `${entry.name} should be encrypted`);
+                assert.strictEqual(entry.method, 99, `${entry.name} should use WinZip AES (method 99)`);
+            }
+        } finally {
+            await config.update('tagging.mode', undefined, vscode.ConfigurationTarget.Workspace);
             await removeIfExists(outPath);
         }
     });
