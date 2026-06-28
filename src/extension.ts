@@ -47,6 +47,10 @@ type ZipEntry = {
     archivePath: string;
 };
 
+type ExistingArchiveMetadata = {
+    mode: number;
+};
+
 type ZipCreationOptions =
     | { mode: 'plain' }
     | { mode: 'encrypted'; password: string };
@@ -66,6 +70,7 @@ interface TagPlan {
 }
 
 const ZIP_ENCRYPTED_FORMAT = 'zip-encrypted';
+const SECUREZIP_PARTIAL_ARCHIVE_BASENAME_PATTERN = /^\..+\.\d+-[0-9a-f]{12}\.partial$/i;
 let isZipEncryptedFormatReady = false;
 
 function normalizeTaggingMode(value?: string): TaggingMode {
@@ -846,19 +851,20 @@ async function exportSingleRoot(
         );
     }
 
-    if (collection.files.length === 0) {
-        throw new Error(localize('error.noFilesToArchive', 'No files were found to include in the archive.'));
-    }
-
-    const entries = collection.files.map((file) => ({
+    const outFile = targetUri.fsPath;
+    const entries = collection.files.filter((file) => shouldIncludeArchiveEntry(file, outFile)).map((file) => ({
         absPath: file,
         archivePath: toArchivePath(path.relative(root, file)),
     }));
 
-    progress.report({ message: getCreatingZipMessage(zipOptions) });
-    await createZipEntries(entries, targetUri.fsPath, zipOptions, progress);
+    if (entries.length === 0) {
+        throw new Error(localize('error.noFilesToArchive', 'No files were found to include in the archive.'));
+    }
 
-    vscode.window.showInformationMessage(getExportCompletedMessage(zipOptions, path.basename(targetUri.fsPath)));
+    progress.report({ message: getCreatingZipMessage(zipOptions) });
+    await createZipEntries(entries, outFile, zipOptions, progress);
+
+    vscode.window.showInformationMessage(getExportCompletedMessage(zipOptions, path.basename(outFile)));
 }
 
 async function exportWorkspaceZip(
@@ -884,6 +890,7 @@ async function exportWorkspaceZip(
         return;
     }
 
+    const outFile = targetUri.fsPath;
     progress.report({ message: localize('progress.collectingFiles', 'Collecting files...') });
     const entries: ZipEntry[] = [];
 
@@ -904,6 +911,9 @@ async function exportWorkspaceZip(
         }
 
         for (const file of collection.files) {
+            if (!shouldIncludeArchiveEntry(file, outFile)) {
+                continue;
+            }
             const rel = toArchivePath(path.relative(target.root, file));
             const archivePath = toArchivePath(path.posix.join(target.label, rel));
             entries.push({ absPath: file, archivePath });
@@ -915,9 +925,9 @@ async function exportWorkspaceZip(
     }
 
     progress.report({ message: getCreatingZipMessage(zipOptions) });
-    await createZipEntries(entries, targetUri.fsPath, zipOptions, progress);
+    await createZipEntries(entries, outFile, zipOptions, progress);
 
-    vscode.window.showInformationMessage(getExportCompletedMessage(zipOptions, path.basename(targetUri.fsPath)));
+    vscode.window.showInformationMessage(getExportCompletedMessage(zipOptions, path.basename(outFile)));
 }
 
 async function collectFilesForRoot(
@@ -1239,6 +1249,7 @@ async function createZipEntries(
 ) {
     await fs.promises.mkdir(path.dirname(outFile), { recursive: true });
 
+    const existingArchiveMetadata = await getExistingArchiveMetadata(outFile);
     const tempPath = buildTempArchivePath(outFile);
 
     try {
@@ -1249,6 +1260,7 @@ async function createZipEntries(
     }
 
     try {
+        await applyExistingArchiveMetadata(tempPath, existingArchiveMetadata);
         await fs.promises.rename(tempPath, outFile);
     } catch (err) {
         // Existing outFile is preserved because rename failed before replacing it.
@@ -1262,6 +1274,48 @@ function buildTempArchivePath(outFile: string): string {
     const base = path.basename(outFile);
     const unique = `${process.pid}-${crypto.randomBytes(6).toString('hex')}`;
     return path.join(dir, `.${base}.${unique}.partial`);
+}
+
+function shouldIncludeArchiveEntry(filePath: string, outFile: string): boolean {
+    return !isSameFilePath(filePath, outFile) && !isSecureZipPartialArchivePath(filePath);
+}
+
+function isSameFilePath(a: string, b: string): boolean {
+    return normalizePathForComparison(a) === normalizePathForComparison(b);
+}
+
+function normalizePathForComparison(filePath: string): string {
+    const resolved = path.normalize(path.resolve(filePath));
+    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+}
+
+function isSecureZipPartialArchivePath(filePath: string): boolean {
+    return SECUREZIP_PARTIAL_ARCHIVE_BASENAME_PATTERN.test(path.basename(filePath));
+}
+
+async function getExistingArchiveMetadata(outFile: string): Promise<ExistingArchiveMetadata | undefined> {
+    try {
+        const stat = await fs.promises.stat(outFile);
+        if (!stat.isFile()) {
+            return undefined;
+        }
+        return { mode: stat.mode & 0o7777 };
+    } catch (err: unknown) {
+        if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
+            return undefined;
+        }
+        throw err;
+    }
+}
+
+async function applyExistingArchiveMetadata(
+    tempPath: string,
+    metadata: ExistingArchiveMetadata | undefined,
+): Promise<void> {
+    if (!metadata) {
+        return;
+    }
+    await fs.promises.chmod(tempPath, metadata.mode);
 }
 
 async function writeArchiveToFile(

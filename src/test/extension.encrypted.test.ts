@@ -318,6 +318,91 @@ suite('SecureZip Encrypted Export', function () {
         }
     });
 
+    test('exportEncrypted excludes the destination archive when overwriting inside the workspace', async function () {
+        this.timeout(30000);
+        await stageSimpleProject();
+        const root = getWorkspaceRoot();
+        const outPath = path.join(root, 'securezip-existing-output.zip');
+
+        await fs.promises.writeFile(outPath, 'previous archive bytes\n', 'utf8');
+
+        const win = getWindow();
+        win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
+        win.showSaveDialog = (async () => vscode.Uri.file(outPath)) as typeof vscode.window.showSaveDialog;
+        win.showInformationMessage = (async () => undefined) as typeof vscode.window.showInformationMessage;
+        win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
+
+        try {
+            await vscode.commands.executeCommand('securezip.exportEncrypted');
+            assert.ok(await pathExists(outPath), 'Encrypted ZIP should replace the existing destination');
+            const entries = inspectZip(outPath);
+            assert.ok(entries.length > 0, 'Replacement ZIP should contain project entries');
+            assert.ok(
+                !entries.some((entry) => entry.name === path.basename(outPath)),
+                'Replacement ZIP must not embed the previous destination archive',
+            );
+        } finally {
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('exportEncrypted excludes leftover SecureZip partial archives', async function () {
+        this.timeout(30000);
+        await stageSimpleProject();
+        const root = getWorkspaceRoot();
+        const outPath = path.join(root, 'securezip-partial-exclusion.zip');
+        const stalePartial = path.join(root, '.securezip-old.zip.123-abcdef123456.partial');
+
+        await fs.promises.writeFile(stalePartial, 'stale partial archive bytes\n', 'utf8');
+
+        const win = getWindow();
+        win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
+        win.showSaveDialog = (async () => vscode.Uri.file(outPath)) as typeof vscode.window.showSaveDialog;
+        win.showInformationMessage = (async () => undefined) as typeof vscode.window.showInformationMessage;
+        win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
+
+        try {
+            await vscode.commands.executeCommand('securezip.exportEncrypted');
+            assert.ok(await pathExists(outPath), 'Encrypted ZIP should be created');
+            const entries = inspectZip(outPath);
+            assert.ok(
+                !entries.some((entry) => entry.name === path.basename(stalePartial)),
+                'Stale SecureZip partial archives must not be embedded',
+            );
+        } finally {
+            await removeIfExists(outPath);
+            await removeIfExists(stalePartial);
+        }
+    });
+
+    test('exportEncrypted preserves POSIX permissions when overwriting an existing archive', async function () {
+        if (process.platform === 'win32') {
+            this.skip();
+        }
+
+        this.timeout(30000);
+        await stageSimpleProject();
+        const root = getWorkspaceRoot();
+        const outPath = path.join(root, 'securezip-permissions.zip');
+
+        await fs.promises.writeFile(outPath, 'previous archive bytes\n', 'utf8');
+        await fs.promises.chmod(outPath, 0o600);
+
+        const win = getWindow();
+        win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
+        win.showSaveDialog = (async () => vscode.Uri.file(outPath)) as typeof vscode.window.showSaveDialog;
+        win.showInformationMessage = (async () => undefined) as typeof vscode.window.showInformationMessage;
+        win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
+
+        try {
+            await vscode.commands.executeCommand('securezip.exportEncrypted');
+            const stat = await fs.promises.stat(outPath);
+            assert.strictEqual(stat.mode & 0o777, 0o600, 'Replacement ZIP should keep destination permissions');
+        } finally {
+            await removeIfExists(outPath);
+        }
+    });
+
     test('exportEncrypted leaves no side effects when the password prompt is cancelled', async function () {
         this.timeout(15000);
         await stageSimpleProject();
