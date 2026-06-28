@@ -45,6 +45,13 @@ type ZipEntry = {
 
 type ExportProgress = vscode.Progress<{ message?: string; increment?: number }>;
 
+type ArchiveProgressEvent = {
+    entries?: {
+        processed?: number;
+        total?: number;
+    };
+};
+
 interface TagPlan {
     tagName?: string;
     shouldCreate: boolean;
@@ -1096,26 +1103,34 @@ async function createZipEntries(entries: ZipEntry[], outFile: string, progress: 
     archive.pipe(output);
 
     const totalEntries = entries.length;
-    let addedEntries = 0;
+    let processedEntries = 0;
     let lastPercent = 0;
-    const reportZipProgress = () => {
-        const percent = Math.floor((addedEntries / totalEntries) * 100);
+    const reportZipProgress = (processed: number) => {
+        const boundedProcessed = Math.min(Math.max(processed, 0), totalEntries);
+        const percent = Math.floor((boundedProcessed / totalEntries) * 100);
         if (percent <= lastPercent) {
             return;
         }
         progress.report({
             increment: percent - lastPercent,
-            message: localize('progress.creatingZipWithCount', 'Creating ZIP archive... ({0}/{1})', addedEntries, totalEntries),
+            message: localize('progress.creatingZipWithCount', 'Creating ZIP archive... ({0}/{1})', boundedProcessed, totalEntries),
         });
         lastPercent = percent;
     };
+    archive.on('progress', (event: ArchiveProgressEvent) => {
+        const processed = event.entries?.processed;
+        if (typeof processed !== 'number' || processed <= processedEntries) {
+            return;
+        }
+        processedEntries = processed;
+        reportZipProgress(processedEntries);
+    });
 
     for (const entry of entries) {
         archive.file(entry.absPath, { name: entry.archivePath });
-        addedEntries += 1;
-        reportZipProgress();
     }
 
     await archive.finalize();
     await closed;
+    reportZipProgress(totalEntries);
 }
