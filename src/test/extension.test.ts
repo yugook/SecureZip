@@ -1034,7 +1034,9 @@ suite('SecureZip Extension', function () {
         const outPath = path.join(root, 'securezip-empty.zip');
         const originalShowSaveDialog = vscode.window.showSaveDialog;
         const originalShowErrorMessage = vscode.window.showErrorMessage;
+        const originalWithProgress = vscode.window.withProgress;
         const errors: string[] = [];
+        const progressReports: ProgressReport[] = [];
 
         await fs.promises.writeFile(ignorePath, '# test: no re-include\n', 'utf8');
 
@@ -1045,6 +1047,8 @@ suite('SecureZip Extension', function () {
                 errors.push(message);
                 return Promise.resolve(items[0] as any);
             };
+        (vscode.window as unknown as { withProgress: typeof vscode.window.withProgress }).withProgress =
+            createProgressRecorder(progressReports);
 
         try {
             await vscode.commands.executeCommand('securezip.export');
@@ -1054,11 +1058,20 @@ suite('SecureZip Extension', function () {
             (vscode.window as unknown as { showSaveDialog: typeof vscode.window.showSaveDialog }).showSaveDialog = originalShowSaveDialog;
             (vscode.window as unknown as { showErrorMessage: typeof vscode.window.showErrorMessage }).showErrorMessage =
                 originalShowErrorMessage;
+            (vscode.window as unknown as { withProgress: typeof vscode.window.withProgress }).withProgress = originalWithProgress;
             await removeIfExists(outPath);
         }
 
         assert.ok(errors.length > 0, 'Expected export to report an error');
         assert.match(errors[0], /No files were found to include in the archive/, 'Unexpected error message');
+        assert.ok(
+            progressReports.every((report) => report.increment === undefined || Number.isFinite(report.increment)),
+            'Progress increments should never be NaN'
+        );
+        assert.ok(
+            progressReports.every((report) => !/\(0\/0\)$/.test(report.message ?? '')),
+            'Empty exports should not report ZIP entry progress'
+        );
     });
 
     test('keeps .securezipignore re-includes effective under blanket excludes', async function () {
@@ -1450,7 +1463,7 @@ function validateWorkspaceRoot(root: string): void {
     );
 
     if (expectedWorkspaceRoot) {
-        const normalizedExpected = normalizeFsPath(expectedWorkspaceRoot);
+        const normalizedExpected = normalizeFsPath(path.resolve(expectedWorkspaceRoot));
         if (normalized === normalizedExpected) {
             return;
         }

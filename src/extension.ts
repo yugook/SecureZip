@@ -1106,11 +1106,16 @@ async function createZipEntries(entries: ZipEntry[], outFile: string, progress: 
     let processedEntries = 0;
     let lastPercent = 0;
     const reportZipProgress = (processed: number) => {
+        if (totalEntries === 0) {
+            return;
+        }
+
         const boundedProcessed = Math.min(Math.max(processed, 0), totalEntries);
         const percent = Math.floor((boundedProcessed / totalEntries) * 100);
         if (percent <= lastPercent) {
             return;
         }
+        // ZIP creation currently owns the determinate progress range.
         progress.report({
             increment: percent - lastPercent,
             message: localize('progress.creatingZipWithCount', 'Creating ZIP archive... ({0}/{1})', boundedProcessed, totalEntries),
