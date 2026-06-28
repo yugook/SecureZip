@@ -375,6 +375,41 @@ suite('SecureZip Encrypted Export', function () {
         }
     });
 
+    test('exportEncrypted continues when preserving permissions is unsupported', async function () {
+        this.timeout(30000);
+        await stageSimpleProject();
+        const root = getWorkspaceRoot();
+        const outPath = path.join(root, 'securezip-chmod-unsupported.zip');
+
+        await fs.promises.writeFile(outPath, 'previous archive bytes\n', 'utf8');
+
+        const chmodCalls: string[] = [];
+        const originalChmod = fs.promises.chmod;
+        (fs.promises as unknown as { chmod: typeof fs.promises.chmod }).chmod = (async (...args: Parameters<typeof fs.promises.chmod>) => {
+            chmodCalls.push(String(args[0]));
+            const err = new Error('forced chmod failure') as NodeJS.ErrnoException;
+            err.code = 'EPERM';
+            throw err;
+        }) as typeof fs.promises.chmod;
+
+        const win = getWindow();
+        win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
+        win.showSaveDialog = (async () => vscode.Uri.file(outPath)) as typeof vscode.window.showSaveDialog;
+        win.showInformationMessage = (async () => undefined) as typeof vscode.window.showInformationMessage;
+        win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
+
+        try {
+            await vscode.commands.executeCommand('securezip.exportEncrypted');
+            assert.ok(await pathExists(outPath), 'Encrypted ZIP should still be created when chmod fails');
+            assert.ok(chmodCalls.length > 0, 'Export should attempt to preserve existing permissions');
+            const entries = inspectZip(outPath);
+            assert.ok(entries.length > 0, 'Replacement ZIP should contain project entries');
+        } finally {
+            (fs.promises as unknown as { chmod: typeof fs.promises.chmod }).chmod = originalChmod;
+            await removeIfExists(outPath);
+        }
+    });
+
     test('exportEncrypted preserves POSIX permissions when overwriting an existing archive', async function () {
         if (process.platform === 'win32') {
             this.skip();

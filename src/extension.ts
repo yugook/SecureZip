@@ -1286,7 +1286,7 @@ function isSameFilePath(a: string, b: string): boolean {
 
 function normalizePathForComparison(filePath: string): string {
     const resolved = path.normalize(path.resolve(filePath));
-    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+    return process.platform === 'win32' || process.platform === 'darwin' ? resolved.toLowerCase() : resolved;
 }
 
 function isSecureZipPartialArchivePath(filePath: string): boolean {
@@ -1315,7 +1315,20 @@ async function applyExistingArchiveMetadata(
     if (!metadata) {
         return;
     }
-    await fs.promises.chmod(tempPath, metadata.mode);
+    try {
+        await fs.promises.chmod(tempPath, metadata.mode);
+    } catch (err: unknown) {
+        if (isPermissionMetadataError(err)) {
+            console.warn('[SecureZip] failed to apply existing archive permissions:', toErrorMessage(err));
+            return;
+        }
+        throw err;
+    }
+}
+
+function isPermissionMetadataError(err: unknown): boolean {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    return code === 'EPERM' || code === 'EACCES' || code === 'ENOTSUP' || code === 'EINVAL';
 }
 
 async function writeArchiveToFile(

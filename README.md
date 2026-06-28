@@ -86,7 +86,7 @@ encryption) before sharing.
 - When replacing an existing archive inside the export tree, SecureZip excludes
   that destination file and leftover SecureZip `.partial` files from the new
   archive. Existing destination permission bits are applied to the temporary
-  archive before it is renamed into place.
+  archive on a best-effort basis before it is renamed into place.
 - The Git steps (auto-commit / tag) run *before* the archive is written. If a
   ZIP failure occurs after auto-commit or tagging has already succeeded, **the
   resulting commit or tag remains in your repository** – review `git log` /
@@ -259,8 +259,8 @@ Info-ZIP `unzip` 6.00 / 古い `unzip` は AES 形式の ZIP を開けません*
   ず保全されます**。
 - エクスポート対象ツリー内の既存アーカイブを置き換える場合、出力先ファイル
   と SecureZip が残した `.partial` ファイルは新しい ZIP に含めません。出力
-  先ファイルが既に存在する場合は、その権限ビットを一時アーカイブへ適用して
-  からリネームします。
+  先ファイルが既に存在する場合は、その権限ビットをベストエフォートで一時
+  アーカイブへ適用してからリネームします。
 - Git の自動コミット / タグ付けは ZIP 書き出しの **前** に実行されます。ZIP
   書き出し以降の段階で失敗した場合、**直前の自動コミットやタグはリポジトリ
   に残る** ことがあります。`git log` / `git tag` を確認し、必要に応じて手動

@@ -43,7 +43,7 @@ the destination directory and renames it onto the final path on success.
   SecureZip temp archives matching `.<basename>.<pid>-<rand>.partial`, so stale
   replacement files cannot be embedded into later exports.
 - If the destination archive already exists, its permission bits are applied to
-  the temporary archive before the rename.
+  the temporary archive on a best-effort basis before the rename.
 - If `writeArchiveToFile` fails, the temp file is removed via
   `cleanupTempArchive` and the original error is re-thrown. Any pre-existing
   ZIP at the destination is untouched because the rename never runs.
