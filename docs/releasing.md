@@ -74,6 +74,13 @@ store `VSCE_PAT` as an environment secret and `VSCE_PAT_EXPIRES_AT` as an
 environment variable in `YYYY-MM-DD` format. The job runs only after environment
 approval and validates that:
 
+For deployment branch restrictions, start with no restriction. If restrictions
+are required, allow the pull request merge ref pattern (`refs/pull/*/merge`);
+using only `release/*` can block this `pull_request` workflow before the
+environment approval step. If the repository is private, confirm with a test PR
+that the current GitHub plan supports required reviewers for protected
+environments.
+
 - `VSCE_PAT_EXPIRES_AT` is at least 14 days in the future.
 - `VSCE_PAT` still has Marketplace publish rights for the `yugook` publisher via
   `vsce verify-pat yugook`.
