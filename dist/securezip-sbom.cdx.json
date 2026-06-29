@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:7ec59e74-7a10-4a4d-ac8b-8355e86b461c",
+  "serialNumber": "urn:uuid:f3a00ce0-b3be-4e13-b688-db3b2ccf0839",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-06-28T04:27:41.161Z",
+    "timestamp": "2026-06-29T14:08:11.521Z",
     "lifecycles": [
       {
         "phase": "pre-build"
@@ -19,13 +19,13 @@
       }
     ],
     "component": {
-      "bom-ref": "securezip@1.1.8",
+      "bom-ref": "securezip@1.1.9",
       "type": "application",
       "name": "SecureZip",
-      "version": "1.1.8",
+      "version": "1.1.9",
       "scope": "required",
       "description": "Securely export your project as a clean ZIP.",
-      "purl": "pkg:npm/securezip@1.1.8",
+      "purl": "pkg:npm/securezip@1.1.9",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -1073,6 +1073,39 @@
       ]
     },
     {
+      "bom-ref": "normalize-path@3.0.0",
+      "type": "library",
+      "name": "normalize-path",
+      "version": "3.0.0",
+      "scope": "required",
+      "purl": "pkg:npm/normalize-path@3.0.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/normalize-path"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/normalize-path/-/normalize-path-3.0.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "e9e66ce4bb375ad0a2b075a9f52d86532f1daa4a468b80554b3dc66aa884e9ecee6f4e75d844b3b57530501e82e8829b4246363e76ff983e166288c24707302c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
       "bom-ref": "process@0.11.10",
       "type": "library",
       "name": "process",
@@ -1405,7 +1438,7 @@
   ],
   "dependencies": [
     {
-      "ref": "securezip@1.1.8",
+      "ref": "securezip@1.1.9",
       "dependsOn": [
         "archiver@7.0.1",
         "archiver-zip-encrypted@2.0.0",
@@ -1462,6 +1495,7 @@
       "dependsOn": [
         "is-stream@2.0.1",
         "lazystream@1.0.1",
+        "normalize-path@3.0.0",
         "readable-stream@4.7.0"
       ]
     },
@@ -1507,6 +1541,7 @@
         "crc-32@1.2.2",
         "crc32-stream@6.0.0",
         "is-stream@2.0.1",
+        "normalize-path@3.0.0",
         "readable-stream@4.7.0"
       ]
     },
@@ -1582,6 +1617,10 @@
       "dependsOn": [
         "safe-buffer@5.1.2"
       ]
+    },
+    {
+      "ref": "normalize-path@3.0.0",
+      "dependsOn": []
     },
     {
       "ref": "process@0.11.10",
