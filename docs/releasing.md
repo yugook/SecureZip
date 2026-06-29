@@ -54,6 +54,24 @@ never consume the number intended for the next stable release.
 5. Preflight tip: run `npm run package:verify` before tagging to catch version
    mismatches that would block vsce packaging.
 
+## Release PR checks
+
+Release branches should be named `release/vX.Y.Z` and opened as pull requests
+to `main` before merging. The Marketplace PAT check workflow runs only for
+non-draft same-repository `release/*` pull requests and validates that:
+
+- `package.json` changes the version from the `main` base branch.
+- The release branch version, `package.json`, `package-lock.json`,
+  `CHANGELOG.md`, and `dist/securezip-sbom.cdx.json` all agree on the same
+  `X.Y.Z` version.
+- Repository variable `VSCE_PAT_EXPIRES_AT` exists in `YYYY-MM-DD` format and is
+  at least 14 days in the future.
+- Secret `VSCE_PAT` still has Marketplace publish rights for the `yugook`
+  publisher via `npx vsce verify-pat yugook`.
+
+GitHub Actions cannot read the expiration date from the encrypted `VSCE_PAT`
+secret, so update `VSCE_PAT_EXPIRES_AT` whenever the Marketplace PAT is rotated.
+
 ## Additional notes
 
 - `npm run package` triggers SBOM generation (`scripts/generate-sbom.cjs`);
