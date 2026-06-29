@@ -9,7 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  check-vsce-pat:
+  validate-release-pr:
+    name: Validate release PR metadata
     if: >-
       startsWith(github.head_ref, 'release/') &&
       github.event.pull_request.head.repo.full_name == github.repository &&
@@ -19,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Validate release version metadata
         id: version
@@ -39,6 +42,11 @@ jobs:
           echo "base=$BASE_VERSION" >> "$GITHUB_OUTPUT"
           echo "head=$HEAD_VERSION" >> "$GITHUB_OUTPUT"
 
+          if [[ ! "$BASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::base package.json version must be plain semver (x.y.z), got '$BASE_VERSION'."
+            exit 1
+          fi
+
           if [[ ! "$HEAD_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::package.json version must be plain semver (x.y.z), got '$HEAD_VERSION'."
             exit 1
@@ -46,6 +54,11 @@ jobs:
 
           if [ "$BASE_VERSION" = "$HEAD_VERSION" ]; then
             echo "::error::release/* PRs must change package.json version."
+            exit 1
+          fi
+
+          if [ "$(printf '%s\n%s\n' "$BASE_VERSION" "$HEAD_VERSION" | sort -V | tail -n1)" != "$HEAD_VERSION" ]; then
+            echo "::error::package.json version must be greater than base version: $BASE_VERSION -> $HEAD_VERSION."
             exit 1
           fi
 
@@ -71,6 +84,17 @@ jobs:
 
           echo "Release version changed: $BASE_VERSION -> $HEAD_VERSION"
 
+  verify-marketplace-pat:
+    name: Verify Marketplace PAT
+    needs: validate-release-pr
+    if: >-
+      startsWith(github.head_ref, 'release/') &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !github.event.pull_request.draft
+    environment: marketplace-pat
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Check Marketplace PAT expiry metadata
         env:
           VSCE_PAT_EXPIRES_AT: ${{ vars.VSCE_PAT_EXPIRES_AT }}
@@ -78,7 +102,7 @@ jobs:
           set -euo pipefail
 
           if [ -z "${VSCE_PAT_EXPIRES_AT:-}" ]; then
-            echo "::error::Repository variable VSCE_PAT_EXPIRES_AT is required in YYYY-MM-DD format."
+            echo "::error::Environment variable VSCE_PAT_EXPIRES_AT is required in YYYY-MM-DD format."
             exit 1
           fi
 
@@ -90,24 +114,25 @@ jobs:
           try:
               expires = dt.date.fromisoformat(os.environ["VSCE_PAT_EXPIRES_AT"])
           except ValueError:
-              sys.exit("VSCE_PAT_EXPIRES_AT must use YYYY-MM-DD format.")
+              print("::error::VSCE_PAT_EXPIRES_AT must use YYYY-MM-DD format.")
+              sys.exit(1)
 
           today = dt.datetime.now(dt.timezone.utc).date()
           days = (expires - today).days
           print(f"VSCE_PAT expires in {days} days ({expires.isoformat()})")
 
           if days < 14:
-              sys.exit("VSCE_PAT expires too soon for a release PR.")
+              print("::error::VSCE_PAT expires too soon for a release PR.")
+              sys.exit(1)
           PY
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '22.20.0'
-          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install pinned vsce
+        run: npm install --global --ignore-scripts --no-audit --no-fund @vscode/vsce@3.9.2
 
       - name: Verify Marketplace publish rights
         env:
@@ -116,8 +141,8 @@ jobs:
           set -euo pipefail
 
           if [ -z "${VSCE_PAT:-}" ]; then
-            echo "::error::Secret VSCE_PAT is required."
+            echo "::error::Environment secret VSCE_PAT is required."
             exit 1
           fi
 
-          npx vsce verify-pat yugook
+          vsce verify-pat yugook

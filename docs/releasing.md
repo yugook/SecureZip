@@ -58,19 +58,32 @@ never consume the number intended for the next stable release.
 
 Release branches should be named `release/vX.Y.Z` and opened as pull requests
 to `main` before merging. The Marketplace PAT check workflow runs only for
-non-draft same-repository `release/*` pull requests and validates that:
+non-draft same-repository `release/*` pull requests.
 
-- `package.json` changes the version from the `main` base branch.
+The automatic PR metadata job validates that:
+
+- `package.json` changes the version from the `main` base branch and the new
+  version is greater than the base version.
 - The release branch version, `package.json`, `package-lock.json`,
   `CHANGELOG.md`, and `dist/securezip-sbom.cdx.json` all agree on the same
   `X.Y.Z` version.
-- Repository variable `VSCE_PAT_EXPIRES_AT` exists in `YYYY-MM-DD` format and is
-  at least 14 days in the future.
-- Secret `VSCE_PAT` still has Marketplace publish rights for the `yugook`
-  publisher via `npx vsce verify-pat yugook`.
 
-GitHub Actions cannot read the expiration date from the encrypted `VSCE_PAT`
-secret, so update `VSCE_PAT_EXPIRES_AT` whenever the Marketplace PAT is rotated.
+The Marketplace PAT verification job uses the protected `marketplace-pat`
+GitHub Environment. Configure that environment with required reviewers, then
+store `VSCE_PAT` as an environment secret and `VSCE_PAT_EXPIRES_AT` as an
+environment variable in `YYYY-MM-DD` format. The job runs only after environment
+approval and validates that:
+
+- `VSCE_PAT_EXPIRES_AT` is at least 14 days in the future.
+- `VSCE_PAT` still has Marketplace publish rights for the `yugook` publisher via
+  `vsce verify-pat yugook`.
+
+The PAT job does not check out the PR branch or run project scripts; it installs
+the pinned `@vscode/vsce` CLI separately before reading `VSCE_PAT`. GitHub
+Actions cannot read the expiration date from the encrypted `VSCE_PAT` secret, so
+update `VSCE_PAT_EXPIRES_AT` whenever the Marketplace PAT is rotated. Review the
+release PR diff before approving the protected environment job, because approval
+makes the environment secret available to that job.
 
 ## Additional notes
 
