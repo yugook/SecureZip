@@ -18,6 +18,7 @@ jobs:
   publish-release:
     if: ${{ (github.event_name == 'push' && !endsWith(github.ref_name, '-preview')) || (github.event_name == 'workflow_call' && !endsWith(inputs.tag_name || '', '-preview')) }}
     runs-on: ubuntu-latest
+    environment: marketplace-pat
 
     steps:
       - name: Checkout repository

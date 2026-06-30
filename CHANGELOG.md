@@ -4,13 +4,14 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [1.2.1] - Unreleased
+## [1.1.9] - 2026-06-29
 
-- Added `SecureZip: Export Encrypted ZIP` and `SecureZip: Export Workspace Encrypted ZIP` commands that produce password-protected archives using WinZip AES-256 (method 99).
-- Encrypted export prompts twice for the password (entry + confirmation), re-prompts on mismatch, and aborts cleanly without writing any file when either prompt is cancelled.
-- Output is staged in a temporary `.partial` file and renamed atomically on success; failures during write or rename clean up the temp file and preserve the existing ZIP at the destination.
-- Concurrent export invocations are now rejected with an "Export is already running" warning so two runs cannot interleave.
-- Documented WinZip AES-256 compatibility, the metadata that the format does *not* protect (filenames, sizes, structure), and the case where Git auto-commit/tag may already be applied if a later step fails.
+- Added `SecureZip: Export Encrypted ZIP` and `SecureZip: Export Workspace Encrypted ZIP` commands that create password-protected archives using WinZip AES-256 (method 99).
+- Added password confirmation, mismatch retry, and clean cancellation handling so encrypted exports do not write a file when either prompt is cancelled.
+- Improved ZIP replacement safety by writing to temporary `.partial` files, preserving existing destination archives on failure, excluding destination/partial files from exports, and applying existing archive permissions best-effort.
+- Added determinate ZIP progress reporting and rejected concurrent export invocations with an "Export is already running" warning.
+- Expanded encrypted export and archive replacement coverage, including integration tests and documentation in README and architecture notes.
+- Updated CI, security, and dependency maintenance, including npm audit/signature gates, Dependabot auto-merge rules, `actions/checkout@v7`, `@vscode/test-electron@3.0.0`, and current build/lint dependency updates.
 
 ## [1.1.8] - 2026-02-19
 
