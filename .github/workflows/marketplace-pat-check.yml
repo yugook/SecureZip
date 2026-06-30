@@ -1,9 +1,14 @@
 name: Marketplace PAT Check
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
 
 permissions:
   contents: read
@@ -12,32 +17,38 @@ jobs:
   validate-release-pr:
     name: Validate release PR metadata
     if: >-
-      startsWith(github.head_ref, 'release/') &&
+      startsWith(github.event.pull_request.head.ref, 'release/') &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !github.event.pull_request.draft
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout trusted base
         uses: actions/checkout@v7
         with:
-          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
+
+      - name: Fetch release pull request head
+        run: git fetch --no-tags --depth=1 origin "+refs/pull/${{ github.event.pull_request.number }}/head:refs/release-check/head"
 
       - name: Validate release version metadata
         id: version
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          RELEASE_HEAD_REF: refs/release-check/head
         run: |
           set -euo pipefail
 
-          git fetch origin "$GITHUB_BASE_REF" --depth=1
-
-          BASE_VERSION="$(git show FETCH_HEAD:package.json | jq -r '.version')"
-          HEAD_VERSION="$(jq -r '.version' package.json)"
-          LOCK_VERSION="$(jq -r '.version' package-lock.json)"
-          LOCK_ROOT_VERSION="$(jq -r '.packages[""].version' package-lock.json)"
-          BRANCH_VERSION="${GITHUB_HEAD_REF#release/}"
+          BASE_VERSION="$(git show "${PR_BASE_SHA}:package.json" | jq -r '.version')"
+          HEAD_VERSION="$(git show "${RELEASE_HEAD_REF}:package.json" | jq -r '.version')"
+          LOCK_VERSION="$(git show "${RELEASE_HEAD_REF}:package-lock.json" | jq -r '.version')"
+          LOCK_ROOT_VERSION="$(git show "${RELEASE_HEAD_REF}:package-lock.json" | jq -r '.packages[""].version')"
+          BRANCH_VERSION="${PR_HEAD_REF#release/}"
           BRANCH_VERSION="${BRANCH_VERSION#v}"
-          SBOM_REF="$(jq -r '.metadata.component["bom-ref"]' dist/securezip-sbom.cdx.json)"
-          SBOM_VERSION="$(jq -r '.metadata.component.version' dist/securezip-sbom.cdx.json)"
+          SBOM_REF="$(git show "${RELEASE_HEAD_REF}:dist/securezip-sbom.cdx.json" | jq -r '.metadata.component["bom-ref"]')"
+          SBOM_VERSION="$(git show "${RELEASE_HEAD_REF}:dist/securezip-sbom.cdx.json" | jq -r '.metadata.component.version')"
 
           echo "base=$BASE_VERSION" >> "$GITHUB_OUTPUT"
           echo "head=$HEAD_VERSION" >> "$GITHUB_OUTPUT"
@@ -72,7 +83,7 @@ jobs:
             exit 1
           fi
 
-          if ! grep -Fq "## [${HEAD_VERSION}] -" CHANGELOG.md; then
+          if ! git show "${RELEASE_HEAD_REF}:CHANGELOG.md" | grep -Fq "## [${HEAD_VERSION}] -"; then
             echo "::error::CHANGELOG.md must contain a release entry for ${HEAD_VERSION}."
             exit 1
           fi
@@ -88,7 +99,7 @@ jobs:
     name: Verify Marketplace PAT
     needs: validate-release-pr
     if: >-
-      startsWith(github.head_ref, 'release/') &&
+      startsWith(github.event.pull_request.head.ref, 'release/') &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !github.event.pull_request.draft
     environment: marketplace-pat

@@ -58,9 +58,12 @@ never consume the number intended for the next stable release.
 
 Release branches should be named `release/vX.Y.Z` and opened as pull requests
 to `main` before merging. The Marketplace PAT check workflow runs only for
-non-draft same-repository `release/*` pull requests.
+non-draft same-repository `release/*` pull requests, including when a draft PR
+is marked ready for review.
 
-The automatic PR metadata job validates that:
+The workflow runs with `pull_request_target` so its definition comes from the
+trusted target branch. The automatic PR metadata job checks out the trusted base
+commit, fetches the PR head into a local git ref, and validates that:
 
 - `package.json` changes the version from the `main` base branch and the new
   version is greater than the base version.
@@ -74,23 +77,27 @@ store `VSCE_PAT` as an environment secret and `VSCE_PAT_EXPIRES_AT` as an
 environment variable in `YYYY-MM-DD` format. The job runs only after environment
 approval and validates that:
 
-For deployment branch restrictions, start with no restriction. If restrictions
-are required, allow the pull request merge ref pattern (`refs/pull/*/merge`);
-using only `release/*` can block this `pull_request` workflow before the
-environment approval step. If the repository is private, confirm with a test PR
-that the current GitHub plan supports required reviewers for protected
-environments.
-
 - `VSCE_PAT_EXPIRES_AT` is at least 14 days in the future.
 - `VSCE_PAT` still has Marketplace publish rights for the `yugook` publisher via
   `vsce verify-pat yugook`.
 
-The PAT job does not check out the PR branch or run project scripts; it installs
-the pinned `@vscode/vsce` CLI separately before reading `VSCE_PAT`. GitHub
-Actions cannot read the expiration date from the encrypted `VSCE_PAT` secret, so
-update `VSCE_PAT_EXPIRES_AT` whenever the Marketplace PAT is rotated. Review the
-release PR diff before approving the protected environment job, because approval
-makes the environment secret available to that job.
+The preview and stable publish workflows also use the same `marketplace-pat`
+environment, so the release PR check verifies the same `VSCE_PAT` that publish
+uses. The PAT verification job does not check out the PR branch or run project
+scripts; it installs the pinned `@vscode/vsce` CLI separately before reading
+`VSCE_PAT`. GitHub Actions cannot read the expiration date from the encrypted
+`VSCE_PAT` secret, so update `VSCE_PAT_EXPIRES_AT` whenever the Marketplace PAT
+is rotated. Review the release PR diff before approving the protected
+environment job, because approval makes the environment secret available to that
+job.
+
+For deployment branch and tag restrictions, start with no restriction. If
+restrictions are required, allow `main` for release PR verification and stable
+auto-release, `preview` for preview publishing, and `v*` tags for direct stable
+release workflow runs. Using only `release/*` blocks this `pull_request_target`
+workflow before the environment approval step. If the repository is private,
+confirm with a test PR that the current GitHub plan supports required reviewers
+for protected environments.
 
 ## Additional notes
 
