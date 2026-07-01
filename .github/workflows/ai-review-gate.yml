@@ -37,10 +37,11 @@ permissions:
   contents: read
   issues: read
   pull-requests: read
+  statuses: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number || github.event.inputs.pr_number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   gate:
@@ -59,6 +60,7 @@ jobs:
           AI_REVIEW_TARGET_BRANCH: main
           AI_REVIEW_BOT_LOGINS: chatgpt-codex-connector[bot]
           AI_REVIEW_OVERRIDE_LABEL: ai-review-override
+          AI_REVIEW_STATUS_CONTEXT: AI Review Gate / gate
         run: |
           if [ ! -f scripts/ai-review-gate.cjs ]; then
             echo "AI Review Gate script is not present on the trusted base yet; skipping."

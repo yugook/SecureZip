@@ -20,7 +20,10 @@ During the observation period, watch for:
 
 ## Gate rules
 
-The gate checks only the current PR head SHA. Older Codex reviews are ignored.
+The gate checks only the latest Codex review result tied to the current PR head
+SHA. Older Codex results for the same head are ignored when a newer result is
+available. A submitted Codex review and its inline review comments are treated
+as one result.
 
 The gate fails when:
 
@@ -54,6 +57,13 @@ Before applying the label:
 
 Removing the label restores normal AI Review Gate behavior on the next workflow
 run.
+
+## Status reporting
+
+The workflow also writes the `AI Review Gate / gate` commit status directly to
+the PR head SHA. This keeps top-level PR comment updates and review events from
+leaving the previous gate result in place when GitHub runs those events on a
+non-PR SHA.
 
 ## Branch protection rollout
 
