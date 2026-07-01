@@ -5,6 +5,9 @@ environment, run checks, and follow our release procedures.
 
 ## Development workflow
 
+When implementing changes from `main`, create a topic branch before editing.
+Avoid committing implementation work directly to `main`.
+
 1. **Install dependencies**
    ```bash
    npm install
@@ -35,6 +38,24 @@ features.
 - Add concise comments only when logic is non-obvious.
 - Avoid committing build artifacts outside the `dist/` folder that is already
   tracked.
+
+## Commit and pull request conventions
+
+- Write commit messages in Japanese and follow Google's commit message style:
+  a short summary line, a blank line, then a body when extra context is needed.
+- Keep the summary concise and describe what changed. Use the body to explain
+  why the change was made or to note important context.
+- Write pull request titles and descriptions in Japanese.
+- Use `.github/pull_request_template.md` when opening a pull request.
+
+Example commit message:
+
+```text
+ドキュメントにPR作成ルールを追加
+
+コミットとPull Requestの記述言語を日本語に統一するため、
+CONTRIBUTING.mdとAGENTS.mdに運用ルールを追記する。
+```
 
 ## Release process
 

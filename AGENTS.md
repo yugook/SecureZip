@@ -30,10 +30,13 @@
 
 ## Development workflow
 - Prefer editing `src/`, `docs/`, `i18n/`, and `src/test/` when changing behavior.
+- When on `main` and asked to implement changes, create a topic branch before editing.
 - Use TypeScript, follow the configured ESLint rules, and add comments only when logic is non-obvious.
 - Prefer localized strings via `src/nls.ts` (see `docs/localization.md`); avoid hardcoding UI text.
 - Treat `dist/` and `out/` as generated outputs; do not hand-edit them.
 - Avoid committing build artifacts outside `dist/` (which is already tracked).
+- Write commit messages in Japanese and follow Google's commit message style: concise summary, blank line, then body when needed.
+- Write Pull Request titles and descriptions in Japanese.
 - Keep localization in sync:
   - Runtime strings: `src/nls.ts` + `i18n/nls.bundle.*.json`.
   - Contribution strings: `package.nls.json` + `package.nls.ja.json`.
