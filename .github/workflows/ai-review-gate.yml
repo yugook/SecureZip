@@ -1,0 +1,55 @@
+name: AI Review Gate
+
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - labeled
+      - unlabeled
+  pull_request_review:
+    types:
+      - submitted
+      - edited
+      - dismissed
+  issue_comment:
+    types:
+      - created
+      - edited
+      - deleted
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to evaluate
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number || github.event.inputs.pr_number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    if: ${{ github.event_name != 'issue_comment' || github.event.issue.pull_request != null }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout trusted base
+        uses: actions/checkout@v7
+
+      - name: Evaluate AI review gate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AI_REVIEW_TARGET_BRANCH: main
+          AI_REVIEW_BOT_LOGINS: chatgpt-codex-connector[bot]
+          AI_REVIEW_OVERRIDE_LABEL: ai-review-override
+        run: node scripts/ai-review-gate.cjs
