@@ -11,14 +11,20 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_call' && inputs.tag_name || github.ref_name }}
+  cancel-in-progress: false
+
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   publish-release:
     if: ${{ (github.event_name == 'push' && !endsWith(github.ref_name, '-preview')) || (github.event_name == 'workflow_call' && !endsWith(inputs.tag_name || '', '-preview')) }}
     runs-on: ubuntu-latest
     environment: marketplace-pat
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -49,14 +55,26 @@ jobs:
 
       - name: Determine extension version
         id: version
+        env:
+          REQUESTED_TAG: ${{ github.event_name == 'workflow_call' && inputs.tag_name || github.ref_name }}
         run: |
+          set -euo pipefail
           VERSION=$(jq -r '.version' package.json)
           if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
             echo "Version not found in package.json" >&2
             exit 1
           fi
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::package.json version must be plain semver (x.y.z), got '$VERSION'."
+            exit 1
+          fi
+          EXPECTED_TAG="v${VERSION}"
+          if [ "$REQUESTED_TAG" != "$EXPECTED_TAG" ]; then
+            echo "::error::Release tag '$REQUESTED_TAG' must match package.json version '$VERSION' as '$EXPECTED_TAG'."
+            exit 1
+          fi
           echo "plain=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=$EXPECTED_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Build VSIX bundle
         run: npm run package

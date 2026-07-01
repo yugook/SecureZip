@@ -5,6 +5,13 @@ on:
     branches:
       - preview
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   publish-preview:
     runs-on: ubuntu-latest
