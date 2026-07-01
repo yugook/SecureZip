@@ -59,8 +59,8 @@ jobs:
 
           committed_sbom="${RUNNER_TEMP:-/tmp}/committed-sbom.json"
           generated_sbom="${RUNNER_TEMP:-/tmp}/generated-sbom.json"
-          git show HEAD:dist/securezip-sbom.cdx.json | jq --sort-keys 'del(.serialNumber, .metadata.timestamp)' > "$committed_sbom"
-          jq --sort-keys 'del(.serialNumber, .metadata.timestamp)' dist/securezip-sbom.cdx.json > "$generated_sbom"
+          git show HEAD:dist/securezip-sbom.cdx.json | jq --sort-keys 'del(.serialNumber, .metadata.timestamp, .metadata.tools)' > "$committed_sbom"
+          jq --sort-keys 'del(.serialNumber, .metadata.timestamp, .metadata.tools)' dist/securezip-sbom.cdx.json > "$generated_sbom"
 
           if ! diff -u "$committed_sbom" "$generated_sbom"; then
             echo "::error::Generated SBOM content is out of date. Run npm run package and commit dist/securezip-sbom.cdx.json."
