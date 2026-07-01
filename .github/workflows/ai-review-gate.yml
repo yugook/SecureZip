@@ -16,6 +16,11 @@ on:
       - submitted
       - edited
       - dismissed
+  pull_request_review_comment:
+    types:
+      - created
+      - edited
+      - deleted
   issue_comment:
     types:
       - created
@@ -45,6 +50,8 @@ jobs:
     steps:
       - name: Checkout trusted base
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.repository.default_branch }}
 
       - name: Evaluate AI review gate
         env:
@@ -52,4 +59,9 @@ jobs:
           AI_REVIEW_TARGET_BRANCH: main
           AI_REVIEW_BOT_LOGINS: chatgpt-codex-connector[bot]
           AI_REVIEW_OVERRIDE_LABEL: ai-review-override
-        run: node scripts/ai-review-gate.cjs
+        run: |
+          if [ ! -f scripts/ai-review-gate.cjs ]; then
+            echo "AI Review Gate script is not present on the trusted base yet; skipping."
+            exit 0
+          fi
+          node scripts/ai-review-gate.cjs

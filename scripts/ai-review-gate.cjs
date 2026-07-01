@@ -65,10 +65,19 @@ async function main() {
   const labels = new Set((issue.labels || []).map((label) => label.name));
   const hasOverride = labels.has(overrideLabel);
   const humanApprovedHead = hasHumanApprovalForHead(reviews, headSha);
+  const activeBotReviewIds = new Set(
+    reviews
+      .filter(isBotAuthored)
+      .filter((review) => review.state !== 'DISMISSED')
+      .map((review) => review.id),
+  );
   const candidates = [
     ...reviews.filter(isBotAuthored).filter((review) => review.state !== 'DISMISSED').map(reviewToCandidate),
     ...issueComments.filter(isBotAuthored).map(issueCommentToCandidate),
-    ...reviewComments.filter(isBotAuthored).map(reviewCommentToCandidate),
+    ...reviewComments
+      .filter(isBotAuthored)
+      .filter((comment) => activeBotReviewIds.has(comment.pull_request_review_id))
+      .map(reviewCommentToCandidate),
   ].filter((candidate) => candidate.body || candidate.commitSha);
 
   const currentCandidates = candidates.filter((candidate) => matchesCommit(headSha, candidate.commitSha));
@@ -179,7 +188,7 @@ function reviewToCandidate(review) {
     body: review.body || '',
     commitSha: extractReviewedCommit(review.body) || review.commit_id,
     source: `review ${review.id}`,
-    submittedAt: Date.parse(review.submitted_at || review.submittedAt || 0),
+    submittedAt: parseTimestamp(review.submitted_at || review.submittedAt),
   };
 }
 
@@ -188,7 +197,7 @@ function issueCommentToCandidate(comment) {
     body: comment.body || '',
     commitSha: extractReviewedCommit(comment.body),
     source: `issue comment ${comment.id}`,
-    submittedAt: Date.parse(comment.updated_at || comment.created_at || 0),
+    submittedAt: parseTimestamp(comment.updated_at || comment.created_at),
   };
 }
 
@@ -197,13 +206,21 @@ function reviewCommentToCandidate(comment) {
     body: comment.body || '',
     commitSha: extractReviewedCommit(comment.body) || comment.commit_id,
     source: `review comment ${comment.id}`,
-    submittedAt: Date.parse(comment.updated_at || comment.created_at || 0),
+    submittedAt: parseTimestamp(comment.updated_at || comment.created_at),
   };
 }
 
-function extractReviewedCommit(body = '') {
+function extractReviewedCommit(body) {
+  if (!body) {
+    return null;
+  }
+
   const match = body.match(/(?:reviewed commit|レビュー済みコミット)\s*[:：]\s*`?([0-9a-f]{7,40})`?/i);
   return match?.[1]?.toLowerCase() || null;
+}
+
+function parseTimestamp(value) {
+  return Date.parse(value) || 0;
 }
 
 function matchesCommit(headSha, candidateSha) {
@@ -217,12 +234,26 @@ function matchesCommit(headSha, candidateSha) {
 }
 
 function hasHumanApprovalForHead(reviews, headSha) {
-  return reviews.some(
-    (review) =>
-      review.state === 'APPROVED' &&
-      isHumanAuthored(review) &&
-      matchesCommit(headSha, review.commit_id),
-  );
+  const latestByReviewer = new Map();
+
+  for (const review of reviews) {
+    if (!isHumanAuthored(review) || !matchesCommit(headSha, review.commit_id)) {
+      continue;
+    }
+
+    const submittedAt = parseTimestamp(review.submitted_at || review.submittedAt);
+    const login = review.user.login;
+    const previous = latestByReviewer.get(login);
+
+    if (!previous || submittedAt >= previous.submittedAt) {
+      latestByReviewer.set(login, {
+        state: review.state,
+        submittedAt,
+      });
+    }
+  }
+
+  return Array.from(latestByReviewer.values()).some((review) => review.state === 'APPROVED');
 }
 
 function collectBlockers(candidates) {

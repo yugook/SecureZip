@@ -14,6 +14,8 @@ During the observation period, watch for:
 - Codex comment format changes.
 - False P0/P1 matches.
 - Stale reviews after a force-push or synchronized PR branch.
+- Inline review comments that should rerun the gate.
+- Dismissed reviews and whether their inline comments are ignored correctly.
 - Cases where Codex is unavailable and the override path is needed.
 
 ## Gate rules
@@ -31,10 +33,13 @@ The gate passes when:
 
 - A Codex review or comment tied to the current PR head SHA exists and contains
   no `P0` or `P1` findings.
-- `ai-review-override` is present and a human has approved the current PR head,
-  except for `P0` findings.
+- `ai-review-override` is present and at least one human reviewer has an
+  effective latest review state of approved on the current PR head, except for
+  `P0` findings.
 
 Draft pull requests are skipped.
+
+Dismissed Codex reviews and their inline review comments are ignored.
 
 ## Override policy
 
