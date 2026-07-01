@@ -5,13 +5,19 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   create-release-tag:
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       tag_name: ${{ steps.version.outputs.tag }}
       should_publish: ${{ steps.skip.outputs.value == 'false' && steps.existing.outputs.value == 'false' }}
@@ -28,6 +34,10 @@ jobs:
           VERSION=$(jq -r '.version' package.json)
           if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
             echo "Version not found in package.json" >&2
+            exit 1
+          fi
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::package.json version must be plain semver (x.y.z), got '$VERSION'."
             exit 1
           fi
           echo "value=$VERSION" >>"$GITHUB_OUTPUT"
@@ -69,6 +79,8 @@ jobs:
   publish-release:
     needs: create-release-tag
     if: ${{ needs.create-release-tag.outputs.should_publish == 'true' }}
+    permissions:
+      contents: write
     uses: ./.github/workflows/release.yml
     with:
       tag_name: ${{ needs.create-release-tag.outputs.tag_name }}
