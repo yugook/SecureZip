@@ -56,14 +56,7 @@ async function runCli() {
 }
 
 async function main() {
-  const [pr, issue, reviews, issueComments, reviewComments] = await Promise.all([
-    github(`/pulls/${prNumber}`),
-    github(`/issues/${prNumber}`),
-    githubPages(`/pulls/${prNumber}/reviews`),
-    githubPages(`/issues/${prNumber}/comments`),
-    githubPages(`/pulls/${prNumber}/comments`),
-  ]);
-
+  const pr = await github(`/pulls/${prNumber}`);
   const headSha = pr.head.sha;
   statusHeadSha = headSha;
 
@@ -78,6 +71,13 @@ async function main() {
       `PR #${prNumber} is a draft.`,
     ], `PR #${prNumber} is a draft; skipping AI Review Gate until it is ready for review.`);
   }
+
+  const [issue, reviews, issueComments, reviewComments] = await Promise.all([
+    github(`/issues/${prNumber}`),
+    githubPages(`/pulls/${prNumber}/reviews`),
+    githubPages(`/issues/${prNumber}/comments`),
+    githubPages(`/pulls/${prNumber}/comments`),
+  ]);
 
   const labels = new Set((issue.labels || []).map((label) => label.name));
   const hasOverride = labels.has(overrideLabel);
