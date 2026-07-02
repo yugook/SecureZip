@@ -446,6 +446,51 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('SecureZip actions include encrypted export command', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const actionsSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'actions',
+            );
+            assert.ok(actionsSection, 'Actions section was not found');
+
+            const actionItems = await provider.getChildren(actionsSection);
+            const commands = actionItems.map((item) => {
+                const node = (item as any).node;
+                return (node?.kind === 'action' ? node.command : undefined)?.command;
+            });
+
+            assert.ok(commands.includes('securezip.export'), 'Expected regular export action');
+            assert.ok(commands.includes('securezip.exportEncrypted'), 'Expected encrypted export action');
+            assert.ok(commands.includes('securezip.openIgnoreFile'), 'Expected open .securezipignore action');
+        } finally {
+            provider.dispose();
+        }
+    });
+
+    test('SecureZip view title remains plain', async function () {
+        const extension = vscode.extensions.getExtension('yugook.securezip');
+        assert.ok(extension, 'SecureZip extension not found');
+        const raw = await fs.promises.readFile(path.join(extension.extensionPath, 'package.json'), 'utf8');
+        const manifest = JSON.parse(raw) as {
+            contributes?: {
+                menus?: Record<string, unknown>;
+                views?: Record<string, Array<{ id?: string; name?: string }>>;
+            };
+        };
+
+        const view = manifest.contributes?.views?.securezip?.find((entry) => entry.id === 'securezip.view');
+        assert.strictEqual(view?.name, 'SecureZip');
+        assert.ok(
+            !Object.prototype.hasOwnProperty.call(manifest.contributes?.menus ?? {}, 'view/title'),
+            'SecureZip view title should not contribute toolbar commands',
+        );
+    });
+
     test('SecureZip preview hides unmatched rules and surfaces a hidden count', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');

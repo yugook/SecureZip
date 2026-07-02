@@ -1287,6 +1287,17 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                     arguments: [{ root }],
                 },
             }),
+            new SecureZipTreeItem({
+                kind: 'action',
+                label: localize('actions.exportEncrypted.label', 'Export Encrypted ZIP'),
+                description: localize('actions.exportEncrypted.description', 'Create password-protected ZIP archive'),
+                icon: 'lock',
+                command: {
+                    command: 'securezip.exportEncrypted',
+                    title: 'SecureZip: Export Encrypted ZIP',
+                    arguments: [{ root }],
+                },
+            }),
         ];
 
         const showWorkspaceExport = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
@@ -1300,6 +1311,19 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                     command: {
                         command: 'securezip.exportWorkspace',
                         title: 'SecureZip: Export Workspace ZIP',
+                    },
+                }),
+                new SecureZipTreeItem({
+                    kind: 'action',
+                    label: localize('actions.exportWorkspaceEncrypted.label', 'Export Workspace Encrypted ZIP'),
+                    description: localize(
+                        'actions.exportWorkspaceEncrypted.description',
+                        'Create password-protected ZIP archive for all workspace folders',
+                    ),
+                    icon: 'lock',
+                    command: {
+                        command: 'securezip.exportWorkspaceEncrypted',
+                        title: 'SecureZip: Export Workspace Encrypted ZIP',
                     },
                 }),
             );
