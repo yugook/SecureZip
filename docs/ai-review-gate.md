@@ -32,6 +32,7 @@ The gate fails when:
   is present.
 - A newer Codex review or comment cannot be tied to the current PR head SHA.
 - No Codex review or comment can be tied to the current PR head SHA.
+- A review-event relay is missing or provides invalid PR metadata.
 
 The gate passes when:
 
@@ -67,6 +68,8 @@ leaving the previous gate result in place when GitHub runs those events on a
 non-PR SHA.
 
 Skipped draft and non-`main` pull requests do not publish a commit status.
+Unexpected evaluation errors publish a failure status when the PR head SHA is
+known, so an old success does not remain as the required result.
 
 ## Branch protection rollout
 

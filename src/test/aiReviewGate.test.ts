@@ -1,4 +1,7 @@
 import * as assert from 'assert';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { describe, it } from 'mocha';
 
 interface Candidate {
@@ -17,6 +20,7 @@ interface Blocker {
 
 const gate = require('../../scripts/ai-review-gate.cjs') as {
     collectBlockers(candidates: Candidate[]): Blocker[];
+    readRelayPullRequestNumber(options?: { required?: boolean }): number | null;
     resolvePullRequestNumber(payload: unknown): number | null;
     selectLatestCurrentCandidate(candidates: Candidate[], headSha: string): Candidate | null;
     selectLatestNonCurrentCandidate(candidates: Candidate[], headSha: string, latestCurrentCandidate?: Candidate | null): Candidate | null;
@@ -24,7 +28,7 @@ const gate = require('../../scripts/ai-review-gate.cjs') as {
 
 describe('ai-review-gate', () => {
     describe('resolvePullRequestNumber', () => {
-        it('resolves PR numbers from trusted workflow_run relays', () => {
+        it('falls back to workflow_run PR associations when no relay artifact is configured', () => {
             assert.strictEqual(gate.resolvePullRequestNumber({
                 workflow_run: {
                     pull_requests: [
@@ -34,6 +38,34 @@ describe('ai-review-gate', () => {
                     ],
                 },
             }), 264);
+        });
+
+        it('prefers the downloaded relay artifact over workflow_run PR associations', () => {
+            withRelayEvent({ pr_number: 123 }, () => {
+                assert.strictEqual(gate.resolvePullRequestNumber({
+                    workflow_run: {
+                        pull_requests: [
+                            {
+                                number: 999,
+                            },
+                        ],
+                    },
+                }), 123);
+            });
+        });
+
+        it('requires a valid relay artifact when one is configured for workflow_run events', () => {
+            withRelayEventPath(path.join(os.tmpdir(), 'missing-ai-review-gate-event.json'), () => {
+                assert.throws(() => gate.resolvePullRequestNumber({
+                    workflow_run: {
+                        pull_requests: [
+                            {
+                                number: 999,
+                            },
+                        ],
+                    },
+                }), /Relay event artifact was not found/);
+            });
         });
     });
 
@@ -145,3 +177,30 @@ describe('ai-review-gate', () => {
         });
     });
 });
+
+function withRelayEvent(event: unknown, run: () => void): void {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'securezip-ai-review-gate-'));
+    const eventPath = path.join(directory, 'event.json');
+
+    try {
+        fs.writeFileSync(eventPath, JSON.stringify(event));
+        withRelayEventPath(eventPath, run);
+    } finally {
+        fs.rmSync(directory, { force: true, recursive: true });
+    }
+}
+
+function withRelayEventPath(eventPath: string, run: () => void): void {
+    const previous = process.env.AI_REVIEW_RELAY_EVENT_PATH;
+
+    try {
+        process.env.AI_REVIEW_RELAY_EVENT_PATH = eventPath;
+        run();
+    } finally {
+        if (previous === undefined) {
+            delete process.env.AI_REVIEW_RELAY_EVENT_PATH;
+        } else {
+            process.env.AI_REVIEW_RELAY_EVENT_PATH = previous;
+        }
+    }
+}

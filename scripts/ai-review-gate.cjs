@@ -23,8 +23,15 @@ const botLogins = new Set(
 );
 const runUrl = buildRunUrl(repository);
 let prNumber = null;
+let statusHeadSha = null;
 
 if (require.main === module) {
+  runCli().catch(async (error) => {
+    await failWithStatus(error);
+  });
+}
+
+async function runCli() {
   if (!token) {
     fail('GITHUB_TOKEN is required.');
   }
@@ -38,15 +45,14 @@ if (require.main === module) {
   }
 
   const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+  statusHeadSha = resolveEventHeadSha(event);
   prNumber = resolvePullRequestNumber(event);
 
   if (!prNumber) {
     success('No pull request was found for this event; skipping AI Review Gate.');
   }
 
-  main().catch((error) => {
-    fail(error instanceof Error ? error.message : String(error));
-  });
+  await main();
 }
 
 async function main() {
@@ -59,6 +65,7 @@ async function main() {
   ]);
 
   const headSha = pr.head.sha;
+  statusHeadSha = headSha;
 
   if (pr.base.ref !== targetBranch) {
     finishWithoutStatus(pr, headSha, 'skipped', [
@@ -91,6 +98,15 @@ async function main() {
   ].filter((candidate) => candidate.body || candidate.commitSha);
 
   const latestCurrentCandidate = selectLatestCurrentCandidate(candidates, headSha);
+  const currentBlockers = latestCurrentCandidate ? collectBlockers([latestCurrentCandidate]) : [];
+
+  if (currentBlockers.some((blocker) => blocker.level === 'P0')) {
+    await finish(pr, headSha, 'failed', 'failure', [
+      'P0 finding found in the latest AI review.',
+      ...formatBlockers(currentBlockers),
+    ], 'AI Review Gate failed because the latest Codex review contains a P0 finding.', true);
+  }
+
   const latestNonCurrentCandidate = selectLatestNonCurrentCandidate(candidates, headSha, latestCurrentCandidate);
 
   if (latestNonCurrentCandidate) {
@@ -135,14 +151,7 @@ async function main() {
     ], 'AI Review Gate failed because the latest Codex review is not tied to the current head.', true);
   }
 
-  const blockers = latestCurrentCandidate ? collectBlockers([latestCurrentCandidate]) : [];
-
-  if (blockers.some((blocker) => blocker.level === 'P0')) {
-    await finish(pr, headSha, 'failed', 'failure', [
-      'P0 finding found in the latest AI review.',
-      ...formatBlockers(blockers),
-    ], 'AI Review Gate failed because the latest Codex review contains a P0 finding.', true);
-  }
+  const blockers = currentBlockers;
 
   if (blockers.some((blocker) => blocker.level === 'P1')) {
     if (hasOverride && humanApprovedHead) {
@@ -188,8 +197,17 @@ function resolvePullRequestNumber(payload) {
   if (payload.issue?.pull_request && payload.issue.number) {
     return payload.issue.number;
   }
-  if (payload.workflow_run?.pull_requests?.[0]?.number) {
-    return payload.workflow_run.pull_requests[0].number;
+  if (payload.workflow_run) {
+    const relayPrNumber = readRelayPullRequestNumber({
+      required: Boolean(process.env.AI_REVIEW_RELAY_EVENT_PATH),
+    });
+    if (relayPrNumber) {
+      return relayPrNumber;
+    }
+    if (payload.workflow_run.pull_requests?.[0]?.number) {
+      return payload.workflow_run.pull_requests[0].number;
+    }
+    return null;
   }
   const relayPrNumber = readRelayPullRequestNumber();
   if (relayPrNumber) {
@@ -201,14 +219,40 @@ function resolvePullRequestNumber(payload) {
   return null;
 }
 
-function readRelayPullRequestNumber() {
+function resolveEventHeadSha(payload) {
+  return payload.pull_request?.head?.sha || payload.workflow_run?.head_sha || null;
+}
+
+function readRelayPullRequestNumber(options = {}) {
+  const required = Boolean(options.required);
   const relayEventPath = process.env.AI_REVIEW_RELAY_EVENT_PATH;
-  if (!relayEventPath || !fs.existsSync(relayEventPath)) {
+  if (!relayEventPath) {
+    if (required) {
+      throw new Error('AI_REVIEW_RELAY_EVENT_PATH is required for workflow_run events.');
+    }
+    return null;
+  }
+  if (!fs.existsSync(relayEventPath)) {
+    if (required) {
+      throw new Error(`Relay event artifact was not found at ${relayEventPath}.`);
+    }
     return null;
   }
 
-  const relayEvent = JSON.parse(fs.readFileSync(relayEventPath, 'utf8'));
-  return Number(relayEvent.pr_number) || null;
+  let relayEvent;
+  try {
+    relayEvent = JSON.parse(fs.readFileSync(relayEventPath, 'utf8'));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Relay event artifact is not valid JSON: ${detail}`);
+  }
+
+  const relayPrNumber = Number(relayEvent.pr_number);
+  if (!Number.isInteger(relayPrNumber) || relayPrNumber <= 0) {
+    throw new Error('Relay event artifact does not contain a valid pr_number.');
+  }
+
+  return relayPrNumber;
 }
 
 async function github(path, options = {}) {
@@ -452,6 +496,20 @@ function finishWithoutStatus(pr, headSha, summaryStatus, details, message) {
   success(message);
 }
 
+async function failWithStatus(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (statusHeadSha) {
+    try {
+      await publishGateStatus(statusHeadSha, 'failure', `AI Review Gate failed: ${message}`);
+    } catch (statusError) {
+      const statusMessage = statusError instanceof Error ? statusError.message : String(statusError);
+      console.error(`::warning::Failed to publish AI Review Gate failure status: ${statusMessage}`);
+    }
+  }
+
+  fail(message);
+}
+
 async function publishGateStatus(headSha, state, description) {
   if (!headSha) {
     return;
@@ -526,6 +584,7 @@ module.exports = {
   groupCandidates,
   matchesCommit,
   resolvePullRequestNumber,
+  readRelayPullRequestNumber,
   selectLatestCandidate,
   selectLatestCurrentCandidate,
   selectLatestNonCurrentCandidate,

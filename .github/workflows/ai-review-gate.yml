@@ -54,6 +54,7 @@ jobs:
       - name: Download review event context
         if: ${{ github.event_name == 'workflow_run' }}
         uses: actions/download-artifact@v7
+        continue-on-error: true
         with:
           name: ai-review-gate-event
           path: .ai-review-gate-event
