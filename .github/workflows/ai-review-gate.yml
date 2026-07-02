@@ -66,7 +66,7 @@ jobs:
           AI_REVIEW_TARGET_BRANCH: main
           AI_REVIEW_BOT_LOGINS: chatgpt-codex-connector[bot]
           AI_REVIEW_OVERRIDE_LABEL: ai-review-override
-          AI_REVIEW_STATUS_CONTEXT: AI Review Gate / gate
+          AI_REVIEW_STATUS_CONTEXT: AI Review Gate Status
           AI_REVIEW_RELAY_EVENT_PATH: .ai-review-gate-event/event.json
         run: |
           if [ ! -f scripts/ai-review-gate.cjs ]; then

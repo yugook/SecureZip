@@ -19,6 +19,7 @@ const gate = require('../../scripts/ai-review-gate.cjs') as {
     collectBlockers(candidates: Candidate[]): Blocker[];
     resolvePullRequestNumber(payload: unknown): number | null;
     selectLatestCurrentCandidate(candidates: Candidate[], headSha: string): Candidate | null;
+    selectLatestNonCurrentCandidate(candidates: Candidate[], headSha: string, latestCurrentCandidate?: Candidate | null): Candidate | null;
 };
 
 describe('ai-review-gate', () => {
@@ -107,6 +108,40 @@ describe('ai-review-gate', () => {
 
             assert.strictEqual(latest?.source, 'review 10, review comment 11');
             assert.deepStrictEqual(blockers.map((blocker) => blocker.level), ['P1']);
+        });
+    });
+
+    describe('selectLatestNonCurrentCandidate', () => {
+        it('keeps a newer untied Codex finding from being hidden by an older clean current review', () => {
+            const headSha = 'be9a3f42a6abcd';
+            const current = gate.selectLatestCurrentCandidate([
+                {
+                    body: 'Reviewed commit: be9a3f42a6',
+                    commitSha: headSha,
+                    groupKey: 'review:1',
+                    source: 'review 1',
+                    submittedAt: 1000,
+                },
+            ], headSha);
+
+            const latestNonCurrent = gate.selectLatestNonCurrentCandidate([
+                current!,
+                {
+                    body: '![P1 Badge](https://example.test/p1.svg) Untied finding',
+                    groupKey: 'issue-comment:2',
+                    source: 'issue comment 2',
+                    submittedAt: 2000,
+                },
+            ], headSha, current);
+
+            assert.strictEqual(latestNonCurrent?.source, 'issue comment 2');
+            assert.deepStrictEqual(gate.collectBlockers(latestNonCurrent ? [latestNonCurrent] : []), [
+                {
+                    level: 'P1',
+                    line: '![P1 Badge](https://example.test/p1.svg) Untied finding',
+                    source: 'issue comment 2',
+                },
+            ]);
         });
     });
 });

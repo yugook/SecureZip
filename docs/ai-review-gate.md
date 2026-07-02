@@ -30,6 +30,7 @@ The gate fails when:
 - The latest-head Codex review contains a `P0` finding.
 - The latest-head Codex review contains a `P1` finding and no approved override
   is present.
+- A newer Codex review or comment cannot be tied to the current PR head SHA.
 - No Codex review or comment can be tied to the current PR head SHA.
 
 The gate passes when:
@@ -60,10 +61,12 @@ run.
 
 ## Status reporting
 
-The workflow also writes the `AI Review Gate / gate` commit status directly to
+The workflow also writes the `AI Review Gate Status` commit status directly to
 the PR head SHA. This keeps top-level PR comment updates and review events from
 leaving the previous gate result in place when GitHub runs those events on a
 non-PR SHA.
+
+Skipped draft and non-`main` pull requests do not publish a commit status.
 
 ## Branch protection rollout
 
@@ -71,12 +74,13 @@ After the observation period:
 
 1. Confirm the gate has low false-positive noise.
 2. Confirm override handling is understood by maintainers.
-3. Add `AI Review Gate / gate` to the required status checks for `main`.
+3. Add `AI Review Gate Status` to the required status checks for `main`.
 4. Keep the `ai-review-override` label available as the service-outage escape
    hatch.
 
-Do not require `AI Review Gate Listener / capture`; it is only a low-privilege
-relay for review and inline-comment events.
+Do not require `AI Review Gate / gate` or `AI Review Gate Listener / capture`.
+The former can run on non-PR workflow SHAs, and the latter is only a
+low-privilege relay for review and inline-comment events.
 
 The writer workflow uses `pull_request_target` and `workflow_run`, then checks
 out the trusted base branch. Review and inline-comment events are captured by

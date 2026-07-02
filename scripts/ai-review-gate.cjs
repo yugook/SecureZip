@@ -14,7 +14,7 @@ const repository = process.env.GITHUB_REPOSITORY;
 const eventPath = process.env.GITHUB_EVENT_PATH;
 const targetBranch = process.env.AI_REVIEW_TARGET_BRANCH || 'main';
 const overrideLabel = process.env.AI_REVIEW_OVERRIDE_LABEL || 'ai-review-override';
-const statusContext = process.env.AI_REVIEW_STATUS_CONTEXT || 'AI Review Gate / gate';
+const statusContext = process.env.AI_REVIEW_STATUS_CONTEXT || 'AI Review Gate Status';
 const botLogins = new Set(
   (process.env.AI_REVIEW_BOT_LOGINS || 'chatgpt-codex-connector[bot]')
     .split(',')
@@ -61,13 +61,13 @@ async function main() {
   const headSha = pr.head.sha;
 
   if (pr.base.ref !== targetBranch) {
-    await finish(pr, headSha, 'skipped', 'success', [
+    finishWithoutStatus(pr, headSha, 'skipped', [
       `PR #${prNumber} targets ${pr.base.ref}, not ${targetBranch}.`,
     ], `PR #${prNumber} targets ${pr.base.ref}, not ${targetBranch}; skipping AI Review Gate.`);
   }
 
   if (pr.draft) {
-    await finish(pr, headSha, 'skipped', 'success', [
+    finishWithoutStatus(pr, headSha, 'skipped', [
       `PR #${prNumber} is a draft.`,
     ], `PR #${prNumber} is a draft; skipping AI Review Gate until it is ready for review.`);
   }
@@ -91,6 +91,50 @@ async function main() {
   ].filter((candidate) => candidate.body || candidate.commitSha);
 
   const latestCurrentCandidate = selectLatestCurrentCandidate(candidates, headSha);
+  const latestNonCurrentCandidate = selectLatestNonCurrentCandidate(candidates, headSha, latestCurrentCandidate);
+
+  if (latestNonCurrentCandidate) {
+    const reason = explainNonCurrentCandidate(latestNonCurrentCandidate, headSha);
+    const nonCurrentBlockers = collectBlockers([latestNonCurrentCandidate]);
+
+    if (nonCurrentBlockers.some((blocker) => blocker.level === 'P0')) {
+      await finish(pr, headSha, 'failed', 'failure', [
+        reason,
+        'P0 finding found in the latest AI review.',
+        ...formatBlockers(nonCurrentBlockers),
+      ], 'AI Review Gate failed because the latest Codex review contains a P0 finding.', true);
+    }
+
+    if (nonCurrentBlockers.some((blocker) => blocker.level === 'P1')) {
+      if (hasOverride && humanApprovedHead) {
+        await finish(pr, headSha, 'overridden', 'success', [
+          reason,
+          `P1 finding found, but ${overrideLabel} is set and a human approved the current head.`,
+          ...formatBlockers(nonCurrentBlockers),
+        ], `AI Review Gate overridden for P1 findings with ${overrideLabel}.`);
+      }
+
+      await finish(pr, headSha, 'failed', 'failure', [
+        reason,
+        'P1 finding found in the latest AI review.',
+        `Add ${overrideLabel} and obtain a human approval on the current head only if this is an intentional override.`,
+        ...formatBlockers(nonCurrentBlockers),
+      ], 'AI Review Gate failed because the latest Codex review contains a P1 finding.', true);
+    }
+
+    if (hasOverride && humanApprovedHead) {
+      await finish(pr, headSha, 'overridden', 'success', [
+        reason,
+        `${overrideLabel} is set and a human approved the current head.`,
+      ], `AI Review Gate overridden with ${overrideLabel}.`);
+    }
+
+    await finish(pr, headSha, 'failed', 'failure', [
+      reason,
+      `Wait for Codex to review the current head, or add ${overrideLabel} with a human approval if Codex is unavailable.`,
+    ], 'AI Review Gate failed because the latest Codex review is not tied to the current head.', true);
+  }
+
   const blockers = latestCurrentCandidate ? collectBlockers([latestCurrentCandidate]) : [];
 
   if (blockers.some((blocker) => blocker.level === 'P0')) {
@@ -122,9 +166,7 @@ async function main() {
   }
 
   const latestCandidate = selectLatestCandidate(candidates);
-  const reason = latestCandidate
-    ? `Latest Codex review/comment is for ${latestCandidate.commitSha || 'an unknown commit'}, not ${headSha}.`
-    : 'No Codex review/comment was found for this PR.';
+  const reason = latestCandidate ? explainNonCurrentCandidate(latestCandidate, headSha) : 'No Codex review/comment was found for this PR.';
 
   if (hasOverride && humanApprovedHead) {
     await finish(pr, headSha, 'overridden', 'success', [
@@ -273,8 +315,29 @@ function selectLatestCurrentCandidate(candidates, headSha) {
   return selectLatestCandidate(candidates.filter((candidate) => matchesCommit(headSha, candidate.commitSha)));
 }
 
+function selectLatestNonCurrentCandidate(candidates, headSha, latestCurrentCandidate = null) {
+  const latestCandidate = selectLatestCandidate(candidates);
+  if (!latestCandidate || matchesCommit(headSha, latestCandidate.commitSha)) {
+    return null;
+  }
+
+  if (!latestCurrentCandidate || latestCandidate.submittedAt >= latestCurrentCandidate.submittedAt) {
+    return latestCandidate;
+  }
+
+  return null;
+}
+
 function selectLatestCandidate(candidates) {
   return groupCandidates(candidates).sort((a, b) => b.submittedAt - a.submittedAt)[0] || null;
+}
+
+function explainNonCurrentCandidate(candidate, headSha) {
+  if (candidate.commitSha) {
+    return `Latest Codex review/comment is for ${candidate.commitSha}, not ${headSha}.`;
+  }
+
+  return `Latest Codex review/comment in ${candidate.source} is not tied to ${headSha}.`;
 }
 
 function groupCandidates(candidates) {
@@ -384,6 +447,11 @@ async function finish(pr, headSha, summaryStatus, statusState, details, message,
   success(message);
 }
 
+function finishWithoutStatus(pr, headSha, summaryStatus, details, message) {
+  writeSummary(pr, headSha, summaryStatus, details);
+  success(message);
+}
+
 async function publishGateStatus(headSha, state, description) {
   if (!headSha) {
     return;
@@ -460,5 +528,6 @@ module.exports = {
   resolvePullRequestNumber,
   selectLatestCandidate,
   selectLatestCurrentCandidate,
+  selectLatestNonCurrentCandidate,
   trimStatusDescription,
 };
