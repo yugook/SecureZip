@@ -17,10 +17,25 @@ interface Blocker {
 
 const gate = require('../../scripts/ai-review-gate.cjs') as {
     collectBlockers(candidates: Candidate[]): Blocker[];
+    resolvePullRequestNumber(payload: unknown): number | null;
     selectLatestCurrentCandidate(candidates: Candidate[], headSha: string): Candidate | null;
 };
 
 describe('ai-review-gate', () => {
+    describe('resolvePullRequestNumber', () => {
+        it('resolves PR numbers from trusted workflow_run relays', () => {
+            assert.strictEqual(gate.resolvePullRequestNumber({
+                workflow_run: {
+                    pull_requests: [
+                        {
+                            number: 264,
+                        },
+                    ],
+                },
+            }), 264);
+        });
+    });
+
     describe('collectBlockers', () => {
         it('parses shield-style Codex priority badges', () => {
             const blockers = gate.collectBlockers([

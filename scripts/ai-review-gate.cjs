@@ -146,10 +146,27 @@ function resolvePullRequestNumber(payload) {
   if (payload.issue?.pull_request && payload.issue.number) {
     return payload.issue.number;
   }
+  if (payload.workflow_run?.pull_requests?.[0]?.number) {
+    return payload.workflow_run.pull_requests[0].number;
+  }
+  const relayPrNumber = readRelayPullRequestNumber();
+  if (relayPrNumber) {
+    return relayPrNumber;
+  }
   if (payload.inputs?.pr_number) {
     return Number(payload.inputs.pr_number);
   }
   return null;
+}
+
+function readRelayPullRequestNumber() {
+  const relayEventPath = process.env.AI_REVIEW_RELAY_EVENT_PATH;
+  if (!relayEventPath || !fs.existsSync(relayEventPath)) {
+    return null;
+  }
+
+  const relayEvent = JSON.parse(fs.readFileSync(relayEventPath, 'utf8'));
+  return Number(relayEvent.pr_number) || null;
 }
 
 async function github(path, options = {}) {
@@ -440,6 +457,7 @@ module.exports = {
   extractPriorityLevel,
   groupCandidates,
   matchesCommit,
+  resolvePullRequestNumber,
   selectLatestCandidate,
   selectLatestCurrentCandidate,
   trimStatusDescription,

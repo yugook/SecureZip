@@ -1,0 +1,41 @@
+name: AI Review Gate Listener
+
+on:
+  pull_request_review:
+    types:
+      - submitted
+      - edited
+      - dismissed
+  pull_request_review_comment:
+    types:
+      - created
+      - edited
+      - deleted
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Capture review event context
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+        run: |
+          mkdir -p .ai-review-gate-event
+          node -e "const fs = require('node:fs'); fs.writeFileSync('.ai-review-gate-event/event.json', JSON.stringify({ pr_number: Number(process.env.PR_NUMBER), event_name: process.env.EVENT_NAME, action: process.env.EVENT_ACTION }, null, 2));"
+
+      - name: Upload review event context
+        uses: actions/upload-artifact@v7
+        with:
+          name: ai-review-gate-event
+          path: .ai-review-gate-event/event.json
+          if-no-files-found: error

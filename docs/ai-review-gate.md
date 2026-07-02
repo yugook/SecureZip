@@ -14,7 +14,7 @@ During the observation period, watch for:
 - Codex comment format changes.
 - False P0/P1 matches.
 - Stale reviews after a force-push or synchronized PR branch.
-- Inline review comments that should rerun the gate.
+- Inline review comments that should rerun the gate through the listener relay.
 - Dismissed reviews and whether their inline comments are ignored correctly.
 - Cases where Codex is unavailable and the override path is needed.
 
@@ -75,6 +75,12 @@ After the observation period:
 4. Keep the `ai-review-override` label available as the service-outage escape
    hatch.
 
-The workflow uses `pull_request_target` and checks out the trusted base branch.
-It reads PR metadata through the GitHub API and does not check out or execute PR
-branch code.
+Do not require `AI Review Gate Listener / capture`; it is only a low-privilege
+relay for review and inline-comment events.
+
+The writer workflow uses `pull_request_target` and `workflow_run`, then checks
+out the trusted base branch. Review and inline-comment events are captured by
+`.github/workflows/ai-review-gate-listener.yml`, which uploads only the PR
+number as an artifact. The writer workflow downloads that artifact, reads PR
+metadata through the GitHub API, and does not check out or execute PR branch
+code.
