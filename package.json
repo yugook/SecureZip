@@ -104,28 +104,6 @@
           "group": "securezip@1"
         }
       ],
-      "view/title": [
-        {
-          "command": "securezip.export",
-          "when": "view == securezip.view",
-          "group": "navigation@0"
-        },
-        {
-          "command": "securezip.exportEncrypted",
-          "when": "view == securezip.view",
-          "group": "navigation@1"
-        },
-        {
-          "command": "securezip.exportWorkspaceEncrypted",
-          "when": "view == securezip.view",
-          "group": "navigation@2"
-        },
-        {
-          "command": "securezip.openIgnoreFile",
-          "when": "view == securezip.view",
-          "group": "navigation@3"
-        }
-      ],
       "view/item/context": [
         {
           "command": "securezip.addPattern",
