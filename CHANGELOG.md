@@ -4,6 +4,10 @@ All notable changes to the "securezip" extension will be documented in this file
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Unreleased
+
+- Added encrypted export actions to the SecureZip view and removed title-bar action buttons so export commands are grouped in the Actions section.
+
 ## [1.1.9] - 2026-06-29
 
 - Added `SecureZip: Export Encrypted ZIP` and `SecureZip: Export Workspace Encrypted ZIP` commands that create password-protected archives using WinZip AES-256 (method 99).

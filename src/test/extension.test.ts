@@ -473,7 +473,9 @@ suite('SecureZip Extension', function () {
     });
 
     test('SecureZip view title remains plain', async function () {
-        const raw = await fs.promises.readFile(path.join(__dirname, '..', '..', 'package.json'), 'utf8');
+        const extension = vscode.extensions.getExtension('yugook.securezip');
+        assert.ok(extension, 'SecureZip extension not found');
+        const raw = await fs.promises.readFile(path.join(extension.extensionPath, 'package.json'), 'utf8');
         const manifest = JSON.parse(raw) as {
             contributes?: {
                 menus?: Record<string, unknown>;
