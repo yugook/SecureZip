@@ -96,6 +96,19 @@ function suggestTagName(base: string, existing: Set<string>): string {
     return candidate;
 }
 
+function resolveDefaultTagPrefix(tagPrefix: string, zipMode: ZipMode): string {
+    if (zipMode !== 'encrypted') {
+        return tagPrefix;
+    }
+    return tagPrefix ? `${tagPrefix}-encrypted` : 'encrypted';
+}
+
+function buildDefaultArchiveName(label: string, compactTimestamp: string, zipMode: ZipMode): string {
+    return zipMode === 'encrypted'
+        ? `${label}-encrypted-${compactTimestamp}.zip`
+        : `${label}-${compactTimestamp}.zip`;
+}
+
 function toErrorMessage(err: unknown): string {
     if (err instanceof Error && err.message) {
         return err.message;
@@ -606,9 +619,10 @@ async function exportSingleRoot(
 
     const now = new Date();
     const fmt = formatDate(now);
-    const defaultTag = `${tagPrefix}-${fmt.compact}`; // e.g., export-20250102-153012
+    const defaultTag = `${resolveDefaultTagPrefix(tagPrefix, zipOptions.mode)}-${fmt.compact}`; // e.g., export-20250102-153012
     const emptyTagPlan: TagPlan = { tagName: undefined, shouldCreate: false };
     let tagPlan: TagPlan | null = taggingMode === 'never' ? emptyTagPlan : null;
+    let exportTagName: string | undefined;
 
     // Git operations (single-root only)
     const git: SimpleGit = simpleGit({ baseDir: root });
@@ -820,11 +834,17 @@ async function exportSingleRoot(
                 if (resolvedTagPlan.tagName && resolvedTagPlan.shouldCreate) {
                     progress.report({ message: localize('progress.gitTagging', 'Git: creating export tag...') });
                     try {
-                        await git.addAnnotatedTag(resolvedTagPlan.tagName, localize('git.tagAnnotation', 'SecureZip export: {0}', fmt.datetime));
+                        const annotation = zipOptions.mode === 'encrypted'
+                            ? localize('git.tagAnnotation.encrypted', 'SecureZip encrypted export: {0}', fmt.datetime)
+                            : localize('git.tagAnnotation', 'SecureZip export: {0}', fmt.datetime);
+                        await git.addAnnotatedTag(resolvedTagPlan.tagName, annotation);
+                        exportTagName = resolvedTagPlan.tagName;
                     } catch (e) {
                         console.warn('[SecureZip] tag failed, continue without tag', e);
                         vscode.window.showWarningMessage(localize('warning.tagFailed', 'Failed to create tag. Continuing without tagging.'));
                     }
+                } else if (resolvedTagPlan.tagName) {
+                    exportTagName = resolvedTagPlan.tagName;
                 }
             } else {
                 console.log('[SecureZip] skip tagging because working tree remains dirty');
@@ -834,7 +854,7 @@ async function exportSingleRoot(
         console.warn('[SecureZip] Git unavailable or failed, continue without Git ops', e);
     }
 
-    const defaultName = `${label}-${fmt.compact}.zip`;
+    const defaultName = buildDefaultArchiveName(label, fmt.compact, zipOptions.mode);
     const targetUri = await vscode.window.showSaveDialog({
         defaultUri: vscode.Uri.file(path.join(root, defaultName)),
         filters: { 'ZIP Archive': ['zip'] },
@@ -846,7 +866,6 @@ async function exportSingleRoot(
 
     progress.report({ message: localize('progress.collectingFiles', 'Collecting files...') });
     const collection = await collectFilesForRoot(root, { additionalExcludes, includeNodeModules });
-    void treeProvider?.recordLastExport(root, collection.ignoreSnapshot);
 
     if (collection.gitOverride) {
         void vscode.window.showWarningMessage(
@@ -870,6 +889,11 @@ async function exportSingleRoot(
 
     progress.report({ message: getCreatingZipMessage(zipOptions) });
     await createZipEntries(entries, outFile, zipOptions, progress);
+    void treeProvider?.recordLastExport(root, collection.ignoreSnapshot, {
+        archivePath: outFile,
+        mode: zipOptions.mode,
+        tagName: exportTagName,
+    });
 
     vscode.window.showInformationMessage(getExportCompletedMessage(zipOptions, path.basename(outFile)));
 }
@@ -886,7 +910,7 @@ async function exportWorkspaceZip(
     const now = new Date();
     const fmt = formatDate(now);
     const workspaceLabel = getWorkspaceRootLabel();
-    const defaultName = `${workspaceLabel}-${fmt.compact}.zip`;
+    const defaultName = buildDefaultArchiveName(workspaceLabel, fmt.compact, zipOptions.mode);
     const targetRoot = targets[0].root;
     const targetUri = await vscode.window.showSaveDialog({
         defaultUri: vscode.Uri.file(path.join(targetRoot, defaultName)),
@@ -900,13 +924,14 @@ async function exportWorkspaceZip(
     const outFile = targetUri.fsPath;
     progress.report({ message: localize('progress.collectingFiles', 'Collecting files...') });
     const entries: ZipEntry[] = [];
+    const exportRecords: Array<{ root: string; patterns: string[] }> = [];
 
     for (const target of targets) {
         const cfg = vscode.workspace.getConfiguration('secureZip', vscode.Uri.file(target.root));
         const additionalExcludes = cfg.get<string[]>('additionalExcludes') || [];
         const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
         const collection = await collectFilesForRoot(target.root, { additionalExcludes, includeNodeModules });
-        void treeProvider?.recordLastExport(target.root, collection.ignoreSnapshot);
+        exportRecords.push({ root: target.root, patterns: collection.ignoreSnapshot });
 
         if (collection.gitOverride) {
             void vscode.window.showWarningMessage(
@@ -931,6 +956,12 @@ async function exportWorkspaceZip(
 
     progress.report({ message: getCreatingZipMessage(zipOptions) });
     await createZipEntries(entries, outFile, zipOptions, progress);
+    for (const record of exportRecords) {
+        void treeProvider?.recordLastExport(record.root, record.patterns, {
+            archivePath: outFile,
+            mode: zipOptions.mode,
+        });
+    }
 
     vscode.window.showInformationMessage(getExportCompletedMessage(zipOptions, path.basename(outFile)));
 }
