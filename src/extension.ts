@@ -957,7 +957,7 @@ async function exportWorkspaceZip(
     progress.report({ message: getCreatingZipMessage(zipOptions) });
     await createZipEntries(entries, outFile, zipOptions, progress);
     for (const record of exportRecords) {
-        void treeProvider?.recordLastExport(record.root, record.patterns, {
+        await treeProvider?.recordLastExport(record.root, record.patterns, {
             archivePath: outFile,
             mode: zipOptions.mode,
         });
