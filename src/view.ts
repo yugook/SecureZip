@@ -24,9 +24,13 @@ const SECTION_DEFS: Record<SectionId, { label: string; icon: string }> = {
 type LastExportSnapshot = {
     timestamp: number;
     patterns: string[];
+    mode?: 'plain' | 'encrypted';
+    tagName?: string;
+    archivePath?: string;
 };
 
 type LastExportByRoot = Record<string, LastExportSnapshot>;
+type LastExportMetadata = Pick<LastExportSnapshot, 'archivePath' | 'mode' | 'tagName'>;
 
 type PreviewStatus = 'exclude' | 'include' | 'comment' | 'duplicate' | 'auto' | 'git';
 
@@ -46,7 +50,7 @@ type PreviewEntry = {
 type TreeNode =
     | { kind: 'group'; group: TargetGroup }
     | { kind: 'section'; section: SectionId; group: TargetGroup; description?: string }
-    | { kind: 'message'; label: string; tooltip?: string }
+    | { kind: 'message'; label: string; tooltip?: string; description?: string; icon?: string }
     | { kind: 'suggestion'; label: string; pattern: string; detail?: string; alreadyExists: boolean; root?: string }
     | { kind: 'preview'; label: string; status: PreviewStatus; tooltip?: string; description?: string; sources?: PreviewSource[] }
     | { kind: 'action'; label: string; command: vscode.Command; description?: string; icon?: string; tooltip?: string };
@@ -104,6 +108,10 @@ class SecureZipTreeItem extends vscode.TreeItem {
             }
             case 'message': {
                 this.tooltip = node.tooltip;
+                this.description = node.description;
+                if (node.icon) {
+                    this.iconPath = new vscode.ThemeIcon(node.icon);
+                }
                 this.contextValue = 'securezip.message';
                 break;
             }
@@ -272,14 +280,22 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         void this.treeView.reveal(item, { expand: true, focus: true });
     }
 
-    async recordLastExport(root: string, patterns: string[]) {
+    async recordLastExport(root: string, patterns: string[], metadata?: LastExportMetadata) {
         const sanitized = Array.from(new Set(patterns.map((p) => p.trim()).filter(Boolean)));
         const existing = this.context.workspaceState.get<LastExportByRoot>(LAST_EXPORT_STATE_KEY) ?? {};
         const updated: LastExportByRoot = { ...existing };
-        updated[root] = {
+        const snapshot: LastExportSnapshot = {
             timestamp: Date.now(),
             patterns: sanitized,
+            mode: metadata?.mode ?? 'plain',
         };
+        if (metadata?.tagName) {
+            snapshot.tagName = metadata.tagName;
+        }
+        if (metadata?.archivePath) {
+            snapshot.archivePath = metadata.archivePath;
+        }
+        updated[root] = snapshot;
         await this.context.workspaceState.update(LAST_EXPORT_STATE_KEY, updated);
         this.refresh();
     }
@@ -532,14 +548,32 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
 
         const description = this.formatTimestamp(snapshot.timestamp);
+        const mode = snapshot.mode ?? 'plain';
+        const modeLabel = mode === 'encrypted'
+            ? localize('recent.mode.encryptedZip', 'Encrypted ZIP')
+            : localize('recent.mode.plainZip', 'ZIP');
         if (sectionItem) {
-            sectionItem.description = description;
+            sectionItem.description = mode === 'encrypted'
+                ? localize('recent.sectionDescription', '{0} · {1}', modeLabel, description)
+                : description;
         }
+        const tooltipParts = [
+            localize('recent.tooltip.type', 'Type: {0}', modeLabel),
+            snapshot.tagName ? localize('recent.tooltip.tag', 'Tag: {0}', snapshot.tagName) : undefined,
+            snapshot.archivePath ? localize('recent.tooltip.archive', 'Archive: {0}', snapshot.archivePath) : undefined,
+            snapshot.patterns.length > 0
+                ? localize('recent.tooltip.ignoreSnapshot', 'Ignore snapshot:\n{0}', snapshot.patterns.join('\n'))
+                : undefined,
+        ].filter((part): part is string => typeof part === 'string' && part.length > 0);
         return [
             new SecureZipTreeItem({
                 kind: 'message',
-                label: localize('recent.latest', 'Latest export: {0}', description),
-                tooltip: snapshot.patterns.length > 0 ? snapshot.patterns.join('\n') : undefined,
+                label: mode === 'encrypted'
+                    ? localize('recent.latestEncrypted', 'Latest encrypted export: {0}', description)
+                    : localize('recent.latest', 'Latest export: {0}', description),
+                description: snapshot.tagName,
+                icon: mode === 'encrypted' ? 'lock' : 'package',
+                tooltip: tooltipParts.length > 0 ? tooltipParts.join('\n') : undefined,
             }),
         ];
     }

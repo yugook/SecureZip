@@ -166,8 +166,12 @@ suite('SecureZip Encrypted Export', function () {
 
         const win = getWindow();
         const infos: string[] = [];
+        const defaultNames: string[] = [];
         win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
-        win.showSaveDialog = (async () => vscode.Uri.file(outPath)) as typeof vscode.window.showSaveDialog;
+        win.showSaveDialog = ((options?: vscode.SaveDialogOptions) => {
+            defaultNames.push(path.basename(options?.defaultUri?.fsPath ?? ''));
+            return Promise.resolve(vscode.Uri.file(outPath));
+        }) as typeof vscode.window.showSaveDialog;
         win.showInformationMessage = ((message: unknown, ..._items: unknown[]) => {
             infos.push(typeof message === 'string' ? message : String(message ?? ''));
             return Promise.resolve(undefined);
@@ -180,6 +184,10 @@ suite('SecureZip Encrypted Export', function () {
             assert.ok(
                 infos.some((message) => /encrypted zip created|暗号化 ZIP を作成しました/i.test(message)),
                 `Completion message should identify encrypted export. Captured: ${JSON.stringify(infos)}`,
+            );
+            assert.ok(
+                defaultNames.some((name) => /-encrypted-\d{8}-\d{6}\.zip$/.test(name)),
+                `Encrypted export default filename should identify encryption. Captured: ${JSON.stringify(defaultNames)}`,
             );
             const entries = inspectZip(outPath);
             assert.ok(entries.length > 0, 'Encrypted ZIP should contain entries');
@@ -293,10 +301,16 @@ suite('SecureZip Encrypted Export', function () {
         }
     });
 
-    test('exportWorkspaceEncrypted produces an AES-encrypted ZIP for the workspace', async function () {
+    test('exportEncrypted creates an encrypted default tag and annotation', async function () {
         this.timeout(30000);
         await stageSimpleProject();
-        const outPath = path.join(getWorkspaceRoot(), 'securezip-encrypted-workspace.zip');
+        const root = getWorkspaceRoot();
+        const outPath = path.join(root, 'securezip-encrypted-default-tag.zip');
+
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('tagging.mode', 'always', vscode.ConfigurationTarget.Workspace);
+        await initGitRepository(root);
+        const git = simpleGit({ baseDir: root });
 
         const win = getWindow();
         win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
@@ -305,8 +319,57 @@ suite('SecureZip Encrypted Export', function () {
         win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
 
         try {
+            await vscode.commands.executeCommand('securezip.exportEncrypted');
+
+            const tags = await git.tags();
+            const encryptedTag = tags.all.find((tag) => /^export-encrypted-\d{8}-\d{6}$/.test(tag));
+            assert.ok(
+                encryptedTag,
+                `Expected encrypted export tag. Tags: ${JSON.stringify(tags.all)}`,
+            );
+            assert.ok(
+                !tags.all.some((tag) => /^export-\d{8}-\d{6}$/.test(tag)),
+                `Encrypted export should not use the plain tag shape. Tags: ${JSON.stringify(tags.all)}`,
+            );
+
+            const annotation = await git.raw([
+                'for-each-ref',
+                `refs/tags/${encryptedTag}`,
+                '--format=%(contents)',
+            ]);
+            assert.match(
+                annotation,
+                /SecureZip (encrypted export|暗号化エクスポート):/i,
+                `Encrypted tag annotation should identify the export type. Annotation: ${annotation}`,
+            );
+        } finally {
+            await config.update('tagging.mode', undefined, vscode.ConfigurationTarget.Workspace);
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('exportWorkspaceEncrypted produces an AES-encrypted ZIP for the workspace', async function () {
+        this.timeout(30000);
+        await stageSimpleProject();
+        const outPath = path.join(getWorkspaceRoot(), 'securezip-encrypted-workspace.zip');
+
+        const win = getWindow();
+        const defaultNames: string[] = [];
+        win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
+        win.showSaveDialog = ((options?: vscode.SaveDialogOptions) => {
+            defaultNames.push(path.basename(options?.defaultUri?.fsPath ?? ''));
+            return Promise.resolve(vscode.Uri.file(outPath));
+        }) as typeof vscode.window.showSaveDialog;
+        win.showInformationMessage = (async () => undefined) as typeof vscode.window.showInformationMessage;
+        win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
+
+        try {
             await vscode.commands.executeCommand('securezip.exportWorkspaceEncrypted');
             assert.ok(await pathExists(outPath), 'Encrypted workspace ZIP should be created');
+            assert.ok(
+                defaultNames.some((name) => /-encrypted-\d{8}-\d{6}\.zip$/.test(name)),
+                `Encrypted workspace export default filename should identify encryption. Captured: ${JSON.stringify(defaultNames)}`,
+            );
             const entries = inspectZip(outPath);
             assert.ok(entries.length > 0, 'Encrypted workspace ZIP should contain entries');
             for (const entry of entries) {
