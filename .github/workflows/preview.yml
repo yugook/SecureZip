@@ -42,6 +42,9 @@ jobs:
       - name: Run unit tests
         run: npm run test:unit
 
+      - name: Run extension integration tests
+        run: dbus-run-session -- xvfb-run -a npm run test
+
       - name: Publish pre-release to VS Code Marketplace
         if: ${{ !contains(github.event.head_commit.message, '[skip-preview]') }}
         env:

@@ -472,6 +472,50 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('recent export history identifies encrypted exports', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const workspaceRoot = getWorkspaceRoot();
+        const outPath = path.join(workspaceRoot, 'securezip-encrypted-history.zip');
+        const tagName = 'export-encrypted-20260703-153000';
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            await provider.recordLastExport(workspaceRoot, ['dist/', '!dist/release.txt'], {
+                archivePath: outPath,
+                mode: 'encrypted',
+                tagName,
+            });
+
+            const sections = await provider.getChildren();
+            const recentSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'recentExports',
+            );
+            assert.ok(recentSection, 'Recent exports section was not found');
+
+            const recentItems = await provider.getChildren(recentSection);
+            assert.strictEqual(recentItems.length, 1, 'Expected one recent export item');
+
+            const encryptedPrefix = localize('recent.latestEncrypted', 'Latest encrypted export: {0}', '').trim();
+            const modeLabel = localize('recent.mode.encryptedZip', 'Encrypted ZIP');
+            const label = getTreeItemLabel(recentItems[0]);
+            const sectionDescription = getTreeItemDescription(recentSection);
+            const itemDescription = getTreeItemDescription(recentItems[0]);
+            const tooltip = String((recentItems[0] as any).tooltip ?? '');
+
+            assert.ok(label.startsWith(encryptedPrefix), `Expected encrypted recent export label. Label: ${label}`);
+            assert.ok(
+                sectionDescription.includes(modeLabel),
+                `Recent section description should include the export mode. Description: ${sectionDescription}`,
+            );
+            assert.strictEqual(itemDescription, tagName, 'Recent export item should surface the tag name');
+            assert.ok(tooltip.includes(tagName), `Recent export tooltip should include the tag. Tooltip: ${tooltip}`);
+            assert.ok(tooltip.includes(outPath), `Recent export tooltip should include the archive path. Tooltip: ${tooltip}`);
+        } finally {
+            provider.dispose();
+        }
+    });
+
     test('SecureZip view title remains plain', async function () {
         const extension = vscode.extensions.getExtension('yugook.securezip');
         assert.ok(extension, 'SecureZip extension not found');

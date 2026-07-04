@@ -40,11 +40,16 @@ SecureZip can tag exports for traceability. Choose the tagging behavior per expo
 - `always` – Always create the default export tag.
 - `never` – Skip tagging entirely.
 
+Encrypted exports use a distinct default tag, such as
+`export-encrypted-YYYYMMDD-HHmmss` (or
+`<tagPrefix>-encrypted-YYYYMMDD-HHmmss` when you customize
+`secureZip.tagPrefix`).
+
 ## 🔐 Encrypted ZIP
 
 SecureZip can produce password-protected archives in addition to the regular
 export. Two commands are available from the Command Palette and the SecureZip
-view title bar:
+view Actions section:
 
 - `SecureZip: Export Encrypted ZIP` (`securezip.exportEncrypted`) – encrypted
   variant of the single-root export.
@@ -56,6 +61,11 @@ When you run either command SecureZip prompts twice (password + confirmation).
 Mismatched entries trigger a re-prompt; cancelling either prompt aborts the
 export without writing any file. The archive uses **WinZip AES-256** (method
 `99`) for entry encryption.
+
+Successful encrypted exports are identified as encrypted in the SecureZip view's
+Recent Exports section. When a Git tag is associated with the export, that tag
+is shown with the recent export entry. The default save name also includes
+`-encrypted-`, for example `project-encrypted-YYYYMMDD-HHmmss.zip`.
 
 ### Compatibility
 
@@ -217,10 +227,15 @@ SecureZip はエクスポート時の追跡性向上のため、タグ付けの�
 - `always` – 常にデフォルトタグを作成します。
 - `never` – タグ付けを行いません。
 
+暗号化エクスポートのデフォルトタグは通常 ZIP と区別できるよう、
+`export-encrypted-YYYYMMDD-HHmmss` 形式になります。
+`secureZip.tagPrefix` を変更している場合は
+`<tagPrefix>-encrypted-YYYYMMDD-HHmmss` 形式です。
+
 ## 🔐 暗号化 ZIP
 
 SecureZip は通常エクスポートに加えて、パスワード保護付きの ZIP を生成できま
-す。コマンドパレットおよび SecureZip ビューのタイトルバーから次の 2 つのコマ
+す。コマンドパレットおよび SecureZip ビューのアクションセクションから次の 2 つのコマ
 ンドを利用できます。
 
 - `SecureZip: Export Encrypted ZIP`（`securezip.exportEncrypted`） – 単一
@@ -232,6 +247,12 @@ SecureZip は通常エクスポートに加えて、パスワード保護付き�
 実行するとパスワードと確認入力の 2 段階のプロンプトが表示されます。不一致の
 場合は再入力を求め、いずれかをキャンセルすると **ファイルを書き出さずに中断**
 します。エントリ暗号化には **WinZip AES-256（method `99`）** を使用します。
+
+成功した暗号化エクスポートは、SecureZip ビューの「最近のエクスポート」で暗
+号化 ZIP として表示されます。Git タグが関連付けられている場合は、そのタグも
+最近の履歴に表示されます。保存ダイアログの既定ファイル名にも
+`-encrypted-` が入り、例として
+`project-encrypted-YYYYMMDD-HHmmss.zip` のようになります。
 
 ### 互換性
 
