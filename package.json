@@ -233,5 +233,14 @@
     "extension": [
       ".ts"
     ]
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.7",
+    "minimatch@9": {
+      "brace-expansion": "^5.0.7"
+    },
+    "minimatch@10": {
+      "brace-expansion": "^5.0.7"
+    }
   }
 }
