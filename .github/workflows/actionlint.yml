@@ -1,0 +1,25 @@
+name: Actionlint
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - release/**
+      - TestFlight/**
+      - testflight/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check workflow files
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
