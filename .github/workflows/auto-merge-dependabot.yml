@@ -17,10 +17,10 @@ concurrency:
 jobs:
   enable-auto-merge:
     if: >
-      ${{ github.event.pull_request.user.login == 'dependabot[bot]' &&
-          github.event.pull_request.base.ref == 'main' &&
-          github.event.pull_request.draft == false &&
-          contains(github.event.pull_request.labels.*.name, 'safe-to-automerge') }}
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.draft == false &&
+      contains(github.event.pull_request.labels.*.name, 'safe-to-automerge')
     runs-on: ubuntu-latest
     permissions:
       contents: write
