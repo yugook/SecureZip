@@ -45,8 +45,10 @@ jobs:
 
       - name: Check for skip directive
         id: skip
+        env:
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          if [[ "${{ github.event.head_commit.message }}" == *"[skip-release]"* ]]; then
+          if [[ "$HEAD_COMMIT_MESSAGE" == *"[skip-release]"* ]]; then
             echo "value=true" >>"$GITHUB_OUTPUT"
           else
             echo "value=false" >>"$GITHUB_OUTPUT"
