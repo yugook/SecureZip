@@ -73,11 +73,9 @@ commit, fetches the PR head into a local git ref, and validates that:
 
 The Marketplace PAT verification job uses the protected `marketplace-pat`
 GitHub Environment. Configure that environment with required reviewers, then
-store `VSCE_PAT` as an environment secret and `VSCE_PAT_EXPIRES_AT` as an
-environment variable in `YYYY-MM-DD` format. The job runs only after environment
+store `VSCE_PAT` as an environment secret. The job runs only after environment
 approval and validates that:
 
-- `VSCE_PAT_EXPIRES_AT` is at least 14 days in the future.
 - `VSCE_PAT` still has Marketplace publish rights for the `yugook` publisher via
   `vsce verify-pat yugook`.
 
@@ -85,9 +83,7 @@ The preview and stable publish workflows also use the same `marketplace-pat`
 environment, so the release PR check verifies the same `VSCE_PAT` that publish
 uses. The PAT verification job does not check out the PR branch or run project
 scripts; it installs the pinned `@vscode/vsce` CLI separately before reading
-`VSCE_PAT`. GitHub Actions cannot read the expiration date from the encrypted
-`VSCE_PAT` secret, so update `VSCE_PAT_EXPIRES_AT` whenever the Marketplace PAT
-is rotated. Review the release PR diff before approving the protected
+`VSCE_PAT`. Review the release PR diff before approving the protected
 environment job, because approval makes the environment secret available to that
 job.
 
