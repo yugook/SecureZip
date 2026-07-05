@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:f3a00ce0-b3be-4e13-b688-db3b2ccf0839",
+  "serialNumber": "urn:uuid:b556c3c5-c9e7-437b-a721-a4abcadaaa41",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-06-29T14:08:11.521Z",
+    "timestamp": "2026-07-05T14:14:36.508Z",
     "lifecycles": [
       {
         "phase": "pre-build"
@@ -19,13 +19,13 @@
       }
     ],
     "component": {
-      "bom-ref": "securezip@1.1.9",
+      "bom-ref": "securezip@1.2.0",
       "type": "application",
       "name": "SecureZip",
-      "version": "1.1.9",
+      "version": "1.2.0",
       "scope": "required",
       "description": "Securely export your project as a clean ZIP.",
-      "purl": "pkg:npm/securezip@1.1.9",
+      "purl": "pkg:npm/securezip@1.2.0",
       "properties": [
         {
           "name": "cdx:npm:package:path",
@@ -1438,7 +1438,7 @@
   ],
   "dependencies": [
     {
-      "ref": "securezip@1.1.9",
+      "ref": "securezip@1.2.0",
       "dependsOn": [
         "archiver@7.0.1",
         "archiver-zip-encrypted@2.0.0",
