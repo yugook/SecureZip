@@ -5,7 +5,7 @@ runs match what GitHub Actions executes.
 
 ## Prerequisites
 
-- Node.js 22.20.0 (matches VS Code’s runtime and all workflows).
+- Node.js 24.x (matches all workflows).
 - npm 10+ (bundled with Node 22 installers).
 - VS Code installed locally if you plan to run the integration tests outside CI.
 
