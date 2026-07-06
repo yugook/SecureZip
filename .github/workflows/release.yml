@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name to publish (e.g. v1.0.0)'
+        required: true
+        type: string
   workflow_call:
     inputs:
       tag_name:
@@ -12,7 +18,7 @@ on:
         type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_call' && inputs.tag_name || github.ref_name }}
+  group: ${{ github.workflow }}-${{ inputs.tag_name || github.ref_name }}
   cancel-in-progress: false
 
 permissions:
@@ -20,7 +26,7 @@ permissions:
 
 jobs:
   publish-release:
-    if: ${{ (github.event_name == 'push' && !endsWith(github.ref_name, '-preview')) || (github.event_name == 'workflow_call' && !endsWith(inputs.tag_name || '', '-preview')) }}
+    if: ${{ !endsWith(inputs.tag_name || github.ref_name, '-preview') }}
     runs-on: ubuntu-latest
     environment: marketplace-pat
     permissions:
@@ -30,6 +36,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.tag_name || github.ref }}
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -56,7 +63,7 @@ jobs:
       - name: Determine extension version
         id: version
         env:
-          REQUESTED_TAG: ${{ github.event_name == 'workflow_call' && inputs.tag_name || github.ref_name }}
+          REQUESTED_TAG: ${{ inputs.tag_name || github.ref_name }}
         run: |
           set -euo pipefail
           VERSION=$(jq -r '.version' package.json)
@@ -75,6 +82,10 @@ jobs:
           fi
           echo "plain=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$EXPECTED_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Determine release commit
+        id: release_ref
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Build VSIX bundle
         run: npm run package
@@ -131,6 +142,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ steps.version.outputs.tag }}
           VSIX_NAME: securezip-${{ steps.version.outputs.plain }}.vsix
+          RELEASE_SHA: ${{ steps.release_ref.outputs.sha }}
         run: |
           set -euo pipefail
           if [ ! -f "$VSIX_NAME" ]; then
@@ -140,8 +152,8 @@ jobs:
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             echo "Release $TAG_NAME exists. Updating assets and notes."
             gh release upload "$TAG_NAME" "$VSIX_NAME" --clobber
-            gh release edit "$TAG_NAME" --draft --title "$TAG_NAME" --notes-file release-notes.md --target "$GITHUB_SHA"
+            gh release edit "$TAG_NAME" --draft --title "$TAG_NAME" --notes-file release-notes.md --target "$RELEASE_SHA"
           else
             echo "Creating draft release $TAG_NAME."
-            gh release create "$TAG_NAME" "$VSIX_NAME" --draft --title "$TAG_NAME" --notes-file release-notes.md --target "$GITHUB_SHA"
+            gh release create "$TAG_NAME" "$VSIX_NAME" --draft --title "$TAG_NAME" --notes-file release-notes.md --target "$RELEASE_SHA"
           fi
