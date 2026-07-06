@@ -6,6 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+## [1.2.0] - 2026-07-05
+
 - Added encrypted export actions to the SecureZip view and removed title-bar action buttons so export commands are grouped in the Actions section.
 - Encrypted exports now use distinct default Git tags and filenames (`<tagPrefix>-encrypted-YYYYMMDD-HHmmss`, `*-encrypted-YYYYMMDD-HHmmss.zip`) and show their ZIP type, tag, and archive path in the Recent Exports view after a successful write.
 
