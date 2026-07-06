@@ -58,7 +58,9 @@ never consume the number intended for the next stable release.
 
 If the auto-release workflow creates the `vX.Y.Z` tag but the publish job fails
 afterward, do not delete or recreate the tag. Re-run the `Publish Release`
-workflow manually with `tag_name` set to the existing tag, such as `v1.2.0`.
+workflow manually from the `main` branch by selecting `main` in the GitHub UI
+`Use workflow from` dropdown, then set `tag_name` to the existing tag, such as
+`v1.2.0`.
 The workflow checks out that tag, verifies it matches `package.json`, publishes
 with `--skip-duplicate`, and creates or updates the draft GitHub Release.
 
