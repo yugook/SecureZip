@@ -9,6 +9,8 @@ contributors (humans or automation such as Codex) follow the exact same flow.
   `vsce publish --pre-release --skip-duplicate`.
 - `main` branch &rarr; `.github/workflows/auto-release-on-main.yml` tags the
   commit, then reuses `.github/workflows/release.yml` to ship the stable build.
+- `.github/workflows/release.yml` can also be run manually with an existing
+  `vX.Y.Z` tag to recover a failed stable publish job.
 - `tag-after-release.yml` mirrors the version back to a git tag (`vX.Y.Z` or
   `vX.Y.Z-preview`), so never delete the tags manually.
 
@@ -45,7 +47,7 @@ never consume the number intended for the next stable release.
 2. Bump `package.json` to the next semver (e.g. `npm version 1.0.10`) because
    the preview already consumed `1.0.9`. Update the changelog if necessary.
 3. Push to `main`. The auto-release workflow will:
-   - create the `v1.0.9` tag,
+   - create the `v1.0.10` tag,
    - run type checks, lint, `npm run package`, unit/integration tests,
    - publish to the Marketplace with `npx vsce publish --skip-duplicate`,
    - create a draft GitHub Release with the VSIX artifact.
@@ -53,6 +55,14 @@ never consume the number intended for the next stable release.
    `[skip-release]` in the commit message.
 5. Preflight tip: run `npm run package:verify` before tagging to catch version
    mismatches that would block vsce packaging.
+
+If the auto-release workflow creates the `vX.Y.Z` tag but the publish job fails
+afterward, do not delete or recreate the tag. Re-run the `Publish Release`
+workflow manually from the `main` branch by selecting `main` in the GitHub UI
+`Use workflow from` dropdown, then set `tag_name` to the existing tag, such as
+`v1.2.0`.
+The workflow checks out that tag, verifies it matches `package.json`, publishes
+with `--skip-duplicate`, and creates or updates the draft GitHub Release.
 
 ## Release PR checks
 
