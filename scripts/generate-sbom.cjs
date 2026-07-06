@@ -11,6 +11,7 @@ const path = require('node:path');
 const repoRoot = path.resolve(__dirname, '..');
 const distDir = path.join(repoRoot, 'dist');
 const outputFile = path.join(distDir, 'securezip-sbom.cdx.json');
+const pinnedNpmVersion = '10.9.0';
 
 mkdirSync(distDir, { recursive: true });
 
@@ -26,17 +27,40 @@ const args = [
 ];
 
 const npmCli = process.env.npm_execpath;
-const child = npmCli
-  ? spawnSync(process.execPath, [npmCli, ...args], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'inherit'],
-    })
-  : spawnSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', args, {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'inherit'],
-    });
+const npmCommand = npmCli
+  ? { command: process.execPath, args: [npmCli] }
+  : { command: process.platform === 'win32' ? 'npm.cmd' : 'npm', args: [] };
+
+function spawnNpm(args, options) {
+  return spawnSync(npmCommand.command, [...npmCommand.args, ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    ...options,
+  });
+}
+
+const versionCheck = spawnNpm(['--version'], {
+  stdio: ['ignore', 'pipe', 'inherit'],
+});
+
+if (versionCheck.error) {
+  throw versionCheck.error;
+}
+
+if (versionCheck.status !== 0) {
+  throw new Error(`npm --version exited with code ${versionCheck.status}`);
+}
+
+const actualNpmVersion = versionCheck.stdout.trim();
+if (actualNpmVersion !== pinnedNpmVersion) {
+  throw new Error(
+    `SBOM generation requires npm ${pinnedNpmVersion}; found npm ${actualNpmVersion}. Run "npm install -g npm@${pinnedNpmVersion}" before packaging.`,
+  );
+}
+
+const child = spawnNpm(args, {
+  stdio: ['ignore', 'pipe', 'inherit'],
+});
 
 if (child.error) {
   throw child.error;

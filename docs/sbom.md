@@ -5,6 +5,7 @@ SecureZip now generates a CycloneDX Software Bill of Materials so the packaged e
 ## How it works
 
 - `npm run sbom` runs the built-in `npm sbom` command in `package-lock-only` mode, omitting dev dependencies and classifying the project as an application.
+- SBOM generation requires npm 10.9.0 so the committed CycloneDX output remains reproducible across Node.js 24.x environments.
 - The command writes `dist/securezip-sbom.cdx.json`. Because the file lives under `dist/`, it is bundled automatically when you run `vsce package` or `npm run package`.
 - `npm run package` triggers the SBOM step through the `postpackage` lifecycle hook, so every publish-ready build includes a fresh SBOM.
 
