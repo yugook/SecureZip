@@ -6,7 +6,7 @@ runs match what GitHub Actions executes.
 ## Prerequisites
 
 - Node.js 24.x (matches all workflows).
-- npm 10+ (bundled with Node 22 installers).
+- npm 10.9.0 (pinned in CI for reproducible SBOM generation).
 - VS Code installed locally if you plan to run the integration tests outside CI.
 
 Install dependencies once per clone:

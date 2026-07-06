@@ -4,6 +4,7 @@
   "description": "Securely export your project as a clean ZIP.",
   "publisher": "yugook",
   "version": "1.2.0",
+  "packageManager": "npm@10.9.0",
   "icon": "resources/securezip.png",
   "repository": {
     "type": "git",

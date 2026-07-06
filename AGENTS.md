@@ -13,7 +13,7 @@
 - `scripts/`: Build/support scripts (including SBOM generation).
 
 ## Setup
-- Prereqs: Node.js 24.x and npm 10+ (matches CI).
+- Prereqs: Node.js 24.x and npm 10.9.0 (matches CI).
 - Install VS Code locally if you plan to run integration tests.
 - Install deps: `npm install`.
 
