@@ -516,6 +516,75 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('recent export history keeps the latest ten exports', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const workspaceRoot = getWorkspaceRoot();
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            for (let i = 0; i < 12; i += 1) {
+                await provider.recordLastExport(workspaceRoot, [`dist/${i}/`], {
+                    archivePath: path.join(workspaceRoot, `securezip-history-${i}.zip`),
+                    mode: i % 2 === 0 ? 'plain' : 'encrypted',
+                    tagName: `export-${i}`,
+                });
+            }
+
+            const sections = await provider.getChildren();
+            const recentSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'recentExports',
+            );
+            assert.ok(recentSection, 'Recent exports section was not found');
+
+            const recentItems = await provider.getChildren(recentSection);
+            const descriptions = recentItems.map(getTreeItemDescription);
+
+            assert.strictEqual(recentItems.length, 10, 'Expected recent export history to keep ten items');
+            assert.strictEqual(descriptions[0], 'export-11', 'Most recent export should be first');
+            assert.strictEqual(descriptions[9], 'export-2', 'Oldest retained export should be the tenth most recent');
+            assert.ok(!descriptions.includes('export-1'), 'Older exports should be trimmed');
+        } finally {
+            provider.dispose();
+        }
+    });
+
+    test('recent export history reads legacy single-entry state', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const workspaceRoot = getWorkspaceRoot();
+        const outPath = path.join(workspaceRoot, 'securezip-legacy-history.zip');
+        const tagName = 'export-legacy-20260703-153000';
+        const context = createTestExtensionContext();
+        await context.workspaceState.update('securezip.lastExportByRoot', {
+            [workspaceRoot]: {
+                timestamp: new Date('2026-07-03T15:30:00Z').getTime(),
+                patterns: ['dist/'],
+                archivePath: outPath,
+                mode: 'plain',
+                tagName,
+            },
+        });
+
+        const provider = new SecureZipViewProvider(context);
+        try {
+            const sections = await provider.getChildren();
+            const recentSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'recentExports',
+            );
+            assert.ok(recentSection, 'Recent exports section was not found');
+
+            const recentItems = await provider.getChildren(recentSection);
+            const tooltip = String((recentItems[0] as any).tooltip ?? '');
+
+            assert.strictEqual(recentItems.length, 1, 'Expected legacy recent export state to render');
+            assert.strictEqual(getTreeItemDescription(recentItems[0]), tagName, 'Legacy export should surface the tag name');
+            assert.ok(tooltip.includes(outPath), `Legacy export tooltip should include the archive path. Tooltip: ${tooltip}`);
+        } finally {
+            provider.dispose();
+        }
+    });
+
     test('SecureZip view title remains plain', async function () {
         const extension = vscode.extensions.getExtension('yugook.securezip');
         assert.ok(extension, 'SecureZip extension not found');

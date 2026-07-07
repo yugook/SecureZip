@@ -63,9 +63,10 @@ export without writing any file. The archive uses **WinZip AES-256** (method
 `99`) for entry encryption.
 
 Successful encrypted exports are identified as encrypted in the SecureZip view's
-Recent Exports section. When a Git tag is associated with the export, that tag
-is shown with the recent export entry. The default save name also includes
-`-encrypted-`, for example `project-encrypted-YYYYMMDD-HHmmss.zip`.
+Recent Exports section, which keeps the latest 10 exports for each workspace or
+repository root. When a Git tag is associated with the export, that tag is shown
+with the recent export entry. The default save name also includes `-encrypted-`,
+for example `project-encrypted-YYYYMMDD-HHmmss.zip`.
 
 ### Compatibility
 
@@ -249,9 +250,10 @@ SecureZip は通常エクスポートに加えて、パスワード保護付き�
 します。エントリ暗号化には **WinZip AES-256（method `99`）** を使用します。
 
 成功した暗号化エクスポートは、SecureZip ビューの「最近のエクスポート」で暗
-号化 ZIP として表示されます。Git タグが関連付けられている場合は、そのタグも
-最近の履歴に表示されます。保存ダイアログの既定ファイル名にも
-`-encrypted-` が入り、例として
+号化 ZIP として表示されます。このセクションはワークスペースまたはリポジトリ
+ルートごとに最新 10 件のエクスポートを保持します。Git タグが関連付けられてい
+る場合は、そのタグも最近の履歴に表示されます。保存ダイアログの既定ファイル名
+にも `-encrypted-` が入り、例として
 `project-encrypted-YYYYMMDD-HHmmss.zip` のようになります。
 
 ### 互換性
