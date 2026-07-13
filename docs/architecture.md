@@ -65,6 +65,20 @@ warning (`warning.exportAlreadyRunning`) and returns immediately without
 running the wrapped task. The flag is cleared in a `finally` block so an
 exception in the inner task always releases the lock.
 
+## Embedded export manifest
+
+When `secureZip.manifest.mode` is `embedded`, the archive writer streams each
+payload file through a SHA-256 `Transform` and forwards the same bytes to
+`archiver`. After every payload stream completes, `src/exportManifest.ts`
+builds and serializes `__securezip_manifest.json` as the final archive entry.
+This keeps the recorded size and digest aligned with the bytes supplied to both
+plain and encrypted ZIP writers without reading each source file twice.
+
+The manifest contains archive-relative paths, per-source Git and selection
+metadata, and payload hashes. It deliberately excludes absolute paths and
+secret-bearing runtime values. Multi-root exports assign source IDs in
+workspace order and use the existing disambiguated top-level labels.
+
 ## Ignore and exclude handling
 
 - `src/ignore.ts` parses `.securezipignore`, persists patterns, and exposes
@@ -121,6 +135,7 @@ exception in the inner task always releases the lock.
 | `src/ignore.ts` | `.securezipignore` parsing and persistence |
 | `src/defaultExcludes.ts` | Default ignore templates |
 | `src/autoExcludeDisplay.ts` | Presentation logic for auto excludes |
+| `src/exportManifest.ts` | Export manifest schema, normalization, and serialization |
 | `src/flags.ts` | Feature flag resolver |
 | `scripts/generate-sbom.cjs` | SBOM generation post-build |
 

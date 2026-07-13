@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import simpleGit from 'simple-git';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
+import { ExportManifestMode } from './exportManifest';
 import { localize } from './nls';
 import { TargetGroup, listGitRepositories, listWorkspaceFolders, watchGitChanges } from './targeting';
 import {
@@ -27,10 +28,11 @@ type LastExportSnapshot = {
     mode?: 'plain' | 'encrypted';
     tagName?: string;
     archivePath?: string;
+    manifestMode?: ExportManifestMode;
 };
 
 type LastExportByRoot = Record<string, LastExportSnapshot>;
-type LastExportMetadata = Pick<LastExportSnapshot, 'archivePath' | 'mode' | 'tagName'>;
+type LastExportMetadata = Pick<LastExportSnapshot, 'archivePath' | 'mode' | 'tagName' | 'manifestMode'>;
 
 type PreviewStatus = 'exclude' | 'include' | 'comment' | 'duplicate' | 'auto' | 'git';
 
@@ -294,6 +296,9 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
         if (metadata?.archivePath) {
             snapshot.archivePath = metadata.archivePath;
+        }
+        if (metadata?.manifestMode) {
+            snapshot.manifestMode = metadata.manifestMode;
         }
         updated[root] = snapshot;
         await this.context.workspaceState.update(LAST_EXPORT_STATE_KEY, updated);
@@ -561,6 +566,9 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             localize('recent.tooltip.type', 'Type: {0}', modeLabel),
             snapshot.tagName ? localize('recent.tooltip.tag', 'Tag: {0}', snapshot.tagName) : undefined,
             snapshot.archivePath ? localize('recent.tooltip.archive', 'Archive: {0}', snapshot.archivePath) : undefined,
+            snapshot.manifestMode === 'embedded'
+                ? localize('recent.tooltip.manifest', 'Manifest: Embedded')
+                : undefined,
             snapshot.patterns.length > 0
                 ? localize('recent.tooltip.ignoreSnapshot', 'Ignore snapshot:\n{0}', snapshot.patterns.join('\n'))
                 : undefined,

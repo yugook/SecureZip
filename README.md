@@ -14,6 +14,7 @@
 - 🔄 **Optional Auto Commit** – Offer to commit tracked changes before export, with a toggle to include untracked files automatically.
 - 🏷 **Auto Tagging** – Tag the repository with the export timestamp for traceability.
 - 🧹 **Smart Ignore Support** – Respects `.gitignore` and project-specific `.securezipignore` to strip secrets and build artifacts.
+- 🧾 **Export Manifest** – Optionally embed file metadata, Git context, selection settings, and SHA-256 hashes.
 
 ## ⚙️ Auto Commit Stage Mode
 SecureZip only offers the auto-commit step when it detects local changes. By default it stages tracked files via `git add --update`, matching the safe workflow shown in the warning dialog. If you prefer SecureZip to stage new files as well, switch the stage mode in your settings:
@@ -104,6 +105,27 @@ encryption) before sharing.
 - A second export invocation while one is already running is rejected with a
   warning ("Export is already running"); concurrent runs cannot interleave.
 
+## 🧾 Export Manifest
+
+SecureZip can embed `__securezip_manifest.json` at the archive root. The
+manifest records archive-relative file paths, sizes, SHA-256 hashes, Git state,
+and the selection settings used for the export. It is disabled by default to
+preserve the exact contents of existing export workflows:
+
+```json
+{
+  "secureZip.manifest.mode": "embedded"
+}
+```
+
+Hashes are calculated from the same byte streams that are passed to the ZIP
+writer. The manifest never contains passwords, user names, machine IDs, Git
+remote URLs, or absolute local paths. In an encrypted export the manifest is
+encrypted with the same WinZip AES-256 settings as every other entry. The
+manifest does not include itself in its file count or hash list; a hash of the
+finished ZIP must be stored separately. See [Export manifest](docs/export-manifest.md)
+for the schema and compatibility details.
+
 ## 🛡 Ignore Rules
 SecureZip respects the following when selecting files to include:
 
@@ -169,7 +191,6 @@ Example `settings.json` override:
 ## 📖 Roadmap
 - Multiple archive formats (`.tar.gz`, `.7z`)
 - Custom exclude profiles (`audit`, `distribution`, etc.)
-- 🗂 **Manifest File** – Embed an `__export_manifest.json` with commit ID, tag, and export metadata (future candidate)
 
 ## 📥 Download
 - Install from the VS Code Marketplace: [yugook.securezip](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
@@ -180,6 +201,7 @@ Example `settings.json` override:
 - [Release process](docs/releasing.md) – preview/stable branching strategy and versioning rules.
 - [Architecture overview](docs/architecture.md) – maps key modules and data flows.
 - [Multi-root workspaces](docs/multi-root-workspaces.md) – target resolution and workspace ZIP behavior.
+- [Export manifest](docs/export-manifest.md) – embedded metadata and SHA-256 integrity schema.
 - [Localization guide](docs/localization.md) – adding translations for runtime and contribution strings.
 - [SBOM instructions](docs/sbom.md) – details about `npm run sbom` and the bundled CycloneDX file.
 - Packaging preflight: run `npm run package:verify` before tagging/release to catch VS Code engine mismatches for `vsce`.
@@ -201,6 +223,7 @@ SecureZip is distributed under the [MIT License](LICENSE).
 - 🔄 **Auto Commit（任意設定）** – エクスポート前に追跡済み変更をコミットするよう確認し、必要であれば未追跡ファイルも自動ステージできます。
 - 🏷 **Auto Tagging** – エクスポート時刻を利用してリポジトリにタグを付けます。
 - 🧹 **スマートな除外サポート** – `.gitignore` と `.securezipignore` を尊重し、機密情報やビルド成果物を除外します。
+- 🧾 **エクスポートManifest** – ファイル情報、Git状態、選択設定、SHA-256を任意で埋め込みます。
 
 ## ⚙️ Auto Commit ステージモード
 SecureZip が未コミット変更を検出したときだけ自動コミットを提案します。既定では `git add --update`（追跡済みファイルのみ）を実行しますが、設定で未追跡ファイルも含めるように切り替えられます。
@@ -290,6 +313,25 @@ Info-ZIP `unzip` 6.00 / 古い `unzip` は AES 形式の ZIP を開けません*
   （"Export is already running."）を表示して **2 回目の起動は破棄** されま
   す。同時実行は行われません。
 
+## 🧾 エクスポートManifest
+
+アーカイブ直下に `__securezip_manifest.json` を埋め込めます。Manifestには
+アーカイブ内の相対パス、サイズ、SHA-256、Git状態、エクスポート時の選択設定
+が記録されます。既存のエクスポート内容との互換性を保つため、既定では無効です。
+
+```json
+{
+  "secureZip.manifest.mode": "embedded"
+}
+```
+
+SHA-256はZIPライターへ渡すものと同じバイトストリームから計算します。
+パスワード、ユーザー名、マシンID、GitリモートURL、ローカル絶対パスは記録
+しません。暗号化ZIPではManifestも他のエントリと同じWinZip AES-256で暗号化
+されます。Manifest自身はファイル件数・ハッシュ一覧に含まれません。完成した
+ZIP全体のハッシュは別に保存する必要があります。スキーマと互換性の詳細は
+[エクスポートManifest](docs/export-manifest.md)を参照してください。
+
 ## 🛡 無視ルール
 SecureZip はアーカイブに含めるファイルを選ぶ際、次のルールを尊重します。
 
@@ -352,7 +394,6 @@ SecureZip は、ビルド時のデフォルトと実行時の上書きを組み�
 ## 📖 ロードマップ
 - 複数アーカイブ形式（`.tar.gz`、`.7z` など）への対応
 - `audit` や `distribution` などのカスタム除外プロファイル
-- 🗂 **Manifest File** – コミット ID、タグ、エクスポート情報を含む `__export_manifest.json` の埋め込み（将来的な候補）
 
 ## 📥 ダウンロード
 - VS Code Marketplace からインストール: [yugook.securezip](https://marketplace.visualstudio.com/items?itemName=yugook.securezip)
@@ -363,6 +404,7 @@ SecureZip は、ビルド時のデフォルトと実行時の上書きを組み�
 - [リリース手順](docs/releasing.md) – プレビュー/安定版のブランチ戦略とバージョンルール。
 - [アーキテクチャ概要](docs/architecture.md) – 主要モジュールとデータフローの説明。
 - [マルチルートワークスペース](docs/multi-root-workspaces.md) – ターゲット解決と Workspace ZIP の挙動。
+- [エクスポートManifest](docs/export-manifest.md) – 埋め込みメタデータとSHA-256整合性スキーマ。
 - [ローカライズガイド](docs/localization.md) – 実行時・コントリビューション文字列への翻訳追加手順。
 - [SBOM 手順](docs/sbom.md) – `npm run sbom` の詳細と同梱される CycloneDX ファイルについて。
 - パッケージ前チェック: タグ/リリース前に `npm run package:verify` を実行して、VS Code エンジンの不整合で `vsce` が失敗しないか確認してください。

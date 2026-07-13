@@ -4,6 +4,7 @@ import * as path from 'path';
 import AdmZip from 'adm-zip';
 import simpleGit from 'simple-git';
 import * as vscode from 'vscode';
+import { EXPORT_MANIFEST_PATH } from '../exportManifest';
 
 const fixturesRoot = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures');
 
@@ -198,6 +199,33 @@ suite('SecureZip Encrypted Export', function () {
             const partials = await listPartialFiles(path.dirname(outPath));
             assert.deepStrictEqual(partials, [], 'No .partial files should remain after success');
         } finally {
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('exportEncrypted embeds the manifest as an AES-encrypted entry', async function () {
+        this.timeout(30000);
+        await stageSimpleProject();
+        const root = getWorkspaceRoot();
+        const outPath = path.join(root, 'securezip-encrypted-manifest.zip');
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('manifest.mode', 'embedded', vscode.ConfigurationTarget.Workspace);
+
+        const win = getWindow();
+        win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
+        win.showSaveDialog = (async () => vscode.Uri.file(outPath)) as typeof vscode.window.showSaveDialog;
+        win.showInformationMessage = (async () => undefined) as typeof vscode.window.showInformationMessage;
+        win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
+
+        try {
+            await vscode.commands.executeCommand('securezip.exportEncrypted');
+            const entries = inspectZip(outPath);
+            const manifest = entries.find((entry) => entry.name === EXPORT_MANIFEST_PATH);
+            assert.ok(manifest, 'Encrypted ZIP should contain the SecureZip manifest');
+            assert.strictEqual(manifest.encrypted, true, 'Manifest should be encrypted');
+            assert.strictEqual(manifest.method, 99, 'Manifest should use WinZip AES (method 99)');
+        } finally {
+            await config.update('manifest.mode', undefined, vscode.ConfigurationTarget.Workspace);
             await removeIfExists(outPath);
         }
     });

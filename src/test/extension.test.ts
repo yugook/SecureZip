@@ -6,6 +6,7 @@ import AdmZip from 'adm-zip';
 import simpleGit, { SimpleGit } from 'simple-git';
 import * as vscode from 'vscode';
 import { SecureZipViewProvider } from '../view';
+import { EXPORT_MANIFEST_PATH, type ExportManifest } from '../exportManifest';
 import { localize } from '../nls';
 const TEST_LOG_VERBOSE = process.env.SECUREZIP_TEST_LOG === '1';
 
@@ -224,6 +225,60 @@ suite('SecureZip Extension', function () {
             await removeIfExists(outPath);
         }
         log('test: export simple fixture - completed');
+    });
+
+    test('embeds an integrity manifest that matches the archived payload', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const workspaceRoot = getWorkspaceRoot();
+        const config = vscode.workspace.getConfiguration('secureZip');
+        await config.update('manifest.mode', 'embedded', vscode.ConfigurationTarget.Workspace);
+        await config.update('tagging.mode', 'never', vscode.ConfigurationTarget.Workspace);
+        const git = await initGitRepository(workspaceRoot);
+        const expectedCommit = (await git.revparse(['HEAD'])).trim();
+
+        const { outPath } = await exportAndCollect('securezip-manifest.zip');
+        try {
+            const zip = new AdmZip(outPath);
+            const manifestEntry = zip.getEntry(EXPORT_MANIFEST_PATH);
+            assert.ok(manifestEntry, 'Export should contain the SecureZip manifest');
+            const manifestText = manifestEntry.getData().toString('utf8');
+            const manifest = JSON.parse(manifestText) as ExportManifest;
+            const payloadEntries = zip.getEntries().filter(
+                (entry) => !entry.isDirectory && entry.entryName.replace(/\\/g, '/') !== EXPORT_MANIFEST_PATH,
+            );
+
+            assert.strictEqual(manifest.schemaVersion, 1);
+            assert.strictEqual(manifest.archive.mode, 'plain');
+            assert.strictEqual(manifest.summary.fileCount, payloadEntries.length);
+            assert.strictEqual(manifest.files.length, payloadEntries.length);
+            assert.strictEqual(manifest.sources.length, 1);
+            assert.strictEqual(manifest.sources[0].git.repository, true);
+            assert.strictEqual(manifest.sources[0].git.commit, expectedCommit);
+            assert.strictEqual(manifest.sources[0].git.dirty, false);
+            assert.strictEqual(manifest.sources[0].selection.gitignoreApplied, true);
+
+            let totalBytes = 0;
+            for (const file of manifest.files) {
+                const entry = zip.getEntry(file.path);
+                assert.ok(entry, `Manifest payload should exist: ${file.path}`);
+                const data = entry.getData();
+                totalBytes += data.length;
+                assert.strictEqual(file.size, data.length, `Manifest size should match: ${file.path}`);
+                assert.strictEqual(
+                    file.sha256,
+                    createHash('sha256').update(data).digest('hex'),
+                    `Manifest SHA-256 should match: ${file.path}`,
+                );
+                assert.strictEqual(file.source, 'root-1');
+            }
+            assert.strictEqual(manifest.summary.totalBytes, totalBytes);
+            assert.ok(!manifestText.includes(workspaceRoot.replace(/\\/g, '\\\\')));
+        } finally {
+            await config.update('manifest.mode', undefined, vscode.ConfigurationTarget.Workspace);
+            await config.update('tagging.mode', undefined, vscode.ConfigurationTarget.Workspace);
+            await removeIfExists(outPath);
+        }
     });
 
     test('reports ZIP creation progress as archive entries are processed', async function () {
@@ -485,6 +540,7 @@ suite('SecureZip Extension', function () {
                 archivePath: outPath,
                 mode: 'encrypted',
                 tagName,
+                manifestMode: 'embedded',
             });
 
             const sections = await provider.getChildren();
@@ -510,6 +566,7 @@ suite('SecureZip Extension', function () {
             );
             assert.strictEqual(itemDescription, tagName, 'Recent export item should surface the tag name');
             assert.ok(tooltip.includes(tagName), `Recent export tooltip should include the tag. Tooltip: ${tooltip}`);
+            assert.match(tooltip, /Manifest|マニフェスト|埋め込み/i, `Recent export tooltip should include Manifest status. Tooltip: ${tooltip}`);
             assert.ok(tooltip.includes(outPath), `Recent export tooltip should include the archive path. Tooltip: ${tooltip}`);
         } finally {
             provider.dispose();
@@ -1373,6 +1430,7 @@ async function resetConfiguration() {
     const config = vscode.workspace.getConfiguration('secureZip');
     await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
     await config.update('includeNodeModules', undefined, vscode.ConfigurationTarget.Workspace);
+    await config.update('manifest.mode', undefined, vscode.ConfigurationTarget.Workspace);
     await config.update('autoCommit.stageMode', undefined, vscode.ConfigurationTarget.Workspace);
     await config.update('tagPrefix', undefined, vscode.ConfigurationTarget.Workspace);
     await config.update('tagging.mode', undefined, vscode.ConfigurationTarget.Workspace);
