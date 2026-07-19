@@ -178,7 +178,7 @@
   "dependencies": {
     "archiver": "^7.0.1",
     "archiver-zip-encrypted": "^2.0.0",
-    "globby": "^16.2.0",
+    "globby": "^16.2.2",
     "simple-git": "^3.36.0"
   },
   "scripts": {
