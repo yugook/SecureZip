@@ -50,26 +50,56 @@ jobs:
           const fs = require('node:fs');
 
           const report = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
-          const vulnerabilities = report.vulnerabilities ?? {};
-          const metadataCounts = report.metadata?.vulnerabilities ?? {};
+          if (
+            report.error ||
+            !Number.isInteger(report.auditReportVersion) ||
+            report.vulnerabilities === null ||
+            typeof report.vulnerabilities !== 'object' ||
+            report.metadata?.vulnerabilities === null ||
+            typeof report.metadata?.vulnerabilities !== 'object'
+          ) {
+            throw new Error('npm audit output is not a valid successful audit report.');
+          }
+
+          const lockfile = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const lockfilePackages = lockfile.packages ?? {};
+          const vulnerabilities = report.vulnerabilities;
+          const metadataCounts = report.metadata.vulnerabilities;
           const highSeverities = new Set(['high', 'critical']);
+          const getScope = (nodes) => {
+            if (!Array.isArray(nodes) || nodes.length === 0) {
+              return 'unknown';
+            }
+
+            const packages = nodes.map((node) => lockfilePackages[node]);
+            if (packages.some((pkg) => !pkg || typeof pkg !== 'object')) {
+              return 'unknown';
+            }
+
+            const isDevOnly = (pkg) => pkg.dev === true && pkg.devOptional !== true;
+            return packages.every(isDevOnly) ? 'dev-only' : 'runtime';
+          };
+
           const findings = Object.entries(vulnerabilities)
             .filter(([, vulnerability]) => highSeverities.has(vulnerability.severity))
-            .map(([name, vulnerability]) => ({
-              name,
-              severity: vulnerability.severity,
-              dev: vulnerability.dev === true,
-              direct: vulnerability.isDirect === true,
-              range: vulnerability.range ?? null,
-              nodes: vulnerability.nodes ?? [],
-              advisories: (vulnerability.via ?? [])
-                .filter((advisory) => typeof advisory === 'object')
-                .map((advisory) => ({
-                  title: advisory.title ?? null,
-                  url: advisory.url ?? null,
-                  range: advisory.range ?? null,
-                })),
-            }))
+            .map(([name, vulnerability]) => {
+              const nodes = vulnerability.nodes ?? [];
+              return {
+                name,
+                severity: vulnerability.severity,
+                scope: getScope(nodes),
+                direct: vulnerability.isDirect === true,
+                range: vulnerability.range ?? null,
+                nodes,
+                advisories: (vulnerability.via ?? [])
+                  .filter((advisory) => typeof advisory === 'object')
+                  .map((advisory) => ({
+                    title: advisory.title ?? null,
+                    url: advisory.url ?? null,
+                    range: advisory.range ?? null,
+                  })),
+              };
+            })
             .sort((left, right) => left.name.localeCompare(right.name));
 
           const highCount = Number(metadataCounts.high ?? findings.filter((finding) => finding.severity === 'high').length);
@@ -101,8 +131,7 @@ jobs:
           } else {
             lines.push('検出されたhigh/criticalパッケージ:', '');
             for (const finding of findings) {
-              const scope = finding.dev ? 'dev' : 'runtime';
-              lines.push(`- \`${finding.name}\` (${finding.severity}, ${scope})`);
+              lines.push(`- \`${finding.name}\` (${finding.severity}, ${finding.scope})`);
             }
           }
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
@@ -120,7 +149,9 @@ jobs:
           retention-days: 14
 
       - name: Create or update security audit issue
-        if: steps.summary.outcome == 'success'
+        if: >-
+          steps.summary.outcome == 'success' &&
+          github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -138,7 +169,7 @@ jobs:
                   .filter((advisory) => advisory.url)
                   .map((advisory) => `[${advisory.title ?? 'advisory'}](${advisory.url})`)
                   .join(', ');
-                const scope = finding.dev ? 'dev' : 'runtime';
+                const scope = finding.scope;
                 const range = finding.range ? `、対象範囲: \`${finding.range}\`` : '';
                 return `- \`${finding.name}\` (${finding.severity}, ${scope}${range})${links ? ` — ${links}` : ''}`;
               })
@@ -165,7 +196,7 @@ jobs:
                   marker,
                 ].join('\n');
 
-            const { data: issues } = await github.rest.issues.listForRepo({
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner,
               repo,
               state: 'all',
