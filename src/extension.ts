@@ -4,10 +4,23 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { Transform } from 'stream';
 import archiver from 'archiver';
 import zipEncrypted from 'archiver-zip-encrypted';
 import simpleGit, { SimpleGit } from 'simple-git';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
+import {
+    EXPORT_MANIFEST_PATH,
+    ExportManifestFile,
+    ExportManifestGit,
+    ExportManifestMode,
+    ExportManifestSelection,
+    ExportManifestSource,
+    buildExportManifest,
+    hasExportManifestPathConflict,
+    normalizeExportManifestMode,
+    serializeExportManifest,
+} from './exportManifest';
 import { resolveFlags } from './flags';
 import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } from './ignore';
 import { registerIgnoreLanguageFeatures } from './ignoreLanguage';
@@ -45,6 +58,20 @@ type WorkspaceTarget = {
 type ZipEntry = {
     absPath: string;
     archivePath: string;
+    sourceId: string;
+};
+
+type EmbeddedManifestOptions = {
+    generatedAt: string;
+    generatorVersion: string;
+    sources: ExportManifestSource[];
+};
+
+type CollectedFiles = {
+    files: string[];
+    ignoreSnapshot: string[];
+    gitOverride: boolean;
+    selection: ExportManifestSelection;
 };
 
 type ExistingArchiveMetadata = {
@@ -84,6 +111,17 @@ function normalizeTaggingMode(value?: string): TaggingMode {
         return value;
     }
     return 'ask';
+}
+
+function resolveManifestMode(root?: string): ExportManifestMode {
+    const resource = root ? vscode.Uri.file(root) : undefined;
+    const value = vscode.workspace.getConfiguration('secureZip', resource).get<unknown>('manifest.mode');
+    return normalizeExportManifestMode(value);
+}
+
+function getExtensionVersion(): string {
+    const version = extensionContext?.extension.packageJSON?.version;
+    return typeof version === 'string' && version.trim() ? version : 'unknown';
 }
 
 function suggestTagName(base: string, existing: Set<string>): string {
@@ -608,6 +646,8 @@ async function exportSingleRoot(
     zipOptions: ZipCreationOptions,
 ) {
     const cfg = vscode.workspace.getConfiguration('secureZip', vscode.Uri.file(root));
+    const manifestMode = resolveManifestMode(root);
+    const sourceId = 'root-1';
     const tagPrefix = (cfg.get<string>('tagPrefix') || 'export').trim();
     const taggingMode = normalizeTaggingMode(cfg.get<string>('tagging.mode'));
     const commitTemplate = cfg.get<string>('commitMessageTemplate')
@@ -881,6 +921,7 @@ async function exportSingleRoot(
     const entries = archiveFiles.map((file) => ({
         absPath: file,
         archivePath: toArchivePath(path.relative(root, file)),
+        sourceId,
     }));
 
     if (entries.length === 0) {
@@ -888,11 +929,26 @@ async function exportSingleRoot(
     }
 
     progress.report({ message: getCreatingZipMessage(zipOptions) });
-    await createZipEntries(entries, outFile, zipOptions, progress);
+    const manifestOptions: EmbeddedManifestOptions | undefined = manifestMode === 'embedded'
+        ? {
+            generatedAt: now.toISOString(),
+            generatorVersion: getExtensionVersion(),
+            sources: [
+                {
+                    id: sourceId,
+                    label,
+                    git: await collectManifestGitSnapshot(root, exportTagName),
+                    selection: collection.selection,
+                },
+            ],
+        }
+        : undefined;
+    await createZipEntries(entries, outFile, zipOptions, progress, manifestOptions);
     void treeProvider?.recordLastExport(root, collection.ignoreSnapshot, {
         archivePath: outFile,
         mode: zipOptions.mode,
         tagName: exportTagName,
+        manifestMode,
     });
 
     vscode.window.showInformationMessage(getExportCompletedMessage(zipOptions, path.basename(outFile)));
@@ -908,6 +964,7 @@ async function exportWorkspaceZip(
     }
 
     const now = new Date();
+    const manifestMode = resolveManifestMode();
     const fmt = formatDate(now);
     const workspaceLabel = getWorkspaceRootLabel();
     const defaultName = buildDefaultArchiveName(workspaceLabel, fmt.compact, zipOptions.mode);
@@ -924,14 +981,27 @@ async function exportWorkspaceZip(
     const outFile = targetUri.fsPath;
     progress.report({ message: localize('progress.collectingFiles', 'Collecting files...') });
     const entries: ZipEntry[] = [];
-    const exportRecords: Array<{ root: string; patterns: string[] }> = [];
+    const exportRecords: Array<{
+        root: string;
+        label: string;
+        sourceId: string;
+        patterns: string[];
+        selection: ExportManifestSelection;
+    }> = [];
 
-    for (const target of targets) {
+    for (const [index, target] of targets.entries()) {
+        const sourceId = `root-${index + 1}`;
         const cfg = vscode.workspace.getConfiguration('secureZip', vscode.Uri.file(target.root));
         const additionalExcludes = cfg.get<string[]>('additionalExcludes') || [];
         const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
         const collection = await collectFilesForRoot(target.root, { additionalExcludes, includeNodeModules });
-        exportRecords.push({ root: target.root, patterns: collection.ignoreSnapshot });
+        exportRecords.push({
+            root: target.root,
+            label: target.label,
+            sourceId,
+            patterns: collection.ignoreSnapshot,
+            selection: collection.selection,
+        });
 
         if (collection.gitOverride) {
             void vscode.window.showWarningMessage(
@@ -946,7 +1016,7 @@ async function exportWorkspaceZip(
         for (const file of archiveFiles) {
             const rel = toArchivePath(path.relative(target.root, file));
             const archivePath = toArchivePath(path.posix.join(target.label, rel));
-            entries.push({ absPath: file, archivePath });
+            entries.push({ absPath: file, archivePath, sourceId });
         }
     }
 
@@ -955,21 +1025,70 @@ async function exportWorkspaceZip(
     }
 
     progress.report({ message: getCreatingZipMessage(zipOptions) });
-    await createZipEntries(entries, outFile, zipOptions, progress);
+    const manifestOptions: EmbeddedManifestOptions | undefined = manifestMode === 'embedded'
+        ? {
+            generatedAt: now.toISOString(),
+            generatorVersion: getExtensionVersion(),
+            sources: await Promise.all(exportRecords.map(async (record) => ({
+                id: record.sourceId,
+                label: record.label,
+                git: await collectManifestGitSnapshot(record.root),
+                selection: record.selection,
+            }))),
+        }
+        : undefined;
+    await createZipEntries(entries, outFile, zipOptions, progress, manifestOptions);
     for (const record of exportRecords) {
         await treeProvider?.recordLastExport(record.root, record.patterns, {
             archivePath: outFile,
             mode: zipOptions.mode,
+            manifestMode,
         });
     }
 
     vscode.window.showInformationMessage(getExportCompletedMessage(zipOptions, path.basename(outFile)));
 }
 
+async function collectManifestGitSnapshot(root: string, tagName?: string): Promise<ExportManifestGit> {
+    try {
+        const git = simpleGit({ baseDir: root });
+        if (!await git.checkIsRepo()) {
+            return { repository: false };
+        }
+
+        const status = await git.status();
+        const snapshot: ExportManifestGit = {
+            repository: true,
+            dirty: !status.isClean(),
+            untrackedCount: Array.isArray(status.not_added) ? status.not_added.length : 0,
+        };
+        if (status.current) {
+            snapshot.branch = status.current;
+        }
+        if (tagName) {
+            snapshot.tag = tagName;
+        }
+
+        try {
+            const commit = (await git.revparse(['HEAD'])).trim();
+            if (commit) {
+                snapshot.commit = commit;
+            }
+        } catch {
+            // A newly initialized repository may not have a HEAD commit yet.
+        }
+
+        return snapshot;
+    } catch (err) {
+        console.warn('[SecureZip] failed to collect Git metadata for export manifest', err);
+        return { repository: false };
+    }
+}
+
 async function collectFilesForRoot(
     root: string,
     options: { additionalExcludes: string[]; includeNodeModules: boolean },
-): Promise<{ files: string[]; ignoreSnapshot: string[]; gitOverride: boolean }> {
+): Promise<CollectedFiles> {
     const { globby } = await import('globby');
     const ignoreDefaults = resolveAutoExcludePatterns({ includeNodeModules: options.includeNodeModules });
     const szIgnore = await loadSecureZipIgnore(root);
@@ -1031,7 +1150,21 @@ async function collectFilesForRoot(
         }
     }
 
-    return { files: Array.from(fileSet.values()), ignoreSnapshot, gitOverride };
+    return {
+        files: Array.from(fileSet.values()),
+        ignoreSnapshot,
+        gitOverride,
+        selection: {
+            gitignoreApplied: true,
+            includeNodeModules: options.includeNodeModules,
+            autoExcludes: [...ignoreDefaults],
+            additionalExcludes: [...options.additionalExcludes],
+            secureZipIgnore: {
+                excludes: [...szIgnore.excludes],
+                includes: [...szIgnore.includes],
+            },
+        },
+    };
 }
 
 function toArchivePath(relative: string): string {
@@ -1282,14 +1415,23 @@ async function createZipEntries(
     outFile: string,
     options: ZipCreationOptions,
     progress: ExportProgress,
+    manifestOptions?: EmbeddedManifestOptions,
 ) {
+    if (manifestOptions && hasExportManifestPathConflict(entries.map((entry) => entry.archivePath))) {
+        throw new Error(localize(
+            'error.manifestPathConflict',
+            'The archive already contains the reserved SecureZip manifest path: {0}',
+            EXPORT_MANIFEST_PATH,
+        ));
+    }
+
     await fs.promises.mkdir(path.dirname(outFile), { recursive: true });
 
     const existingArchiveMetadata = await getExistingArchiveMetadata(outFile);
     const tempPath = buildTempArchivePath(outFile);
 
     try {
-        await writeArchiveToFile(entries, tempPath, options, progress);
+        await writeArchiveToFile(entries, tempPath, options, progress, manifestOptions);
     } catch (err) {
         await cleanupTempArchive(tempPath);
         throw err;
@@ -1425,6 +1567,7 @@ async function writeArchiveToFile(
     tempPath: string,
     options: ZipCreationOptions,
     progress: ExportProgress,
+    manifestOptions?: EmbeddedManifestOptions,
 ): Promise<void> {
     const output = fs.createWriteStream(tempPath);
     const archiverOptions = { zlib: { level: 9 } };
@@ -1448,10 +1591,11 @@ async function writeArchiveToFile(
         });
         archive.on('error', (err: Error) => reject(err));
     });
+    void closed.catch(() => undefined);
 
     archive.pipe(output);
 
-    const totalEntries = entries.length;
+    const totalEntries = entries.length + (manifestOptions ? 1 : 0);
     let processedEntries = 0;
     let lastPercent = 0;
     const reportZipProgress = (processed: number) => {
@@ -1480,13 +1624,88 @@ async function writeArchiveToFile(
         reportZipProgress(processedEntries);
     });
 
-    for (const entry of entries) {
-        archive.file(entry.absPath, { name: entry.archivePath });
+    if (manifestOptions) {
+        const files: ExportManifestFile[] = [];
+        for (const entry of entries) {
+            files.push(await appendHashedArchiveEntry(archive, output, entry));
+        }
+        const manifest = buildExportManifest({
+            generatedAt: manifestOptions.generatedAt,
+            generatorVersion: manifestOptions.generatorVersion,
+            archiveMode: options.mode,
+            sources: manifestOptions.sources,
+            files,
+        });
+        archive.append(serializeExportManifest(manifest), { name: EXPORT_MANIFEST_PATH });
+    } else {
+        for (const entry of entries) {
+            archive.file(entry.absPath, { name: entry.archivePath });
+        }
     }
 
     await archive.finalize();
     await closed;
     reportZipProgress(totalEntries);
+}
+
+function appendHashedArchiveEntry(
+    archive: NodeJS.EventEmitter & { append(source: NodeJS.ReadableStream, data: { name: string }): void },
+    output: NodeJS.EventEmitter,
+    entry: ZipEntry,
+): Promise<ExportManifestFile> {
+    return new Promise((resolve, reject) => {
+        const hash = crypto.createHash('sha256');
+        let size = 0;
+        let settled = false;
+        const input = fs.createReadStream(entry.absPath);
+        const hashing = new Transform({
+            transform(chunk: Buffer, _encoding, callback) {
+                hash.update(chunk);
+                size += chunk.length;
+                callback(null, chunk);
+            },
+            flush(callback) {
+                if (!settled) {
+                    settled = true;
+                    cleanup();
+                    resolve({
+                        source: entry.sourceId,
+                        path: entry.archivePath,
+                        size,
+                        sha256: hash.digest('hex'),
+                    });
+                }
+                callback();
+            },
+        });
+
+        const cleanup = () => {
+            input.removeListener('error', fail);
+            hashing.removeListener('error', fail);
+            archive.removeListener('error', fail);
+            output.removeListener('error', fail);
+        };
+        const fail = (err: Error) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            cleanup();
+            input.destroy();
+            hashing.destroy();
+            reject(err);
+        };
+
+        input.once('error', fail);
+        hashing.once('error', fail);
+        archive.once('error', fail);
+        output.once('error', fail);
+        try {
+            archive.append(input.pipe(hashing), { name: entry.archivePath });
+        } catch (err) {
+            fail(err instanceof Error ? err : new Error(String(err)));
+        }
+    });
 }
 
 async function cleanupTempArchive(tempPath: string): Promise<void> {

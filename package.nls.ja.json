@@ -18,6 +18,9 @@
   "config.tagging.mode.enum.never": "タグを作成しない",
   "config.additionalExcludes.description": "追加で除外したいglobパターン（.gitignoreは自動適用）",
   "config.includeNodeModules.description": "node_modules を含めるか（既定では除外）",
+  "config.manifest.mode.description": "エクスポートしたアーカイブに整合性確認用Manifestを埋め込むか選択します",
+  "config.manifest.mode.enum.off": "エクスポートManifestを追加しない",
+  "config.manifest.mode.enum.embedded": "ファイル情報とSHA-256を含む __securezip_manifest.json を埋め込む",
   "config.autoCommit.stageMode.description": "自動コミット前に SecureZip がステージする対象を選択します",
   "config.autoCommit.stageMode.enum.tracked": "追跡済みファイルの変更/削除のみをステージ（git add --update）",
   "config.autoCommit.stageMode.enum.all": "追跡済み＋未追跡の変更をステージ（git add --all）"

@@ -18,6 +18,9 @@
   "config.tagging.mode.enum.never": "Never create export tags",
   "config.additionalExcludes.description": "Additional glob patterns to exclude (beyond .gitignore)",
   "config.includeNodeModules.description": "Include node_modules in the export (excluded by default)",
+  "config.manifest.mode.description": "Choose whether SecureZip embeds an integrity manifest in exported archives",
+  "config.manifest.mode.enum.off": "Do not add an export manifest",
+  "config.manifest.mode.enum.embedded": "Embed __securezip_manifest.json with file metadata and SHA-256 hashes",
   "config.autoCommit.stageMode.description": "Choose how SecureZip stages changes before creating the optional auto-commit",
   "config.autoCommit.stageMode.enum.tracked": "Stage modifications/deletions to tracked files only (git add --update)",
   "config.autoCommit.stageMode.enum.all": "Stage tracked and untracked files (git add --all)"

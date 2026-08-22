@@ -6,6 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+- Added an optional embedded export manifest with archive-relative file metadata, Git and selection context, and SHA-256 hashes calculated from the exact streams written to plain or encrypted ZIP archives.
+- Added Manifest status to Recent Exports and documented schema version 1, privacy boundaries, multi-root behavior, and reserved-path handling.
+
 ## [1.2.0] - 2026-07-05
 
 - Added encrypted export actions to the SecureZip view and removed title-bar action buttons so export commands are grouped in the Actions section.
