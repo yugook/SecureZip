@@ -1,0 +1,117 @@
+name: Build Dependabot Generated Artifacts
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - labeled
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: >
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'dependabot/') &&
+      github.event.pull_request.draft == false &&
+      contains(github.event.pull_request.labels.*.name, 'safe-to-automerge')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+          cache: npm
+
+      - name: Set up npm
+        run: npm install --global --ignore-scripts --no-audit --no-fund npm@10.9.0
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Regenerate package artifacts
+        run: npm run package
+
+      - name: Prepare generated artifact
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          generated_dir="dependabot-generated"
+          rm -rf "$generated_dir"
+          mkdir -p "$generated_dir"
+
+          changed_files="$(git status --porcelain=v1 --untracked-files=all -- dist ':!dist/securezip-sbom.cdx.json' | cut -c4-)"
+          changed=false
+          if [[ -n "$changed_files" ]]; then
+            while IFS= read -r path; do
+              echo "::error::Unexpected generated file change: $path"
+              exit 1
+            done <<< "$changed_files"
+          fi
+
+          committed_sbom="${RUNNER_TEMP}/committed-sbom.json"
+          generated_sbom="${RUNNER_TEMP}/generated-sbom.json"
+          git show HEAD:dist/securezip-sbom.cdx.json | jq --sort-keys 'del(.serialNumber, .metadata.timestamp, .metadata.tools)' > "$committed_sbom"
+          jq --sort-keys 'del(.serialNumber, .metadata.timestamp, .metadata.tools)' dist/securezip-sbom.cdx.json > "$generated_sbom"
+
+          if ! diff -u "$committed_sbom" "$generated_sbom"; then
+            git diff --check -- dist/securezip-sbom.cdx.json
+            cp dist/securezip-sbom.cdx.json "$generated_dir/securezip-sbom.cdx.json"
+            changed=true
+          fi
+
+          export CHANGED="$changed"
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          fs.writeFileSync(
+            'dependabot-generated/metadata.json',
+            JSON.stringify(
+              {
+                pr_number: Number(process.env.PR_NUMBER),
+                head_ref: process.env.PR_HEAD_REF,
+                head_sha: process.env.PR_HEAD_SHA,
+                changed: process.env.CHANGED === 'true',
+              },
+              null,
+              2,
+            ) + '\n',
+          );
+          NODE
+
+      - name: Upload generated artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dependabot-generated
+          path: .dependabot-generated
+          if-no-files-found: error
+          retention-days: 1
