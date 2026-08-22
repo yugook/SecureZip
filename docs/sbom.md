@@ -8,7 +8,7 @@ SecureZip now generates a CycloneDX Software Bill of Materials so the packaged e
 - SBOM generation requires npm 10.9.0 so the committed CycloneDX output remains reproducible across Node.js 24.x environments.
 - The command writes `dist/securezip-sbom.cdx.json`. Because the file lives under `dist/`, it is bundled automatically when you run `vsce package` or `npm run package`.
 - `npm run package` triggers the SBOM step through the `postpackage` lifecycle hook, so every publish-ready build includes a fresh SBOM.
-- Eligible Dependabot pull requests use the `Build Dependabot Generated Artifacts` and `Sync Dependabot Generated Artifacts` workflows to synchronize runtime SBOM changes. Configure a repository secret named `DEPENDABOT_ARTIFACT_SYNC_TOKEN` with a GitHub App installation token or fine-grained PAT that can write repository contents; using a token other than `GITHUB_TOKEN` allows the synchronized commit to trigger the required pull request checks.
+- Eligible Dependabot pull requests use the `Build Dependabot Generated Artifacts` and `Sync Dependabot Generated Artifacts` workflows to synchronize runtime SBOM changes. Configure a repository secret named `DEPENDABOT_ARTIFACT_SYNC_TOKEN` with a fine-grained PAT scoped to this repository and granted `Contents: Read and write`; using a token other than `GITHUB_TOKEN` allows the synchronized commit to trigger the required pull request checks. Do not store a GitHub App installation token in this secret because installation tokens expire after one hour.
 
 ## Usage
 
