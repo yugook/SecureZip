@@ -112,6 +112,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: dependabot-generated
-          path: .dependabot-generated
+          path: dependabot-generated
           if-no-files-found: error
           retention-days: 1

@@ -6,6 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+- Recent Exports now keeps up to 10 exports per workspace or repository root instead of only the latest entry.
+
 ## [1.2.0] - 2026-07-05
 
 - Added encrypted export actions to the SecureZip view and removed title-bar action buttons so export commands are grouped in the Actions section.

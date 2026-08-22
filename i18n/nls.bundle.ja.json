@@ -188,6 +188,7 @@
   "preview.status.autoOnly": "自動除外のみ",
   "preview.status.lines": "{0} 行",
   "preview.status.notCreated": "未作成",
+  "recent.item": "{0}: {1}",
   "recent.latest": "最新エクスポート: {0}",
   "recent.latestEncrypted": "最新の暗号化 ZIP エクスポート: {0}",
   "recent.mode.encryptedZip": "暗号化 ZIP",
