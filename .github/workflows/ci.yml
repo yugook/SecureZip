@@ -35,10 +35,10 @@ jobs:
         run: npm ci
 
       - name: Run npm audit (high severity gate)
-        run: npm audit --audit-level=high --production
+        run: npm audit --audit-level=high --omit=dev
 
       - name: Run npm audit signatures
-        run: npm audit signatures --production
+        run: npm audit signatures --omit=dev
 
       - name: Type check
         run: npm run check-types

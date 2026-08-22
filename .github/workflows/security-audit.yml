@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,8 +15,11 @@ concurrency:
 
 jobs:
   npm-audit:
-    name: Audit dependencies for CVEs
+    name: Audit dependencies for CVEs (advisory)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -32,5 +36,253 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Run npm audit (high severity gate)
-        run: npm audit --audit-level=high
+      - name: Run npm audit (advisory)
+        id: audit
+        continue-on-error: true
+        run: npm audit --audit-level=high --json > npm-audit.json
+
+      - name: Summarize audit results
+        id: summary
+        if: always()
+        run: |
+          node <<'NODE'
+          const crypto = require('node:crypto');
+          const fs = require('node:fs');
+
+          const report = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
+          if (
+            report.error ||
+            !Number.isInteger(report.auditReportVersion) ||
+            report.vulnerabilities === null ||
+            typeof report.vulnerabilities !== 'object' ||
+            report.metadata?.vulnerabilities === null ||
+            typeof report.metadata?.vulnerabilities !== 'object'
+          ) {
+            throw new Error('npm audit output is not a valid successful audit report.');
+          }
+
+          const lockfile = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const lockfilePackages = lockfile.packages ?? {};
+          const vulnerabilities = report.vulnerabilities;
+          const metadataCounts = report.metadata.vulnerabilities;
+          const highSeverities = new Set(['high', 'critical']);
+          const getScope = (nodes) => {
+            if (!Array.isArray(nodes) || nodes.length === 0) {
+              return 'unknown';
+            }
+
+            const packages = nodes.map((node) => lockfilePackages[node]);
+            if (packages.some((pkg) => !pkg || typeof pkg !== 'object')) {
+              return 'unknown';
+            }
+
+            const isDevOnly = (pkg) => pkg.dev === true && pkg.devOptional !== true;
+            return packages.every(isDevOnly) ? 'dev-only' : 'runtime';
+          };
+
+          const findings = Object.entries(vulnerabilities)
+            .filter(([, vulnerability]) => highSeverities.has(vulnerability.severity))
+            .map(([name, vulnerability]) => {
+              const nodes = vulnerability.nodes ?? [];
+              return {
+                name,
+                severity: vulnerability.severity,
+                scope: getScope(nodes),
+                direct: vulnerability.isDirect === true,
+                range: vulnerability.range ?? null,
+                nodes,
+                advisories: (vulnerability.via ?? [])
+                  .filter((advisory) => typeof advisory === 'object')
+                  .map((advisory) => ({
+                    title: advisory.title ?? null,
+                    url: advisory.url ?? null,
+                    range: advisory.range ?? null,
+                  })),
+              };
+            })
+            .sort((left, right) => left.name.localeCompare(right.name));
+
+          const highCount = Number(metadataCounts.high ?? findings.filter((finding) => finding.severity === 'high').length);
+          const criticalCount = Number(metadataCounts.critical ?? findings.filter((finding) => finding.severity === 'critical').length);
+          const fingerprint = crypto
+            .createHash('sha256')
+            .update(JSON.stringify(findings))
+            .digest('hex')
+            .slice(0, 16);
+          const summary = {
+            high_count: highCount,
+            critical_count: criticalCount,
+            findings,
+            fingerprint,
+          };
+
+          fs.writeFileSync('npm-audit-summary.json', `${JSON.stringify(summary, null, 2)}\n`);
+
+          const lines = [
+            '## npm audit（通知用監査）',
+            '',
+            `- high: **${highCount}**`,
+            `- critical: **${criticalCount}**`,
+            `- fingerprint: \`${fingerprint}\``,
+            '',
+          ];
+          if (findings.length === 0) {
+            lines.push('high/criticalの脆弱性は検出されませんでした。');
+          } else {
+            lines.push('検出されたhigh/criticalパッケージ:', '');
+            for (const finding of findings) {
+              lines.push(`- \`${finding.name}\` (${finding.severity}, ${finding.scope})`);
+            }
+          }
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
+          NODE
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: npm-audit-report
+          path: |
+            npm-audit.json
+            npm-audit-summary.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Create or update security audit issue
+        if: >-
+          steps.summary.outcome == 'success' &&
+          github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('node:fs');
+
+            const summary = JSON.parse(fs.readFileSync('npm-audit-summary.json', 'utf8'));
+            const { owner, repo } = context.repo;
+            const title = 'security: npm auditで検出された依存関係の脆弱性';
+            const marker = `<!-- security-audit-fingerprint: ${summary.fingerprint} -->`;
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const findings = summary.findings
+              .map((finding) => {
+                const links = finding.advisories
+                  .filter((advisory) => advisory.url)
+                  .map((advisory) => `[${advisory.title ?? 'advisory'}](${advisory.url})`)
+                  .join(', ');
+                const scope = finding.scope;
+                const range = finding.range ? `、対象範囲: \`${finding.range}\`` : '';
+                return `- \`${finding.name}\` (${finding.severity}, ${scope}${range})${links ? ` — ${links}` : ''}`;
+              })
+              .join('\n');
+            const body = summary.findings.length === 0
+              ? [
+                  `@${owner} high/criticalの依存関係脆弱性は解消されています。`,
+                  '',
+                  `確認日時: ${new Date().toISOString()}`,
+                  `監査実行: ${runUrl}`,
+                  '',
+                  marker,
+                ].join('\n')
+              : [
+                  `@${owner} Security Auditでhigh/criticalの依存関係脆弱性を検出しました。`,
+                  '',
+                  `high: **${summary.high_count}** / critical: **${summary.critical_count}**`,
+                  '',
+                  findings,
+                  '',
+                  '詳細なJSONレポートはActionsのArtifactを確認してください。',
+                  `監査実行: ${runUrl}`,
+                  '',
+                  marker,
+                ].join('\n');
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'all',
+              per_page: 100,
+            });
+            const auditIssues = issues
+              .filter((issue) => !issue.pull_request && issue.title === title)
+              .sort((left, right) => new Date(right.updated_at) - new Date(left.updated_at));
+            const currentIssue = auditIssues[0];
+            const assignees = [
+              ...new Set([
+                ...(currentIssue?.assignees ?? [])
+                  .map((assignee) => assignee.login)
+                  .filter(Boolean),
+                owner,
+              ]),
+            ];
+            const assignedToOwner = currentIssue?.assignees?.some(
+              (assignee) => assignee.login === owner,
+            ) ?? false;
+
+            if (summary.findings.length === 0) {
+              if (currentIssue?.state === 'open') {
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: currentIssue.number,
+                  state: 'closed',
+                  state_reason: 'completed',
+                  body,
+                });
+              }
+              core.info('No high/critical findings require an open issue.');
+              return;
+            }
+
+            if (!currentIssue) {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                assignees: [owner],
+              });
+              core.info(`Created issue: ${title}`);
+              return;
+            }
+
+            const changed = !currentIssue.body?.includes(marker);
+            if (currentIssue.state === 'closed') {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: currentIssue.number,
+                state: 'open',
+                body,
+                assignees,
+              });
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: currentIssue.number,
+                body: `@${owner} 新しい監査結果を検出しました。\n\n${body}`,
+              });
+            } else if (changed) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: currentIssue.number,
+                body,
+                assignees,
+              });
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: currentIssue.number,
+                body: `@${owner} 監査結果が変化しました。\n\n${body}`,
+              });
+            } else if (!assignedToOwner) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: currentIssue.number,
+                assignees,
+              });
+              core.info(`Assigned issue #${currentIssue.number} to ${owner}.`);
+            } else {
+              core.info(`No change in findings; keeping issue #${currentIssue.number} unchanged.`);
+            }

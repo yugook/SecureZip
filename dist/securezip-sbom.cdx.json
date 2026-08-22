@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:b556c3c5-c9e7-437b-a721-a4abcadaaa41",
+  "serialNumber": "urn:uuid:2d9ac9b0-a2e1-4a3b-8592-13769ddc6f89",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-07-05T14:14:36.508Z",
+    "timestamp": "2026-08-22T07:02:03.411Z",
     "lifecycles": [
       {
         "phase": "pre-build"
@@ -474,39 +474,6 @@
         {
           "license": {
             "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "bom-ref": "brace-expansion@2.0.3",
-      "type": "library",
-      "name": "brace-expansion",
-      "version": "2.0.3",
-      "scope": "required",
-      "purl": "pkg:npm/brace-expansion@2.0.3",
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/brace-expansion"
-        }
-      ],
-      "externalReferences": [
-        {
-          "type": "distribution",
-          "url": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-2.0.3.tgz"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "30257f7d82446eac7af1a139f24bf6700fe48a4cb51bcbeec77391ebf8db4be8c831effa7c959ad034f3254eddaa28ce598c078b5b76f4595f608f6ecadaa5a4"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
           }
         }
       ]
@@ -1205,6 +1172,39 @@
       ]
     },
     {
+      "bom-ref": "brace-expansion@2.1.4",
+      "type": "library",
+      "name": "brace-expansion",
+      "version": "2.1.4",
+      "scope": "required",
+      "purl": "pkg:npm/brace-expansion@2.1.4",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/readdir-glob/node_modules/brace-expansion"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-2.1.4.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "8467d5ccfc6d85b7f7fb6ca383f441b3ad1c074161a814bfcef755ff8c27e3f0663746cd30c1cf73857f05b1627aa7f54ca0061801e76387928da8c29747f65e"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
       "bom-ref": "minimatch@5.1.8",
       "type": "library",
       "name": "minimatch",
@@ -1524,10 +1524,6 @@
       "dependsOn": []
     },
     {
-      "ref": "brace-expansion@2.0.3",
-      "dependsOn": []
-    },
-    {
       "ref": "buffer@6.0.3",
       "dependsOn": []
     },
@@ -1642,9 +1638,13 @@
       ]
     },
     {
+      "ref": "brace-expansion@2.1.4",
+      "dependsOn": []
+    },
+    {
       "ref": "minimatch@5.1.8",
       "dependsOn": [
-        "brace-expansion@2.0.3"
+        "brace-expansion@2.1.4"
       ]
     },
     {
