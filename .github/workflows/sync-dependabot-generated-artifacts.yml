@@ -84,9 +84,21 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: dependabot-generated
-          path: .dependabot-generated
+          path: dependabot-generated
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate artifact sync token
+        if: steps.pr.outputs.allowed == 'true'
+        env:
+          DEPENDABOT_ARTIFACT_SYNC_TOKEN: ${{ secrets.DEPENDABOT_ARTIFACT_SYNC_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$DEPENDABOT_ARTIFACT_SYNC_TOKEN" ]]; then
+            echo "::error::Repository secret DEPENDABOT_ARTIFACT_SYNC_TOKEN is required to trigger checks after the synchronization commit."
+            exit 1
+          fi
 
       - name: Commit generated SBOM
         if: steps.pr.outputs.allowed == 'true'
@@ -96,12 +108,12 @@ jobs:
           PR_HEAD_REF: ${{ steps.pr.outputs.head_ref }}
           PR_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.DEPENDABOT_ARTIFACT_SYNC_TOKEN }}
           script: |
             const fs = require('node:fs');
 
             const metadata = JSON.parse(
-              fs.readFileSync('.dependabot-generated/metadata.json', 'utf8'),
+              fs.readFileSync('dependabot-generated/metadata.json', 'utf8'),
             );
             const pullNumber = Number(process.env.PR_NUMBER);
             const expectedHeadRef = process.env.PR_HEAD_REF;
@@ -122,7 +134,7 @@ jobs:
 
             const path = 'dist/securezip-sbom.cdx.json';
             const content = fs.readFileSync(
-              '.dependabot-generated/securezip-sbom.cdx.json',
+              'dependabot-generated/securezip-sbom.cdx.json',
             );
             const { owner, repo } = context.repo;
             const branchRef = await github.rest.git.getRef({
@@ -135,25 +147,39 @@ jobs:
               throw new Error('Dependabot branch changed while the artifact was being synchronized; retrying is required.');
             }
 
-            const current = await github.rest.repos.getContent({
+            const baseCommit = await github.rest.git.getCommit({
               owner,
               repo,
-              path,
-              ref: expectedHeadRef,
+              commit_sha: expectedHeadSha,
             });
 
-            if (Array.isArray(current.data)) {
-              throw new Error(`${path} resolved to a directory`);
-            }
-
-            await github.rest.repos.createOrUpdateFileContents({
+            const blob = await github.rest.git.createBlob({
               owner,
               repo,
-              path,
-              message: 'ci: Dependabotの生成済みSBOMを同期',
               content: content.toString('base64'),
-              branch: expectedHeadRef,
-              sha: current.data.sha,
+              encoding: 'base64',
+            });
+
+            const tree = await github.rest.git.createTree({
+              owner,
+              repo,
+              base_tree: baseCommit.data.tree.sha,
+              tree: [
+                {
+                  path,
+                  mode: '100644',
+                  type: 'blob',
+                  sha: blob.data.sha,
+                },
+              ],
+            });
+
+            const commit = await github.rest.git.createCommit({
+              owner,
+              repo,
+              message: 'ci: Dependabotの生成済みSBOMを同期',
+              tree: tree.data.sha,
+              parents: [expectedHeadSha],
               committer: {
                 name: 'github-actions[bot]',
                 email: '41898282+github-actions[bot]@users.noreply.github.com',
@@ -163,5 +189,20 @@ jobs:
                 email: '41898282+github-actions[bot]@users.noreply.github.com',
               },
             });
+
+            try {
+              await github.rest.git.updateRef({
+                owner,
+                repo,
+                ref: `heads/${expectedHeadRef}`,
+                sha: commit.data.sha,
+                force: false,
+              });
+            } catch (error) {
+              if (error.status === 409 || error.status === 422) {
+                throw new Error('Dependabot branch changed during synchronization; the stale artifact was not committed. Retry the latest build.');
+              }
+              throw error;
+            }
 
             core.info(`Updated ${path} on ${expectedHeadRef}.`);
