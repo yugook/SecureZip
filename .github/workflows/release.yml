@@ -123,6 +123,14 @@ jobs:
           VERSION: ${{ steps.version.outputs.plain }}
         run: npx vsce package --out "securezip-${VERSION}.vsix"
 
+      - name: Prepare SBOM release asset
+        env:
+          VERSION: ${{ steps.version.outputs.plain }}
+        run: |
+          set -euo pipefail
+          test -s dist/securezip-sbom.cdx.json
+          cp dist/securezip-sbom.cdx.json "securezip-${VERSION}-sbom.cdx.json"
+
       - name: Publish release to VS Code Marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
@@ -145,6 +153,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ steps.version.outputs.tag }}
           VSIX_NAME: securezip-${{ steps.version.outputs.plain }}.vsix
+          SBOM_NAME: securezip-${{ steps.version.outputs.plain }}-sbom.cdx.json
           RELEASE_SHA: ${{ steps.release_ref.outputs.sha }}
         run: |
           set -euo pipefail
@@ -152,11 +161,15 @@ jobs:
             echo "VSIX artifact $VSIX_NAME not found" >&2
             exit 1
           fi
+          if [ ! -f "$SBOM_NAME" ]; then
+            echo "SBOM artifact $SBOM_NAME not found" >&2
+            exit 1
+          fi
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             echo "Release $TAG_NAME exists. Updating assets and notes."
-            gh release upload "$TAG_NAME" "$VSIX_NAME" --clobber
+            gh release upload "$TAG_NAME" "$VSIX_NAME" "$SBOM_NAME" --clobber
             gh release edit "$TAG_NAME" --draft --title "$TAG_NAME" --notes-file release-notes.md --target "$RELEASE_SHA"
           else
             echo "Creating draft release $TAG_NAME."
-            gh release create "$TAG_NAME" "$VSIX_NAME" --draft --title "$TAG_NAME" --notes-file release-notes.md --target "$RELEASE_SHA"
+            gh release create "$TAG_NAME" "$VSIX_NAME" "$SBOM_NAME" --draft --title "$TAG_NAME" --notes-file release-notes.md --target "$RELEASE_SHA"
           fi
