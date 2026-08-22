@@ -175,6 +175,17 @@ jobs:
               .filter((issue) => !issue.pull_request && issue.title === title)
               .sort((left, right) => new Date(right.updated_at) - new Date(left.updated_at));
             const currentIssue = auditIssues[0];
+            const assignees = [
+              ...new Set([
+                ...(currentIssue?.assignees ?? [])
+                  .map((assignee) => assignee.login)
+                  .filter(Boolean),
+                owner,
+              ]),
+            ];
+            const assignedToOwner = currentIssue?.assignees?.some(
+              (assignee) => assignee.login === owner,
+            ) ?? false;
 
             if (summary.findings.length === 0) {
               if (currentIssue?.state === 'open') {
@@ -197,6 +208,7 @@ jobs:
                 repo,
                 title,
                 body,
+                assignees: [owner],
               });
               core.info(`Created issue: ${title}`);
               return;
@@ -210,6 +222,7 @@ jobs:
                 issue_number: currentIssue.number,
                 state: 'open',
                 body,
+                assignees,
               });
               await github.rest.issues.createComment({
                 owner,
@@ -223,6 +236,7 @@ jobs:
                 repo,
                 issue_number: currentIssue.number,
                 body,
+                assignees,
               });
               await github.rest.issues.createComment({
                 owner,
@@ -230,6 +244,14 @@ jobs:
                 issue_number: currentIssue.number,
                 body: `@${owner} 監査結果が変化しました。\n\n${body}`,
               });
+            } else if (!assignedToOwner) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: currentIssue.number,
+                assignees,
+              });
+              core.info(`Assigned issue #${currentIssue.number} to ${owner}.`);
             } else {
               core.info(`No change in findings; keeping issue #${currentIssue.number} unchanged.`);
             }
