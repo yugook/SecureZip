@@ -549,6 +549,35 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('recent export history preserves concurrent writes', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const workspaceRoot = getWorkspaceRoot();
+        const firstRoot = path.join(workspaceRoot, 'first-root');
+        const secondRoot = path.join(workspaceRoot, 'second-root');
+        const context = createTestExtensionContext(true);
+        const provider = new SecureZipViewProvider(context);
+
+        try {
+            await Promise.all([
+                provider.recordLastExport(firstRoot, ['dist/first/'], {
+                    archivePath: path.join(workspaceRoot, 'first.zip'),
+                }),
+                provider.recordLastExport(secondRoot, ['dist/second/'], {
+                    archivePath: path.join(workspaceRoot, 'second.zip'),
+                }),
+            ]);
+
+            const stored = context.workspaceState.get<Record<string, Array<{ archivePath?: string }>>>(
+                'securezip.lastExportByRoot',
+            );
+            assert.strictEqual(stored?.[firstRoot]?.[0]?.archivePath, path.join(workspaceRoot, 'first.zip'));
+            assert.strictEqual(stored?.[secondRoot]?.[0]?.archivePath, path.join(workspaceRoot, 'second.zip'));
+        } finally {
+            provider.dispose();
+        }
+    });
+
     test('recent export history reads legacy single-entry state', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
@@ -1290,6 +1319,8 @@ suite('SecureZip Extension', function () {
 class InMemoryMemento implements vscode.Memento {
     private store = new Map<string, unknown>();
 
+    constructor(private readonly deferWrites = false) {}
+
     get<T>(key: string, defaultValue?: T): T | undefined {
         if (this.store.has(key)) {
             return this.store.get(key) as T;
@@ -1298,6 +1329,9 @@ class InMemoryMemento implements vscode.Memento {
     }
 
     async update(key: string, value: unknown): Promise<void> {
+        if (this.deferWrites) {
+            await Promise.resolve();
+        }
         if (value === undefined) {
             this.store.delete(key);
         } else {
@@ -1310,9 +1344,9 @@ class InMemoryMemento implements vscode.Memento {
     }
 }
 
-function createTestExtensionContext(): vscode.ExtensionContext {
+function createTestExtensionContext(deferWorkspaceStateWrites = false): vscode.ExtensionContext {
     return {
-        workspaceState: new InMemoryMemento(),
+        workspaceState: new InMemoryMemento(deferWorkspaceStateWrites),
         globalState: new InMemoryMemento(),
         subscriptions: [],
     } as unknown as vscode.ExtensionContext;
