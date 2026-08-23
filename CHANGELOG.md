@@ -6,7 +6,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+## [1.2.1] - 2026-08-23
+
 - Recent Exports now keeps up to 10 exports per workspace or repository root instead of only the latest entry.
+- Fixed concurrent updates to export history so simultaneous export completions are serialized.
+- Updated dependency security fixes and SBOM release handling to keep published artifacts aligned.
 
 ## [1.2.0] - 2026-07-05
 
