@@ -244,6 +244,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
     readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
+    private lastExportWrite: Promise<void> = Promise.resolve();
     private readonly disposables: vscode.Disposable[] = [];
     private ignoreCache = new Map<string, IgnoreContext>();
     private treeView: vscode.TreeView<SecureZipTreeItem> | undefined;
@@ -299,9 +300,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         void this.treeView.reveal(item, { expand: true, focus: true });
     }
 
-    async recordLastExport(root: string, patterns: string[], metadata?: LastExportMetadata) {
+    async recordLastExport(root: string, patterns: string[], metadata?: LastExportMetadata): Promise<void> {
         const sanitized = Array.from(new Set(patterns.map((p) => p.trim()).filter(Boolean)));
-        const existing = this.getLastExportHistoryByRoot();
         const snapshot: LastExportSnapshot = {
             timestamp: Date.now(),
             patterns: sanitized,
@@ -313,12 +313,20 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         if (metadata?.archivePath) {
             snapshot.archivePath = metadata.archivePath;
         }
-        const updated: LastExportHistoryByRoot = {
-            ...existing,
-            [root]: [snapshot, ...(existing[root] ?? [])].slice(0, RECENT_EXPORT_LIMIT),
+
+        const writeHistory = async () => {
+            const existing = this.getLastExportHistoryByRoot();
+            const updated: LastExportHistoryByRoot = {
+                ...existing,
+                [root]: [snapshot, ...(existing[root] ?? [])].slice(0, RECENT_EXPORT_LIMIT),
+            };
+            await this.context.workspaceState.update(LAST_EXPORT_STATE_KEY, updated);
+            this.refresh();
         };
-        await this.context.workspaceState.update(LAST_EXPORT_STATE_KEY, updated);
-        this.refresh();
+
+        const write = this.lastExportWrite.then(writeHistory, writeHistory);
+        this.lastExportWrite = write;
+        await write;
     }
 
     getTreeItem(element: SecureZipTreeItem): vscode.TreeItem {
