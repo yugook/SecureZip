@@ -63,9 +63,10 @@ export without writing any file. The archive uses **WinZip AES-256** (method
 `99`) for entry encryption.
 
 Successful encrypted exports are identified as encrypted in the SecureZip view's
-Recent Exports section. When a Git tag is associated with the export, that tag
-is shown with the recent export entry. The default save name also includes
-`-encrypted-`, for example `project-encrypted-YYYYMMDD-HHmmss.zip`.
+Recent Exports section, which keeps the latest 10 exports for each workspace or
+repository root. When a Git tag is associated with the export, that tag is shown
+with the recent export entry. The default save name also includes `-encrypted-`,
+for example `project-encrypted-YYYYMMDD-HHmmss.zip`.
 
 ### Compatibility
 
@@ -163,8 +164,9 @@ Example `settings.json` override:
 - Archiving a clean, tagged version of your repository for audit or compliance.
 
 ## 🧾 SBOM
-- `npm run sbom` generates `dist/securezip-sbom.cdx.json` in CycloneDX format so the extension bundle always ships with a fresh dependency inventory.
+- `npm run sbom` generates the untracked `dist/securezip-sbom.cdx.json` in CycloneDX format so the extension bundle always ships with a fresh dependency inventory.
 - The SBOM step also runs automatically after `npm run package`; see `docs/sbom.md` for details and customization tips.
+- Stable GitHub Releases include the SBOM as a separate `securezip-X.Y.Z-sbom.cdx.json` asset.
 
 ## 📖 Roadmap
 - Multiple archive formats (`.tar.gz`, `.7z`)
@@ -249,9 +251,10 @@ SecureZip は通常エクスポートに加えて、パスワード保護付き�
 します。エントリ暗号化には **WinZip AES-256（method `99`）** を使用します。
 
 成功した暗号化エクスポートは、SecureZip ビューの「最近のエクスポート」で暗
-号化 ZIP として表示されます。Git タグが関連付けられている場合は、そのタグも
-最近の履歴に表示されます。保存ダイアログの既定ファイル名にも
-`-encrypted-` が入り、例として
+号化 ZIP として表示されます。このセクションはワークスペースまたはリポジトリ
+ルートごとに最新 10 件のエクスポートを保持します。Git タグが関連付けられてい
+る場合は、そのタグも最近の履歴に表示されます。保存ダイアログの既定ファイル名
+にも `-encrypted-` が入り、例として
 `project-encrypted-YYYYMMDD-HHmmss.zip` のようになります。
 
 ### 互換性
@@ -346,8 +349,9 @@ SecureZip は、ビルド時のデフォルトと実行時の上書きを組み�
 - 監査・コンプライアンス対応でタグ付きのクリーンなリポジトリ状態をアーカイブする。
 
 ## 🧾 SBOM
-- `npm run sbom` で CycloneDX 形式の `dist/securezip-sbom.cdx.json` を生成し、拡張が依存関係の一覧を同梱できるようにしました。
+- `npm run sbom` でGit管理外の CycloneDX 形式 `dist/securezip-sbom.cdx.json` を生成し、拡張が依存関係の一覧を同梱できるようにします。
 - `npm run package` 完了後にも SBOM が自動出力されます。詳しくは `docs/sbom.md` を参照してください。
+- StableのGitHub Releaseには、SBOMを `securezip-X.Y.Z-sbom.cdx.json` として個別添付します。
 
 ## 📖 ロードマップ
 - 複数アーカイブ形式（`.tar.gz`、`.7z` など）への対応

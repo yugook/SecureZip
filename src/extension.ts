@@ -889,7 +889,7 @@ async function exportSingleRoot(
 
     progress.report({ message: getCreatingZipMessage(zipOptions) });
     await createZipEntries(entries, outFile, zipOptions, progress);
-    void treeProvider?.recordLastExport(root, collection.ignoreSnapshot, {
+    await treeProvider?.recordLastExport(root, collection.ignoreSnapshot, {
         archivePath: outFile,
         mode: zipOptions.mode,
         tagName: exportTagName,

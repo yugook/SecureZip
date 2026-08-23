@@ -51,8 +51,6 @@ jobs:
           LOCK_ROOT_VERSION="$(git show "${RELEASE_HEAD_REF}:package-lock.json" | jq -r '.packages[""].version')"
           BRANCH_VERSION="${PR_HEAD_REF#release/}"
           BRANCH_VERSION="${BRANCH_VERSION#v}"
-          SBOM_REF="$(git show "${RELEASE_HEAD_REF}:dist/securezip-sbom.cdx.json" | jq -r '.metadata.component["bom-ref"]')"
-          SBOM_VERSION="$(git show "${RELEASE_HEAD_REF}:dist/securezip-sbom.cdx.json" | jq -r '.metadata.component.version')"
 
           echo "base=$BASE_VERSION" >> "$GITHUB_OUTPUT"
           echo "head=$HEAD_VERSION" >> "$GITHUB_OUTPUT"
@@ -89,11 +87,6 @@ jobs:
 
           if ! git show "${RELEASE_HEAD_REF}:CHANGELOG.md" | grep -Fq "## [${HEAD_VERSION}] -"; then
             echo "::error::CHANGELOG.md must contain a release entry for ${HEAD_VERSION}."
-            exit 1
-          fi
-
-          if [ "$SBOM_REF" != "securezip@${HEAD_VERSION}" ] || [ "$SBOM_VERSION" != "$HEAD_VERSION" ]; then
-            echo "::error::dist/securezip-sbom.cdx.json must reference securezip@${HEAD_VERSION}."
             exit 1
           fi
 

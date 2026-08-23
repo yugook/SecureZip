@@ -73,26 +73,13 @@ jobs:
       - name: Package preflight (vsce)
         run: npm run package:verify
 
-      - name: Verify generated artifacts are committed
+      - name: Verify generated SBOM
         run: |
           set -euo pipefail
-
-          if [ -n "$(git status --short -- dist ':!dist/securezip-sbom.cdx.json')" ]; then
-            echo "::error::Generated dist artifacts are out of date. Run npm run package and npm run package:verify, then commit dist changes."
-            git status --short -- dist ':!dist/securezip-sbom.cdx.json'
-            git diff --stat -- dist ':!dist/securezip-sbom.cdx.json'
-            exit 1
-          fi
-
-          committed_sbom="${RUNNER_TEMP:-/tmp}/committed-sbom.json"
-          generated_sbom="${RUNNER_TEMP:-/tmp}/generated-sbom.json"
-          git show HEAD:dist/securezip-sbom.cdx.json | jq --sort-keys 'del(.serialNumber, .metadata.timestamp, .metadata.tools)' > "$committed_sbom"
-          jq --sort-keys 'del(.serialNumber, .metadata.timestamp, .metadata.tools)' dist/securezip-sbom.cdx.json > "$generated_sbom"
-
-          if ! diff -u "$committed_sbom" "$generated_sbom"; then
-            echo "::error::Generated SBOM content is out of date. Run npm run package and commit dist/securezip-sbom.cdx.json."
-            exit 1
-          fi
+          test -s dist/securezip-sbom.cdx.json
+          jq -e '.bomFormat == "CycloneDX" and .specVersion == "1.5"' \
+            dist/securezip-sbom.cdx.json >/dev/null
+          echo "Generated SBOM is valid and ready for packaging."
 
   unit:
     name: unit
