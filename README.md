@@ -164,8 +164,9 @@ Example `settings.json` override:
 - Archiving a clean, tagged version of your repository for audit or compliance.
 
 ## 🧾 SBOM
-- `npm run sbom` generates `dist/securezip-sbom.cdx.json` in CycloneDX format so the extension bundle always ships with a fresh dependency inventory.
+- `npm run sbom` generates the untracked `dist/securezip-sbom.cdx.json` in CycloneDX format so the extension bundle always ships with a fresh dependency inventory.
 - The SBOM step also runs automatically after `npm run package`; see `docs/sbom.md` for details and customization tips.
+- Stable GitHub Releases include the SBOM as a separate `securezip-X.Y.Z-sbom.cdx.json` asset.
 
 ## 📖 Roadmap
 - Multiple archive formats (`.tar.gz`, `.7z`)
@@ -348,8 +349,9 @@ SecureZip は、ビルド時のデフォルトと実行時の上書きを組み�
 - 監査・コンプライアンス対応でタグ付きのクリーンなリポジトリ状態をアーカイブする。
 
 ## 🧾 SBOM
-- `npm run sbom` で CycloneDX 形式の `dist/securezip-sbom.cdx.json` を生成し、拡張が依存関係の一覧を同梱できるようにしました。
+- `npm run sbom` でGit管理外の CycloneDX 形式 `dist/securezip-sbom.cdx.json` を生成し、拡張が依存関係の一覧を同梱できるようにします。
 - `npm run package` 完了後にも SBOM が自動出力されます。詳しくは `docs/sbom.md` を参照してください。
+- StableのGitHub Releaseには、SBOMを `securezip-X.Y.Z-sbom.cdx.json` として個別添付します。
 
 ## 📖 ロードマップ
 - 複数アーカイブ形式（`.tar.gz`、`.7z` など）への対応
