@@ -5,7 +5,7 @@ import simpleGit from 'simple-git';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import {
-    collectIncludeOverrides,
+    collectBoundedFiles,
     createEffectiveIgnorePlan,
     resolvePatternPresence,
     type EffectiveIgnorePlan,
@@ -1075,25 +1075,15 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         const ignoredPatterns = Array.from(ignoredPathSet).map((candidate) =>
             candidate.endsWith('/') ? `${candidate}**` : candidate,
         );
-        const { globby } = await import('globby');
-        const ignoredFiles = await globby(ignoredPatterns, {
-            cwd: root,
-            dot: true,
-            gitignore: false,
-            onlyFiles: true,
-            followSymbolicLinks: false,
+        const ignoredCollection = await collectBoundedFiles(root, ignoredPatterns, {
+            ignorePatterns: [...plan.configurationIncludePatterns, ...plan.secureReincludePatterns],
+            limit: GIT_CHECK_IGNORE_PATH_LIMIT,
         });
-        const overrideFiles = new Set(
-            (await collectIncludeOverrides(root, plan)).map((candidate) => candidate.replace(/\\+/g, '/')),
-        );
-        const ignoredPaths = ignoredFiles.filter(
-            (candidate) => !overrideFiles.has(candidate.replace(/\\+/g, '/')),
-        );
-        if (ignoredPaths.length === 0) {
+        if (ignoredCollection.files.length === 0) {
             return { entries: [] };
         }
-        const truncatedByPathLimit = ignoredPaths.length > GIT_CHECK_IGNORE_PATH_LIMIT;
-        const checkArgs = ['check-ignore', '-v', ...ignoredPaths.slice(0, GIT_CHECK_IGNORE_PATH_LIMIT)];
+        const truncatedByPathLimit = ignoredCollection.truncated;
+        const checkArgs = ['check-ignore', '-v', ...ignoredCollection.files];
 
         let checkOutput = '';
         try {

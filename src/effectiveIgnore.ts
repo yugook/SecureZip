@@ -37,6 +37,11 @@ export type PatternPresence = {
     hasMore: boolean;
 };
 
+export type BoundedFileCollection = {
+    files: string[];
+    truncated: boolean;
+};
+
 type CreateEffectiveIgnorePlanOptions = {
     secureZipIgnore: SecureZipIgnore;
     autoExcludePatterns: readonly string[];
@@ -118,6 +123,7 @@ export function createEffectiveIgnorePlan(options: CreateEffectiveIgnorePlanOpti
             ...secureExcludePatterns,
         ]),
         configurationIncludeIgnorePatterns: uniquePatterns([
+            ...autoExcludePatterns,
             ...additionalExcludePatterns,
             ...secureExcludePatterns,
         ]),
@@ -182,6 +188,37 @@ export async function collectEffectiveFiles(
     });
     const overrides = await collectIncludeOverrides(root, plan, { absolute });
     return Array.from(new Set([...baseFiles, ...overrides]));
+}
+
+export async function collectBoundedFiles(
+    root: string,
+    patterns: readonly string[],
+    options: { ignorePatterns?: readonly string[]; limit: number },
+): Promise<BoundedFileCollection> {
+    const positivePatterns = uniquePatterns(patterns);
+    if (positivePatterns.length === 0 || options.limit <= 0) {
+        return { files: [], truncated: false };
+    }
+
+    const { globbyStream } = await import('globby');
+    const files: string[] = [];
+    const stream = globbyStream(positivePatterns, {
+        cwd: root,
+        dot: true,
+        gitignore: false,
+        ignore: uniquePatterns(options.ignorePatterns ?? []),
+        onlyFiles: true,
+        followSymbolicLinks: false,
+    });
+
+    for await (const candidate of stream) {
+        files.push(candidate);
+        if (files.length > options.limit) {
+            return { files: files.slice(0, options.limit), truncated: true };
+        }
+    }
+
+    return { files, truncated: false };
 }
 
 export async function resolvePatternPresence(

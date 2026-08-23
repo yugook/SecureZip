@@ -6,6 +6,7 @@ import { describe, it } from 'mocha';
 import { normalizeIgnorePattern, loadSecureZipIgnore, addPatternsToSecureZipIgnore } from '../ignore';
 import {
     IGNORE_SOURCE_PRIORITY,
+    collectBoundedFiles,
     collectEffectiveFiles,
     createEffectiveIgnorePlan,
     resolvePatternPresence,
@@ -141,13 +142,13 @@ describe('ignore helpers', () => {
                     excludes: ['dist/**', 'dist/**'],
                     includes: ['dist/keep.txt', '.git'],
                 },
-                autoExcludePatterns: ['node_modules/**'],
+                autoExcludePatterns: ['**/*.pem'],
                 additionalExcludePatterns: ['coverage/**'],
                 configurationIncludePatterns: ['node_modules/**'],
             });
 
-            assert.deepStrictEqual(plan.baseIgnorePatterns, ['node_modules/**', 'coverage/**', 'dist/**']);
-            assert.deepStrictEqual(plan.configurationIncludeIgnorePatterns, ['coverage/**', 'dist/**']);
+            assert.deepStrictEqual(plan.baseIgnorePatterns, ['**/*.pem', 'coverage/**', 'dist/**']);
+            assert.deepStrictEqual(plan.configurationIncludeIgnorePatterns, ['**/*.pem', 'coverage/**', 'dist/**']);
             assert.deepStrictEqual(plan.secureReincludePatterns, ['dist/keep.txt', '.git', '.git/**']);
             assert.deepStrictEqual(plan.ignoreSnapshot, ['dist/**', '!dist/keep.txt', '!.git']);
             assert.strictEqual(plan.gitOverride, true);
@@ -194,6 +195,56 @@ describe('ignore helpers', () => {
                     !files.includes('node_modules/keep.js'),
                     '.securezipignore excludes should override configuration includes',
                 );
+            } finally {
+                await fs.promises.rm(tmp, { recursive: true, force: true });
+            }
+        });
+
+        it('keeps sensitive auto excludes active inside configuration includes', async () => {
+            const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-effective-secrets-test-'));
+            try {
+                const packageDir = path.join(tmp, 'node_modules', 'package');
+                await fs.promises.mkdir(packageDir, { recursive: true });
+                await fs.promises.writeFile(path.join(tmp, '.gitignore'), 'node_modules/\n', 'utf8');
+                await fs.promises.writeFile(path.join(packageDir, 'index.js'), 'module.exports = {};\n', 'utf8');
+                await fs.promises.writeFile(path.join(packageDir, '.env'), 'TOKEN=secret\n', 'utf8');
+                await fs.promises.writeFile(path.join(packageDir, 'private.pem'), 'secret\n', 'utf8');
+
+                const plan = createEffectiveIgnorePlan({
+                    secureZipIgnore: { excludes: [], includes: [] },
+                    autoExcludePatterns: ['**/.env', '**/*.pem'],
+                    configurationIncludePatterns: ['node_modules/**'],
+                });
+                const files = await collectEffectiveFiles(tmp, plan);
+
+                assert.ok(files.includes('node_modules/package/index.js'));
+                assert.ok(!files.includes('node_modules/package/.env'));
+                assert.ok(!files.includes('node_modules/package/private.pem'));
+            } finally {
+                await fs.promises.rm(tmp, { recursive: true, force: true });
+            }
+        });
+
+        it('bounds ignored directory expansion before materializing all matches', async () => {
+            const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-bounded-ignore-test-'));
+            try {
+                const ignoredDir = path.join(tmp, 'bulk-output');
+                await fs.promises.mkdir(ignoredDir, { recursive: true });
+                await Promise.all(
+                    Array.from({ length: 210 }, (_, index) =>
+                        fs.promises.writeFile(path.join(ignoredDir, `${index}.txt`), 'ignored\n'),
+                    ),
+                );
+
+                const bounded = await collectBoundedFiles(tmp, ['bulk-output/**'], { limit: 200 });
+                assert.strictEqual(bounded.files.length, 200);
+                assert.strictEqual(bounded.truncated, true);
+
+                const overridden = await collectBoundedFiles(tmp, ['bulk-output/**'], {
+                    ignorePatterns: ['bulk-output/**'],
+                    limit: 200,
+                });
+                assert.deepStrictEqual(overridden, { files: [], truncated: false });
             } finally {
                 await fs.promises.rm(tmp, { recursive: true, force: true });
             }
