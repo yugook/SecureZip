@@ -22,6 +22,12 @@ This document defines how SecureZip resolves export targets and
 - Resolve from each target root.
 - Only apply patterns to files under that target root.
 - Priority per folder: `.securezipignore` > `.gitignore` > auto-excludes.
+- A `.securezipignore` re-include (`!pattern`) is evaluated after
+  `.gitignore` and auto-excludes, so it can restore matching files from either
+  lower-priority source.
+- The `includeNodeModules` setting overrides the built-in and `.gitignore`
+  exclusions for `node_modules`, but an explicit `.securezipignore` exclude
+  still takes priority.
 - No cross-folder lookup or shared ignore file.
 - If `.securezipignore` is missing, treat as "no extra ignores".
 

@@ -4,6 +4,12 @@ import * as vscode from 'vscode';
 import simpleGit from 'simple-git';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
+import {
+    collectBoundedFiles,
+    createEffectiveIgnorePlan,
+    resolvePatternPresence,
+    type EffectiveIgnorePlan,
+} from './effectiveIgnore';
 import { localize } from './nls';
 import { TargetGroup, listGitRepositories, listWorkspaceFolders, watchGitChanges } from './targeting';
 import {
@@ -707,9 +713,22 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         const root = group.root;
         const workspaceFolder = this.resolveWorkspaceFolder(root);
         const context = await this.ensureIgnoreContext(root);
+        const cfg = workspaceFolder
+            ? vscode.workspace.getConfiguration('secureZip', workspaceFolder.uri)
+            : vscode.workspace.getConfiguration('secureZip');
+        const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
+        const plan = createEffectiveIgnorePlan({
+            secureZipIgnore: {
+                excludes: Array.from(context.excludes),
+                includes: Array.from(context.includes),
+            },
+            autoExcludePatterns: resolveAutoExcludePatterns({ includeNodeModules }),
+            additionalExcludePatterns: cfg.get<string[]>('additionalExcludes') ?? [],
+            configurationIncludePatterns: includeNodeModules ? ['node_modules/**'] : [],
+        });
         const previewSection = sectionItem;
-        const autoResult = await this.buildAutoExcludePreviewItems(root, context, workspaceFolder);
-        const gitResult = await this.buildGitIgnorePreviewItems(root);
+        const autoResult = await this.buildAutoExcludePreviewItems(root, plan);
+        const gitResult = await this.buildGitIgnorePreviewItems(root, plan);
         let hiddenIgnoreCount = 0;
 
         const sourcePriority: Record<PreviewSource, number> = {
@@ -758,67 +777,12 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         };
 
         const presenceCache = new Map<string, Promise<AutoExcludePresence>>();
-        const hasGlobPattern = (pattern: string): boolean => /[\\*?[\]{]/.test(pattern);
-        const normalizeRelativePattern = (pattern: string): string => {
-            const trimmed = pattern.startsWith('/') ? pattern.slice(1) : pattern;
-            return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
-        };
-
         const resolvePresence = (pattern: string): Promise<AutoExcludePresence> => {
             const cached = presenceCache.get(pattern);
             if (cached) {
                 return cached;
             }
-
-            const promise = (async () => {
-                const relative = normalizeRelativePattern(pattern);
-                const DIRECTORY_SUFFIX = '/**';
-
-                const statTarget = relative.endsWith(DIRECTORY_SUFFIX)
-                    ? relative.slice(0, -DIRECTORY_SUFFIX.length)
-                    : relative;
-
-                if (!hasGlobPattern(relative) || (!hasGlobPattern(statTarget) && relative.endsWith(DIRECTORY_SUFFIX))) {
-                    try {
-                        const full = path.join(root, statTarget);
-                        const stats = await fs.promises.stat(full);
-                        const label = stats.isDirectory() ? `${statTarget}/` : statTarget;
-                        return { exists: true, examples: [label], hasMore: false };
-                    } catch {
-                        // Fall back to glob search in case the pattern uses ignore semantics beyond stat.
-                    }
-                }
-
-                try {
-                    const { globbyStream } = await import('globby');
-                    const examples: string[] = [];
-                    let hasMore = false;
-                    const SAMPLE_LIMIT = 3;
-                    for await (const entry of globbyStream(relative || '.', {
-                        cwd: root,
-                        dot: true,
-                        gitignore: false,
-                        followSymbolicLinks: false,
-                        unique: true,
-                    })) {
-                        const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
-                        if (!value) {
-                            continue;
-                        }
-                        if (examples.length < SAMPLE_LIMIT) {
-                            examples.push(value);
-                        } else {
-                            hasMore = true;
-                            break;
-                        }
-                    }
-                    const exists = examples.length > 0 || hasMore;
-                    return { exists, examples, hasMore };
-                } catch {
-                    return { exists: false, examples: [], hasMore: false };
-                }
-            })();
-
+            const promise = resolvePatternPresence(root, [pattern], { onlyFiles: false, sampleLimit: 3 });
             presenceCache.set(pattern, promise);
             return promise;
         };
@@ -987,146 +951,33 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
     private async buildAutoExcludePreviewItems(
         root: string,
-        context: IgnoreContext,
-        workspaceFolder?: vscode.WorkspaceFolder,
+        plan: EffectiveIgnorePlan,
     ): Promise<{ entries: PreviewEntry[]; hiddenCount: number; visibleCount: number }> {
-        const cfg = workspaceFolder
-            ? vscode.workspace.getConfiguration('secureZip', workspaceFolder.uri)
-            : vscode.workspace.getConfiguration('secureZip');
-        const includeNodeModules = !!cfg.get<boolean>('includeNodeModules');
-        const autoPatterns = resolveAutoExcludePatterns({ includeNodeModules });
+        const autoPatterns = plan.autoExcludePatterns;
         if (autoPatterns.length === 0) {
             return { entries: [], hiddenCount: 0, visibleCount: 0 };
         }
 
-        const includePatterns = context.includes;
-
         const SAMPLE_LIMIT = 3;
-        const presenceCache = new Map<string, Promise<AutoExcludePresence>>();
-        let rootDirEntriesPromise: Promise<string[]> | undefined;
-
-        const getRootDirEntries = async (): Promise<string[]> => {
-            if (!rootDirEntriesPromise) {
-                rootDirEntriesPromise = fs.promises.readdir(root).catch(() => []);
-            }
-            return rootDirEntriesPromise;
-        };
-
-        const checkPath = async (relative: string): Promise<AutoExcludePresence> => {
-            try {
-                const full = path.join(root, relative);
-                const stats = await fs.promises.stat(full);
-                const label = stats.isDirectory() ? `${relative}/` : relative;
-                return { exists: true, examples: [label], hasMore: false };
-            } catch {
-                return { exists: false, examples: [], hasMore: false };
-            }
-        };
-
-        const checkRootEnvVariants = async (): Promise<AutoExcludePresence> => {
-            const entries = await getRootDirEntries();
-            const matches = entries.filter((name) => name.startsWith('.env.') && name.length > '.env.'.length);
-            if (matches.length === 0) {
-                return { exists: false, examples: [], hasMore: false };
-            }
-            const examples = matches.slice(0, SAMPLE_LIMIT);
-            return { exists: true, examples, hasMore: matches.length > SAMPLE_LIMIT };
-        };
-
-        const checkGlob = async (
-            pattern: string,
-            options?: { onlyFiles?: boolean },
-        ): Promise<AutoExcludePresence> => {
-            try {
-                const { globbyStream } = await import('globby');
-                const streamOptions: { [key: string]: unknown } = {
-                    cwd: root,
-                    dot: true,
-                    gitignore: false,
-                    followSymbolicLinks: false,
-                    unique: true,
-                };
-                if (typeof options?.onlyFiles === 'boolean') {
-                    streamOptions.onlyFiles = options.onlyFiles;
-                }
-                const examples: string[] = [];
-                let hasMore = false;
-                for await (const entry of globbyStream(pattern, streamOptions)) {
-                    const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
-                    if (!value) {
-                        continue;
-                    }
-                    if (examples.length < SAMPLE_LIMIT) {
-                        examples.push(value);
-                    } else {
-                        hasMore = true;
-                        break;
-                    }
-                }
-                const exists = examples.length > 0 || hasMore;
-                return { exists, examples, hasMore };
-            } catch {
-                return { exists: false, examples: [], hasMore: false };
-            }
-        };
-
-        const resolvePresence = (pattern: string): Promise<AutoExcludePresence> => {
-            const cached = presenceCache.get(pattern);
-            if (cached) {
-                return cached;
-            }
-            const promise = (async () => {
-                if (pattern === '.git' || pattern === '.git/**') {
-                    return checkPath('.git');
-                }
-                if (pattern === '.vscode' || pattern === '.vscode/**') {
-                    return checkPath('.vscode');
-                }
-                if (pattern === 'node_modules/**') {
-                    return checkPath('node_modules');
-                }
-                if (pattern === '.env') {
-                    return checkPath('.env');
-                }
-                if (pattern === '.env.*') {
-                    return checkRootEnvVariants();
-                }
-                if (pattern === '**/.env' || pattern === '**/.env.*') {
-                    return checkGlob(pattern, { onlyFiles: true });
-                }
-                if (
-                    pattern === '**/*.pem' ||
-                    pattern === '**/*.key' ||
-                    pattern === '**/*.crt' ||
-                    pattern === '**/*.pfx'
-                ) {
-                    return checkGlob(pattern, { onlyFiles: true });
-                }
-                return checkGlob(pattern);
-            })();
-            presenceCache.set(pattern, promise);
-            return promise;
-        };
-
         const patternInfos: AutoExcludePatternInfo[] = [];
 
         for (const pattern of autoPatterns) {
-            const normalized = normalizeIgnorePattern(pattern);
-            const baseKey = normalized?.pattern ?? pattern;
-            const candidateKeys = new Set<string>([baseKey]);
-            if (baseKey.endsWith('/**')) {
-                candidateKeys.add(baseKey.slice(0, -3));
-            } else if (!baseKey.includes('*')) {
-                candidateKeys.add(`${baseKey}/**`);
-            }
-            if (baseKey.startsWith('**/')) {
-                candidateKeys.add(baseKey.slice(3));
-            }
-            const reincluded =
-                Array.from(candidateKeys).some((key) => includePatterns.has(key)) ||
-                isAutoExcludePatternReincluded(baseKey, includePatterns);
-            const presence = await resolvePresence(pattern);
-            patternInfos.push({ pattern, reincluded, presence });
+            const presence = await resolvePatternPresence(root, [pattern], {
+                onlyFiles: true,
+                sampleLimit: SAMPLE_LIMIT,
+            });
+            const activePresence = presence.exists
+                ? await resolvePatternPresence(root, [pattern], {
+                      excludePatterns: plan.secureReincludePatterns,
+                      onlyFiles: true,
+                      sampleLimit: SAMPLE_LIMIT,
+                  })
+                : presence;
+            patternInfos.push({
+                pattern,
+                reincluded: presence.exists && !activePresence.exists,
+                presence: activePresence,
+            });
         }
 
         const orderedInfos = classifyAutoExcludePatterns(patternInfos);
@@ -1177,7 +1028,10 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         return { entries, hiddenCount, visibleCount };
     }
 
-    private async buildGitIgnorePreviewItems(root: string): Promise<{ entries: PreviewEntry[] }> {
+    private async buildGitIgnorePreviewItems(
+        root: string,
+        plan: EffectiveIgnorePlan,
+    ): Promise<{ entries: PreviewEntry[] }> {
         const git = simpleGit(root);
 
         let isRepo = false;
@@ -1218,9 +1072,18 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             return { entries: [] };
         }
 
-        const ignoredPaths = Array.from(ignoredPathSet);
-        const truncatedByPathLimit = ignoredPaths.length > GIT_CHECK_IGNORE_PATH_LIMIT;
-        const checkArgs = ['check-ignore', '-v', ...ignoredPaths.slice(0, GIT_CHECK_IGNORE_PATH_LIMIT)];
+        const ignoredPatterns = Array.from(ignoredPathSet).map((candidate) =>
+            candidate.endsWith('/') ? `${candidate}**` : candidate,
+        );
+        const ignoredCollection = await collectBoundedFiles(root, ignoredPatterns, {
+            ignorePatterns: [...plan.configurationIncludePatterns, ...plan.secureReincludePatterns],
+            limit: GIT_CHECK_IGNORE_PATH_LIMIT,
+        });
+        if (ignoredCollection.files.length === 0) {
+            return { entries: [] };
+        }
+        const truncatedByPathLimit = ignoredCollection.truncated;
+        const checkArgs = ['check-ignore', '-v', ...ignoredCollection.files];
 
         let checkOutput = '';
         try {
@@ -1458,78 +1321,6 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
 
         return false;
     }
-}
-
-function isAutoExcludePatternReincluded(pattern: string, includes: Set<string>): boolean {
-    const autoExtensionMatch = pattern.startsWith('**/*.') ? pattern.slice(4) : undefined;
-
-    for (const include of includes) {
-        if (!include) {
-            continue;
-        }
-
-        if (include === pattern) {
-            return true;
-        }
-
-        if (pattern.endsWith('/**')) {
-            const base = pattern.slice(0, -3);
-            if (include === base || include.startsWith(`${base}/`) || include.startsWith(`${base}.`)) {
-                return true;
-            }
-        }
-
-        if (!pattern.includes('*')) {
-            if (include === pattern || include.startsWith(`${pattern}/`) || include.startsWith(`${pattern}.`)) {
-                return true;
-            }
-        }
-
-        if (include.endsWith('/**')) {
-            const includeBase = include.slice(0, -3);
-            if (
-                includeBase.length > 0 &&
-                (pattern === includeBase || pattern.startsWith(`${includeBase}/`) || pattern.startsWith(`${includeBase}.`))
-            ) {
-                return true;
-            }
-        }
-
-        if (pattern === '.env' || pattern === '**/.env') {
-            if (
-                include === '.env' ||
-                include === '**/.env' ||
-                include.endsWith('/.env') ||
-                include.startsWith('.env')
-            ) {
-                return true;
-            }
-        }
-
-        if (pattern === '.env.*' || pattern === '**/.env.*') {
-            if (
-                include === '.env' ||
-                include === '.env.*' ||
-                include === '**/.env.*' ||
-                include.startsWith('.env.') ||
-                include.includes('/.env.')
-            ) {
-                return true;
-            }
-        }
-
-        if (pattern.startsWith('**/.env.') && include.includes('/.env.')) {
-            return true;
-        }
-
-        if (autoExtensionMatch) {
-            if (include === `**/*${autoExtensionMatch}` || include.endsWith(autoExtensionMatch)) {
-                return true;
-            }
-        }
-    }
-
-    return false;
 }
 
 // Default template that hides the ignore file from exported archives.

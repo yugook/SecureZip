@@ -4,6 +4,13 @@ import * as os from 'os';
 import * as path from 'path';
 import { describe, it } from 'mocha';
 import { normalizeIgnorePattern, loadSecureZipIgnore, addPatternsToSecureZipIgnore } from '../ignore';
+import {
+    IGNORE_SOURCE_PRIORITY,
+    collectBoundedFiles,
+    collectEffectiveFiles,
+    createEffectiveIgnorePlan,
+    resolvePatternPresence,
+} from '../effectiveIgnore';
 
 describe('ignore helpers', () => {
     describe('normalizeIgnorePattern', () => {
@@ -124,6 +131,160 @@ describe('ignore helpers', () => {
                 assert.strictEqual(contents, 'logs/\n');
             } finally {
                 await fs.promises.rm(tmp, { recursive: true, force: true });
+            }
+        });
+    });
+
+    describe('effective ignore plan', () => {
+        it('keeps rule sources, priorities, and snapshots in one plan', () => {
+            const plan = createEffectiveIgnorePlan({
+                secureZipIgnore: {
+                    excludes: ['dist/**', 'dist/**'],
+                    includes: ['dist/keep.txt', '.git'],
+                },
+                autoExcludePatterns: ['**/*.pem'],
+                additionalExcludePatterns: ['coverage/**'],
+                configurationIncludePatterns: ['node_modules/**'],
+            });
+
+            assert.deepStrictEqual(plan.baseIgnorePatterns, ['**/*.pem', 'coverage/**', 'dist/**']);
+            assert.deepStrictEqual(plan.configurationIncludeIgnorePatterns, ['**/*.pem', 'coverage/**', 'dist/**']);
+            assert.deepStrictEqual(plan.secureReincludePatterns, ['dist/keep.txt', '.git', '.git/**']);
+            assert.deepStrictEqual(plan.ignoreSnapshot, ['dist/**', '!dist/keep.txt', '!.git']);
+            assert.strictEqual(plan.gitOverride, true);
+            assert.deepStrictEqual(IGNORE_SOURCE_PRIORITY, {
+                auto: 0,
+                gitignore: 1,
+                configuration: 2,
+                securezipignore: 3,
+            });
+            assert.ok(
+                plan.rules.some(
+                    (rule) =>
+                        rule.pattern === 'dist/keep.txt' &&
+                        rule.action === 'include' &&
+                        rule.source === 'securezipignore',
+                ),
+            );
+        });
+
+        it('applies securezipignore includes after gitignore and configuration includes', async () => {
+            const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-effective-ignore-test-'));
+            try {
+                await fs.promises.mkdir(path.join(tmp, '.git'), { recursive: true });
+                await fs.promises.mkdir(path.join(tmp, 'dist'), { recursive: true });
+                await fs.promises.mkdir(path.join(tmp, 'node_modules'), { recursive: true });
+                await fs.promises.writeFile(path.join(tmp, '.gitignore'), 'dist/\nnode_modules/\n', 'utf8');
+                await fs.promises.writeFile(path.join(tmp, 'dist', 'keep.txt'), 'keep\n', 'utf8');
+                await fs.promises.writeFile(path.join(tmp, 'dist', 'drop.txt'), 'drop\n', 'utf8');
+                await fs.promises.writeFile(path.join(tmp, 'node_modules', 'keep.js'), 'keep\n', 'utf8');
+
+                const plan = createEffectiveIgnorePlan({
+                    secureZipIgnore: {
+                        excludes: ['dist/drop.txt', 'node_modules/**'],
+                        includes: ['dist/keep.txt'],
+                    },
+                    autoExcludePatterns: ['node_modules/**'],
+                    configurationIncludePatterns: ['node_modules/**'],
+                });
+                const files = await collectEffectiveFiles(tmp, plan);
+
+                assert.ok(files.includes('dist/keep.txt'), '.securezipignore should override .gitignore');
+                assert.ok(!files.includes('dist/drop.txt'), 'explicit .securezipignore excludes should remain active');
+                assert.ok(
+                    !files.includes('node_modules/keep.js'),
+                    '.securezipignore excludes should override configuration includes',
+                );
+            } finally {
+                await fs.promises.rm(tmp, { recursive: true, force: true });
+            }
+        });
+
+        it('keeps sensitive auto excludes active inside configuration includes', async () => {
+            const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-effective-secrets-test-'));
+            try {
+                const packageDir = path.join(tmp, 'node_modules', 'package');
+                await fs.promises.mkdir(packageDir, { recursive: true });
+                await fs.promises.writeFile(path.join(tmp, '.gitignore'), 'node_modules/\n', 'utf8');
+                await fs.promises.writeFile(path.join(packageDir, 'index.js'), 'module.exports = {};\n', 'utf8');
+                await fs.promises.writeFile(path.join(packageDir, '.env'), 'TOKEN=secret\n', 'utf8');
+                await fs.promises.writeFile(path.join(packageDir, 'private.pem'), 'secret\n', 'utf8');
+
+                const plan = createEffectiveIgnorePlan({
+                    secureZipIgnore: { excludes: [], includes: [] },
+                    autoExcludePatterns: ['**/.env', '**/*.pem'],
+                    configurationIncludePatterns: ['node_modules/**'],
+                });
+                const files = await collectEffectiveFiles(tmp, plan);
+
+                assert.ok(files.includes('node_modules/package/index.js'));
+                assert.ok(!files.includes('node_modules/package/.env'));
+                assert.ok(!files.includes('node_modules/package/private.pem'));
+            } finally {
+                await fs.promises.rm(tmp, { recursive: true, force: true });
+            }
+        });
+
+        it('bounds ignored directory expansion before materializing all matches', async () => {
+            const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-bounded-ignore-test-'));
+            try {
+                const ignoredDir = path.join(tmp, 'bulk-output');
+                await fs.promises.mkdir(ignoredDir, { recursive: true });
+                await Promise.all(
+                    Array.from({ length: 210 }, (_, index) =>
+                        fs.promises.writeFile(path.join(ignoredDir, `${index}.txt`), 'ignored\n'),
+                    ),
+                );
+
+                const bounded = await collectBoundedFiles(tmp, ['bulk-output/**'], { limit: 200 });
+                assert.strictEqual(bounded.files.length, 200);
+                assert.strictEqual(bounded.truncated, true);
+
+                const overridden = await collectBoundedFiles(tmp, ['bulk-output/**'], {
+                    ignorePatterns: ['bulk-output/**'],
+                    limit: 200,
+                });
+                assert.deepStrictEqual(overridden, { files: [], truncated: false });
+            } finally {
+                await fs.promises.rm(tmp, { recursive: true, force: true });
+            }
+        });
+
+        it('evaluates broad re-includes and roots independently', async () => {
+            const rootA = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-effective-root-a-'));
+            const rootB = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'securezip-effective-root-b-'));
+            try {
+                for (const root of [rootA, rootB]) {
+                    const secureConfig = path.join(root, 'secure-config');
+                    await fs.promises.mkdir(secureConfig, { recursive: true });
+                    await fs.promises.writeFile(path.join(secureConfig, 'service.pem'), 'secret\n', 'utf8');
+                }
+
+                const rawPresence = await resolvePatternPresence(rootA, ['**/*.pem']);
+                const activePresence = await resolvePatternPresence(rootA, ['**/*.pem'], {
+                    excludePatterns: ['secure-config/**'],
+                });
+                assert.strictEqual(rawPresence.exists, true);
+                assert.strictEqual(activePresence.exists, false);
+
+                const rootAPlan = createEffectiveIgnorePlan({
+                    secureZipIgnore: { excludes: [], includes: ['secure-config/**'] },
+                    autoExcludePatterns: ['**/*.pem'],
+                });
+                const rootBPlan = createEffectiveIgnorePlan({
+                    secureZipIgnore: { excludes: [], includes: [] },
+                    autoExcludePatterns: ['**/*.pem'],
+                });
+                const [rootAFiles, rootBFiles] = await Promise.all([
+                    collectEffectiveFiles(rootA, rootAPlan),
+                    collectEffectiveFiles(rootB, rootBPlan),
+                ]);
+
+                assert.ok(rootAFiles.includes('secure-config/service.pem'));
+                assert.ok(!rootBFiles.includes('secure-config/service.pem'));
+            } finally {
+                await fs.promises.rm(rootA, { recursive: true, force: true });
+                await fs.promises.rm(rootB, { recursive: true, force: true });
             }
         });
     });

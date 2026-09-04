@@ -845,6 +845,39 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('SecureZip preview bounds expansion of large gitignored directories', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const ignoredDir = path.join(workspaceRoot, 'bulk-output');
+        await fs.promises.mkdir(ignoredDir, { recursive: true });
+        await Promise.all(
+            Array.from({ length: 210 }, (_, index) =>
+                fs.promises.writeFile(path.join(ignoredDir, `${index.toString().padStart(3, '0')}.txt`), 'ignored\n'),
+            ),
+        );
+        await fs.promises.writeFile(path.join(workspaceRoot, '.gitignore'), 'bulk-output/\n', 'utf8');
+        const git = await initGitRepository(workspaceRoot);
+        await git.add('.');
+        await git.commit('Add large ignored directory for preview');
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+
+            const previewItems = await provider.getChildren(previewSection);
+            const bulkItem = previewItems.find((item) => getTreeItemLabel(item) === 'bulk-output/');
+            assert.ok(bulkItem, 'Expected the large gitignore rule in preview');
+        } finally {
+            provider.dispose();
+        }
+    });
+
     test('SecureZip preview keeps priority when .securezipignore is missing', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
@@ -909,12 +942,73 @@ suite('SecureZip Extension', function () {
         const originalIgnore = await fs.promises.readFile(secureZipIgnorePath, 'utf8');
         await fs.promises.appendFile(secureZipIgnorePath, '\n!secure-config/**\n', 'utf8');
 
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+            const previewItems = await provider.getChildren(previewSection);
+            const autoLabels = previewItems
+                .filter((item) => (item as any).node?.kind === 'preview' && (item as any).node?.status === 'auto')
+                .map(getTreeItemLabel);
+            assert.ok(!autoLabels.includes('**/.env.*'), 'Preview should hide the reincluded nested env rule');
+            assert.ok(!autoLabels.includes('**/*.pem'), 'Preview should hide the reincluded PEM rule');
+        } finally {
+            provider.dispose();
+        }
+
         const { outPath, hashes } = await exportAndCollect('securezip-include-secure-config.zip');
         try {
             const expected = await loadExpectedHashes('simple-project', 'include-secure-config');
             assert.deepStrictEqual(hashes, expected);
         } finally {
             await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('.securezipignore re-includes override .gitignore in preview and ZIP contents', async function () {
+        this.timeout(40000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const gitignorePath = path.join(workspaceRoot, '.gitignore');
+        await fs.promises.writeFile(gitignorePath, 'dist/\n', 'utf8');
+        await initGitRepository(workspaceRoot);
+
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            const sections = await provider.getChildren();
+            const previewSection = sections.find(
+                (item) => (item as any).node?.kind === 'section' && (item as any).node?.section === 'preview',
+            );
+            assert.ok(previewSection, 'Preview section was not found');
+            const previewItems = await provider.getChildren(previewSection);
+            const distItems = previewItems.filter((item) =>
+                getTreeItemLabel(item).replace(/^!/, '').startsWith('dist/'),
+            );
+            const previewState = previewItems
+                .filter((item) => (item as any).node?.kind === 'preview')
+                .map((item) => ({ label: getTreeItemLabel(item), status: (item as any).node?.status }));
+            assert.ok(
+                distItems.some((item) => (item as any).node?.status === 'include'),
+                `Preview should show the effective .securezipignore re-include: ${JSON.stringify(previewState)}`,
+            );
+            assert.ok(
+                !distItems.some((item) => (item as any).node?.status === 'git'),
+                'Preview should not show .gitignore as active for the re-included file',
+            );
+        } finally {
+            provider.dispose();
+        }
+
+        await removeIfExists(path.join(workspaceRoot, '.git'));
+        const { outPath, hashes } = await exportAndCollect('securezip-gitignore-override.zip');
+        try {
+            assert.ok('dist/release.txt' in hashes, '.securezipignore should restore the gitignored file');
+        } finally {
             await removeIfExists(outPath);
         }
     });
@@ -927,15 +1021,17 @@ suite('SecureZip Extension', function () {
         await config.update('includeNodeModules', true, vscode.ConfigurationTarget.Workspace);
 
         const workspaceRoot = getWorkspaceRoot();
+        const packageDir = path.join(workspaceRoot, 'node_modules', 'package');
+        await fs.promises.mkdir(packageDir, { recursive: true });
+        await fs.promises.writeFile(path.join(packageDir, '.env'), 'TOKEN=secret\n', 'utf8');
+        await fs.promises.writeFile(path.join(packageDir, 'private.pem'), 'secret\n', 'utf8');
         const gitignorePath = path.join(workspaceRoot, '.gitignore');
-        const gitignoreContents = 'dist/\ncoverage/\ntmp/\n';
+        const gitignoreContents = 'dist/\ncoverage/\ntmp/\nnode_modules/\n';
         await fs.promises.writeFile(gitignorePath, gitignoreContents, 'utf8');
 
         const { outPath, hashes } = await exportAndCollect('securezip-node-modules.zip');
         try {
             const expected = await loadExpectedHashes('simple-project', 'include-node-modules');
-            const expectedWithGitignore = { ...expected };
-            delete expectedWithGitignore['dist/release.txt'];
             const expectedGitignoreHash = createHash('sha256').update(gitignoreContents).digest('hex');
 
             assert.strictEqual(
@@ -943,7 +1039,13 @@ suite('SecureZip Extension', function () {
                 expected['node_modules/left.js'],
                 'Expected node_modules/left.js to remain included'
             );
-            assert.ok(!('dist/release.txt' in hashes), 'dist/release.txt should remain excluded by .gitignore');
+            assert.ok(!('node_modules/package/.env' in hashes), 'Expected nested .env to remain auto-excluded');
+            assert.ok(!('node_modules/package/private.pem' in hashes), 'Expected nested PEM to remain auto-excluded');
+            assert.strictEqual(
+                hashes['dist/release.txt'],
+                expected['dist/release.txt'],
+                '.securezipignore should restore dist/release.txt after .gitignore',
+            );
             assert.strictEqual(
                 hashes['README.md'],
                 expected['README.md'],
@@ -958,8 +1060,8 @@ suite('SecureZip Extension', function () {
 
             assert.deepStrictEqual(
                 Object.keys(hashes).sort(),
-                [...Object.keys(expectedWithGitignore), '.gitignore'].sort(),
-                'Export should match expected files when .gitignore excludes dist/'
+                [...Object.keys(expected), '.gitignore'].sort(),
+                'Export should match expected files after .securezipignore overrides .gitignore'
             );
         } finally {
             await config.update('includeNodeModules', undefined, vscode.ConfigurationTarget.Workspace);
