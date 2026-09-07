@@ -326,6 +326,39 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('re-includes files ignored by .gitignore when explicitly allowed by .securezipignore', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+
+        const workspaceRoot = getWorkspaceRoot();
+        const ignoredOnlyDir = path.join(workspaceRoot, 'ignored-only');
+        await fs.promises.mkdir(ignoredOnlyDir, { recursive: true });
+        await fs.promises.writeFile(path.join(ignoredOnlyDir, 'secret.txt'), 'ignored\n', 'utf8');
+        const gitignorePath = path.join(workspaceRoot, '.gitignore');
+        const gitignoreContents = 'dist/\nignored-only/\n';
+        await fs.promises.writeFile(gitignorePath, gitignoreContents, 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-reinclude-gitignored.zip');
+        try {
+            const expected: Record<string, string> = {
+                ...(await loadExpectedHashes('simple-project')),
+                '.gitignore': createHash('sha256').update(gitignoreContents).digest('hex'),
+            };
+            assert.deepStrictEqual(hashes, expected);
+            assert.ok(
+                hashes['dist/release.txt'],
+                'Expected dist/release.txt to be reinstated by .securezipignore despite .gitignore'
+            );
+            assert.ok(
+                !('ignored-only/secret.txt' in hashes),
+                'Expected unrelated .gitignore exclusions to remain effective'
+            );
+        } finally {
+            await removeIfExists(outPath);
+            await fs.promises.unlink(gitignorePath).catch(() => undefined);
+        }
+    });
+
     test('allows .securezipignore to re-include the .git directory explicitly', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
@@ -934,16 +967,19 @@ suite('SecureZip Extension', function () {
         const { outPath, hashes } = await exportAndCollect('securezip-node-modules.zip');
         try {
             const expected = await loadExpectedHashes('simple-project', 'include-node-modules');
-            const expectedWithGitignore = { ...expected };
-            delete expectedWithGitignore['dist/release.txt'];
             const expectedGitignoreHash = createHash('sha256').update(gitignoreContents).digest('hex');
+            const expectedWithGitignore = { ...expected, '.gitignore': expectedGitignoreHash };
 
             assert.strictEqual(
                 hashes['node_modules/left.js'],
                 expected['node_modules/left.js'],
                 'Expected node_modules/left.js to remain included'
             );
-            assert.ok(!('dist/release.txt' in hashes), 'dist/release.txt should remain excluded by .gitignore');
+            assert.strictEqual(
+                hashes['dist/release.txt'],
+                expected['dist/release.txt'],
+                'dist/release.txt should be re-included by .securezipignore despite .gitignore'
+            );
             assert.strictEqual(
                 hashes['README.md'],
                 expected['README.md'],
@@ -958,8 +994,8 @@ suite('SecureZip Extension', function () {
 
             assert.deepStrictEqual(
                 Object.keys(hashes).sort(),
-                [...Object.keys(expectedWithGitignore), '.gitignore'].sort(),
-                'Export should match expected files when .gitignore excludes dist/'
+                Object.keys(expectedWithGitignore).sort(),
+                'Export should preserve .securezipignore re-includes when .gitignore excludes dist/'
             );
         } finally {
             await config.update('includeNodeModules', undefined, vscode.ConfigurationTarget.Workspace);
