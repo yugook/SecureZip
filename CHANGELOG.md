@@ -6,6 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+- `.securezipignore` re-include rules now take priority over `.gitignore`, so
+  explicitly allowed files remain in exports even when Git ignores them.
+
 ## [1.2.1] - 2026-08-23
 
 - Recent Exports now keeps up to 10 exports per workspace or repository root instead of only the latest entry.

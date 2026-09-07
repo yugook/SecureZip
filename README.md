@@ -119,7 +119,8 @@ SecureZip respects the following when selecting files to include:
 
 - `# comment` and empty lines are ignored.
 - `pattern` excludes matches.
-- `!pattern` re-includes matches (overrides only `.securezipignore` excludes).
+- `!pattern` re-includes matches and takes priority over `.gitignore`, built-in
+  auto-excludes, and `secureZip.additionalExcludes`.
 - `/path` is treated as workspace-root relative.
 - `dir/` matches a directory (expanded to `dir/**`).
 
@@ -304,7 +305,8 @@ SecureZip はアーカイブに含めるファイルを選ぶ際、次のルー�
 
 - `# comment` や空行は無視されます。
 - `pattern` は一致した項目を除外します。
-- `!pattern` は一致した項目を再包含します（`.securezipignore` の除外のみを上書き）。
+- `!pattern` は一致した項目を再包含し、`.gitignore`、組み込みの自動除外、
+  `secureZip.additionalExcludes` より優先されます。
 - `/path` はワークスペースルートからの相対パスです。
 - `dir/` はディレクトリに一致し、`dir/**` に展開されます。
 

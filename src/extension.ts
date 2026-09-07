@@ -1020,7 +1020,7 @@ async function collectFilesForRoot(
         const reincluded = await globby(reincludePatterns, {
             cwd: root,
             dot: true,
-            gitignore: true,
+            gitignore: false,
             ignore: [],
             onlyFiles: true,
             followSymbolicLinks: false,
