@@ -11,6 +11,7 @@ import {
     normalizePathPattern,
 } from './ignoreHoverRules';
 import { normalizeIgnorePattern } from './ignore';
+import { resolvePatternPresence } from './effectiveIgnore';
 import { localize } from './nls';
 
 const DOCUMENT_SELECTOR: vscode.DocumentSelector = { scheme: 'file', pattern: '**/.securezipignore' };
@@ -302,58 +303,33 @@ async function buildGlobHover(
     rules: SensitiveRules,
     token: vscode.CancellationToken,
 ): Promise<vscode.MarkdownString> {
-    try {
-        const { globbyStream } = await import('globby');
-        const samples: string[] = [];
-        let hasMore = false;
+    const presence = await resolvePatternPresence(root, [globPattern || '.'], {
+        onlyFiles: true,
+        sampleLimit: MAX_GLOB_SAMPLES,
+    });
+    if (token.isCancellationRequested) {
+        return markdown;
+    }
 
-        for await (const entry of globbyStream(globPattern || '.', {
-            cwd: root,
-            dot: true,
-            gitignore: false,
-            followSymbolicLinks: false,
-            unique: true,
-        })) {
-            if (token.isCancellationRequested) {
-                return markdown;
-            }
-
-            const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
-            if (!value) {
-                continue;
-            }
-            if (samples.length < MAX_GLOB_SAMPLES) {
-                samples.push(value);
-            } else {
-                hasMore = true;
-                break;
-            }
+    for (const sample of presence.examples) {
+        if (isSensitiveValue(sample, rules)) {
+            return buildSecurityHover();
         }
+    }
 
-        for (const sample of samples) {
-            if (isSensitiveValue(sample, rules)) {
-                return buildSecurityHover();
-            }
-        }
+    markdown.appendMarkdown(`**${localize('ignore.hover.glob.title', 'Matches')}** \`${displayPattern}\``);
+    const countLabel = `${presence.examples.length}${presence.hasMore ? '+' : ''}`;
+    markdown.appendMarkdown(`\n\n${localize('ignore.hover.glob.count', 'Matches: {0}', countLabel)}`);
 
-        markdown.appendMarkdown(`**${localize('ignore.hover.glob.title', 'Matches')}** \`${displayPattern}\``);
-        const countLabel = `${samples.length}${hasMore ? '+' : ''}`;
-        markdown.appendMarkdown(`\n\n${localize('ignore.hover.glob.count', 'Matches: {0}', countLabel)}`);
-
-        if (samples.length === 0) {
-            markdown.appendMarkdown(`\n\n${localize('ignore.hover.glob.none', 'No matches found.')}`);
-            return markdown;
-        }
-
-        const sampleText = samples.map((sample) => `\`${sample}\``).join(', ');
-        markdown.appendMarkdown(`\n\n${localize('ignore.hover.glob.examples', 'Examples: {0}', sampleText)}`);
-        if (hasMore) {
-            markdown.appendMarkdown(`\n\n${localize('ignore.hover.glob.more', 'More matches exist.')}`);
-        }
-    } catch {
-        markdown.appendMarkdown(`**${localize('ignore.hover.glob.title', 'Matches')}** \`${displayPattern}\``);
-        markdown.appendMarkdown(`\n\n${localize('ignore.hover.glob.count', 'Matches: {0}', '0')}`);
+    if (presence.examples.length === 0) {
         markdown.appendMarkdown(`\n\n${localize('ignore.hover.glob.none', 'No matches found.')}`);
+        return markdown;
+    }
+
+    const sampleText = presence.examples.map((sample) => `\`${sample}\``).join(', ');
+    markdown.appendMarkdown(`\n\n${localize('ignore.hover.glob.examples', 'Examples: {0}', sampleText)}`);
+    if (presence.hasMore) {
+        markdown.appendMarkdown(`\n\n${localize('ignore.hover.glob.more', 'More matches exist.')}`);
     }
 
     return markdown;

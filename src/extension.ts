@@ -8,6 +8,7 @@ import archiver from 'archiver';
 import zipEncrypted from 'archiver-zip-encrypted';
 import simpleGit, { SimpleGit } from 'simple-git';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
+import { collectEffectiveFiles, createEffectiveIgnorePlan } from './effectiveIgnore';
 import { resolveFlags } from './flags';
 import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } from './ignore';
 import { registerIgnoreLanguageFeatures } from './ignoreLanguage';
@@ -970,68 +971,19 @@ async function collectFilesForRoot(
     root: string,
     options: { additionalExcludes: string[]; includeNodeModules: boolean },
 ): Promise<{ files: string[]; ignoreSnapshot: string[]; gitOverride: boolean }> {
-    const { globby } = await import('globby');
-    const ignoreDefaults = resolveAutoExcludePatterns({ includeNodeModules: options.includeNodeModules });
     const szIgnore = await loadSecureZipIgnore(root);
-    const ignoreSnapshot = [
-        ...szIgnore.excludes,
-        ...szIgnore.includes.map((pattern) => `!${pattern}`),
-    ];
-
-    const includePatternSet = new Set(szIgnore.includes);
-    if (includePatternSet.has('.git')) {
-        includePatternSet.add('.git/**');
-    }
-    const reincludePatterns = Array.from(includePatternSet);
-    const gitOverride = reincludePatterns.some(
-        (pattern) => pattern === '.git' || pattern === '.git/**' || pattern.startsWith('.git/'),
-    );
-
-    const patterns = ['**/*', '**/.*'];
-    const baseIgnore = [...ignoreDefaults, ...options.additionalExcludes, ...szIgnore.excludes];
-    const baseFiles = await globby(patterns, {
-        cwd: root,
-        dot: true,
-        gitignore: true,
-        ignore: baseIgnore,
-        onlyFiles: true,
-        followSymbolicLinks: false,
-        absolute: true,
+    const plan = createEffectiveIgnorePlan({
+        secureZipIgnore: szIgnore,
+        autoExcludePatterns: resolveAutoExcludePatterns({ includeNodeModules: options.includeNodeModules }),
+        additionalExcludePatterns: options.additionalExcludes,
+        configurationIncludePatterns: options.includeNodeModules ? ['node_modules/**'] : [],
     });
-
-    const fileSet = new Set<string>(baseFiles);
-
-    if (options.includeNodeModules) {
-        const nodeModuleFiles = await globby(['node_modules/**'], {
-            cwd: root,
-            dot: true,
-            gitignore: false,
-            ignore: baseIgnore,
-            onlyFiles: true,
-            followSymbolicLinks: false,
-            absolute: true,
-        });
-        for (const file of nodeModuleFiles) {
-            fileSet.add(file);
-        }
-    }
-
-    if (reincludePatterns.length > 0) {
-        const reincluded = await globby(reincludePatterns, {
-            cwd: root,
-            dot: true,
-            gitignore: true,
-            ignore: [],
-            onlyFiles: true,
-            followSymbolicLinks: false,
-            absolute: true,
-        });
-        for (const file of reincluded) {
-            fileSet.add(file);
-        }
-    }
-
-    return { files: Array.from(fileSet.values()), ignoreSnapshot, gitOverride };
+    const files = await collectEffectiveFiles(root, plan, { absolute: true });
+    return {
+        files,
+        ignoreSnapshot: [...plan.ignoreSnapshot],
+        gitOverride: plan.gitOverride,
+    };
 }
 
 function toArchivePath(relative: string): string {

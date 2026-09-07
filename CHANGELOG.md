@@ -6,6 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+- Unified effective ignore handling so `.securezipignore` re-includes now override matching `.gitignore` and built-in exclusions consistently in previews and exported ZIPs.
+
 ## [1.2.1] - 2026-08-23
 
 - Recent Exports now keeps up to 10 exports per workspace or repository root instead of only the latest entry.
