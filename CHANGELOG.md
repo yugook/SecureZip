@@ -6,6 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+## [1.2.2] - 2026-09-07
+
 - `.securezipignore` re-include rules now take priority over `.gitignore`, so
   explicitly allowed files remain in exports even when Git ignores them.
 
