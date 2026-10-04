@@ -179,7 +179,7 @@
     "archiver": "^7.0.1",
     "archiver-zip-encrypted": "^2.0.0",
     "globby": "^16.2.4",
-    "simple-git": "^3.36.0"
+    "simple-git": "^4.0.2"
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
