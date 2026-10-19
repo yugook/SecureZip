@@ -99,9 +99,8 @@ function createGitIgnorePredicate(cwd: string): (entry: Path) => boolean {
 
 async function expandDirectories(patterns: string[], cwd: string): Promise<string[]> {
     const expanded = await Promise.all(patterns.map(async (pattern) => {
-        // Extensionless and dot-prefixed recursive names can denote files or directories.
-        if (/\*\*\/[^/*?\[\]{}]+$/.test(pattern) &&
-            (!path.posix.extname(pattern) || path.posix.basename(pattern).startsWith('.'))) {
+        // A recursive literal name can denote a file or a directory, regardless of its extension.
+        if (/\*\*\/[^/*?\[\]{}]+$/.test(pattern)) {
             return [pattern, `${pattern}/**`];
         }
         if (!hasMagic(pattern)) {
@@ -135,7 +134,9 @@ export async function* globFileStream(
         ...(options.ignore ?? []),
         ...inputs.filter(isNegativePattern).map((pattern) => pattern.slice(1)),
     ], cwd);
-    const excluded = new Ignore(negative, { dot: true, nocase: false });
+    // Excluding a matching directory also excludes its descendants, including for wildcard names.
+    const excluded = new Ignore(negative.flatMap((pattern) => pattern.endsWith('/**')
+        ? [pattern] : [pattern, `${pattern.replace(/\/+$/, '')}/**`]), { dot: true, nocase: false });
     const gitIgnored = options.gitignore ? createGitIgnorePredicate(cwd) : () => false;
     const symbolicDirectories = new Map<string, boolean>();
     const hasSymbolicParent = (fullPath: string): boolean => {

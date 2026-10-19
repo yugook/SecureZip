@@ -122,6 +122,28 @@ describe('secure file globbing', () => {
         }
     });
 
+    it('recursively excludes ordinary dotted directories without losing same-name file matches', async () => {
+        for (const name of ['cache.v1', 'cache.v1.tar.gz']) {
+            await write(name);
+            await write(`nested/${name}/private.txt`);
+            await write(`nested/${name}/deeper/private.key`);
+        }
+        await write('nested/cache.v2/keep.txt');
+        const options = { cwd: root, dot: true };
+        const patterns = ['**/cache.v1', '**/cache.v1.tar.gz'];
+        for (const excluded of [patterns, ['**/cache.v1*']]) {
+            assert.deepStrictEqual(await globFiles('**/*', { ...options, ignore: excluded }), ['nested/cache.v2/keep.txt']);
+            assert.deepStrictEqual(await globFiles(['**/*', ...excluded.map((pattern) => `!${pattern}`)], options), ['nested/cache.v2/keep.txt']);
+            assert.deepStrictEqual(await globFiles('nested/cache.v1/private.txt', { ...options, ignore: excluded }), []);
+        }
+        assert.deepStrictEqual((await globFiles('**/cache.v1', options)).sort(), [
+            'cache.v1', 'nested/cache.v1/deeper/private.key', 'nested/cache.v1/private.txt',
+        ]);
+        assert.deepStrictEqual((await globFiles('nested/**/cache.v1', options)).sort(), [
+            'nested/cache.v1/deeper/private.key', 'nested/cache.v1/private.txt',
+        ]);
+    });
+
     it('distinguishes negated extglobs from negative patterns', async () => {
         await write('README.md');
         await write('LICENSE');

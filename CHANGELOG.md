@@ -12,6 +12,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
   commit labels and review activity notifications.
 - Restored recursive re-includes for dotted hidden directories and require present
   security reviews to finish cleanly on the reviewed commit before approving summaries.
+- Fixed recursive exclusions for ordinary dotted directory names and wildcard
+  directory matches so their contents remain out of exported archives.
 
 ## [1.2.2] - 2026-09-07
 

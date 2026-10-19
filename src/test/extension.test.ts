@@ -308,6 +308,31 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('excludes ordinary dotted directories recursively from the exported ZIP', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const root = getWorkspaceRoot();
+        const excluded = ['cache.v1/private.txt', 'nested/cache.v1/deeper/private.txt', 'nested/cache.v1.tar.gz/private.txt'];
+        for (const relative of [...excluded, 'nested/cache.v2/keep.txt']) {
+            const file = path.join(root, relative);
+            await fs.promises.mkdir(path.dirname(file), { recursive: true });
+            await fs.promises.writeFile(file, 'fixture\n', 'utf8');
+        }
+        await fs.promises.appendFile(path.join(root, '.securezipignore'), '\n**/cache.v1\n**/cache.v1.tar.*\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-dotted-directories.zip');
+        try {
+            for (const relative of excluded) {
+                assert.ok(!Object.hasOwn(hashes, relative), `${relative} must not be exported`);
+            }
+            assert.ok(hashes['nested/cache.v2/keep.txt'], 'Unmatched dotted directories must remain included');
+            assert.ok(hashes['src/index.ts'], 'Ordinary source files must remain included');
+            assert.ok(hashes['dist/release.txt'], 'Existing explicit re-includes must remain effective');
+        } finally {
+            await removeIfExists(outPath);
+        }
+    });
+
     test('re-includes files overridden by .securezipignore despite additional excludes', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
