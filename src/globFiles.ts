@@ -109,7 +109,8 @@ async function expandDirectories(patterns: string[], cwd: string): Promise<strin
                     return `${pattern.replace(/\/$/, '')}/**`;
                 }
             } catch (error) {
-                if (!isMissing(error)) {
+                // A literalized glob can exceed POSIX filename limits without denoting a directory.
+                if (!isMissing(error) && (error as NodeJS.ErrnoException).code !== 'ENAMETOOLONG') {
                     throw error;
                 }
             }

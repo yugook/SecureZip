@@ -8,6 +8,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Updated vulnerable dependencies and replaced the globbing backend while preserving
   Git ignore rules, explicit re-includes, and symbolic-link exclusions.
+- Fixed long-pattern handling on Linux and AI review gate parsing of formatted
+  commit labels and review activity notifications.
 
 ## [1.2.2] - 2026-09-07
 

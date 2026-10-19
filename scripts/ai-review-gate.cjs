@@ -95,7 +95,7 @@ async function main() {
       .filter(isBotAuthored)
       .filter((comment) => activeBotReviewIds.has(comment.pull_request_review_id))
       .map(reviewCommentToCandidate),
-  ].filter((candidate) => candidate.body || candidate.commitSha);
+  ].filter((candidate) => candidate && (candidate.body || candidate.commitSha));
 
   const latestCurrentCandidate = selectLatestCurrentCandidate(candidates, headSha);
   const currentBlockers = latestCurrentCandidate ? collectBlockers([latestCurrentCandidate]) : [];
@@ -311,13 +311,44 @@ function reviewToCandidate(review) {
 }
 
 function issueCommentToCandidate(comment) {
+  let commitSha = extractReviewedCommit(comment.body);
+  if (comment.body?.startsWith('<!-- codex-pull-request-review-summary -->')) {
+    commitSha = extractCompletedSummaryCommit(comment.body);
+    // Progress or ambiguous summaries cannot approve a commit; retain explicit blockers.
+    if (!commitSha && collectBlockers([{ body: comment.body, source: `issue comment ${comment.id}` }]).length === 0) {
+      return null;
+    }
+  }
+
   return {
     body: comment.body || '',
-    commitSha: extractReviewedCommit(comment.body),
+    commitSha,
     groupKey: `issue-comment:${comment.id}`,
     source: `issue comment ${comment.id}`,
     submittedAt: parseTimestamp(comment.updated_at || comment.created_at),
   };
+}
+
+function extractCompletedSummaryCommit(body) {
+  const match = body.match(/^<!-- codex-review-state:v1 (.+) -->\r?$/m);
+  if (!match) {
+    return null;
+  }
+
+  try {
+    const state = JSON.parse(match[1]);
+    const review = state?.code_review;
+    const security = state?.security_review;
+    if (review?.status === 'completed' &&
+        review.has_any_findings === false && review.has_unresolved_findings === false &&
+        typeof review.commit_sha === 'string' && /^[0-9a-f]{40}$/i.test(review.commit_sha) &&
+        security?.has_any_findings !== true && security?.has_unresolved_findings !== true) {
+      return review.commit_sha.toLowerCase();
+    }
+  } catch {
+    // Malformed metadata is not a completed review result.
+  }
+  return null;
 }
 
 function reviewCommentToCandidate(comment) {
@@ -337,7 +368,7 @@ function extractReviewedCommit(body) {
     return null;
   }
 
-  const match = body.match(/(?:reviewed commit|レビュー済みコミット)\s*[:：]\s*`?([0-9a-f]{7,40})`?/i);
+  const match = body.match(/(?:reviewed commit|レビュー済みコミット)(?:\*\*|__)?\s*[:：](?:\*\*|__)?\s*`?([0-9a-f]{7,40})`?/i);
   return match?.[1]?.toLowerCase() || null;
 }
 
@@ -580,8 +611,10 @@ function fail(message) {
 
 module.exports = {
   collectBlockers,
+  extractReviewedCommit,
   extractPriorityLevel,
   groupCandidates,
+  issueCommentToCandidate,
   matchesCommit,
   resolvePullRequestNumber,
   readRelayPullRequestNumber,

@@ -130,6 +130,29 @@ describe('secure file globbing', () => {
         assert.strictEqual(count, 1);
     });
 
+    it('treats a POSIX filename-length error as a non-directory during expansion', async () => {
+        const originalLstat = fs.promises.lstat;
+        fs.promises.lstat = async () => {
+            throw Object.assign(new Error('name too long'), { code: 'ENAMETOOLONG' });
+        };
+        try {
+            assert.deepStrictEqual(await globFiles('missing-literal', { cwd: root }), []);
+        } finally {
+            fs.promises.lstat = originalLstat;
+        }
+    });
+
+    it('propagates directory-probe permission errors', async () => {
+        const originalLstat = fs.promises.lstat;
+        const denied = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+        fs.promises.lstat = async () => { throw denied; };
+        try {
+            await assert.rejects(globFiles('unreadable', { cwd: root }), denied);
+        } finally {
+            fs.promises.lstat = originalLstat;
+        }
+    });
+
     it('bounds nested, comma-chain and quadratic brace payloads without crashing the process', async function () {
         this.timeout(10000);
         const source = `
@@ -148,9 +171,11 @@ describe('secure file globbing', () => {
                 console.log('bounded');
             })().catch(error => { console.error(error); process.exitCode = 1; });
         `;
+        // An empty value disables Node's automatic propagation of V8 coverage to this timing probe.
+        const workerEnv = { ...process.env, ELECTRON_RUN_AS_NODE: '1', NODE_V8_COVERAGE: '' };
         const { stdout } = await execFileAsync(process.execPath, ['-e', source, require.resolve('../globFiles'), root], {
             timeout: 8000,
-            env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+            env: workerEnv,
         });
         assert.match(stdout, /bounded/);
     });
