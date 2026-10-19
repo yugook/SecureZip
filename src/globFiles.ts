@@ -99,8 +99,9 @@ function createGitIgnorePredicate(cwd: string): (entry: Path) => boolean {
 
 async function expandDirectories(patterns: string[], cwd: string): Promise<string[]> {
     const expanded = await Promise.all(patterns.map(async (pattern) => {
-        // A recursive name can denote either an extensionless file or a directory.
-        if (/\*\*\/[^/*?\[\]{}]+$/.test(pattern) && !path.posix.extname(pattern)) {
+        // Extensionless and dot-prefixed recursive names can denote files or directories.
+        if (/\*\*\/[^/*?\[\]{}]+$/.test(pattern) &&
+            (!path.posix.extname(pattern) || path.posix.basename(pattern).startsWith('.'))) {
             return [pattern, `${pattern}/**`];
         }
         if (!hasMagic(pattern)) {

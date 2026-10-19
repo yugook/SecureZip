@@ -103,10 +103,52 @@ describe('ai-review-gate', () => {
             ]) {
                 assert.strictEqual(gate.issueCommentToCandidate(summaryComment(review)), null);
             }
-            assert.strictEqual(gate.issueCommentToCandidate(summaryComment(clean, { has_any_findings: true })), null);
+            assert.ok(!gate.issueCommentToCandidate(summaryComment(clean, { has_any_findings: true }))?.commitSha);
             const malformed = summaryComment(clean);
             malformed.body = malformed.body.replace('"code_review":', 'invalid-json:');
             assert.strictEqual(gate.issueCommentToCandidate(malformed), null);
+        });
+
+        it('requires a present security review to be completed, explicitly clean and for the same commit', () => {
+            const clean = {
+                status: 'completed', commit_sha: '684a1d9ecddd3f163e593dc79c3513f03e7dd331',
+                has_any_findings: false, has_unresolved_findings: false,
+            };
+            for (const security of [null, clean, { ...clean, commit_sha: clean.commit_sha.toUpperCase() }]) {
+                assert.strictEqual(gate.issueCommentToCandidate(summaryComment(clean, security))?.commitSha, clean.commit_sha);
+            }
+            const absent = summaryComment(clean);
+            absent.body = absent.body.replace(',"security_review":null', '');
+            assert.strictEqual(gate.issueCommentToCandidate(absent)?.commitSha, clean.commit_sha);
+
+            const older = gate.issueCommentToCandidate({
+                id: 1, body: `Reviewed commit: ${clean.commit_sha}`,
+                created_at: '2026-10-19T13:00:00Z',
+            });
+            assert.ok(older);
+            for (const security of [
+                { ...clean, status: 'running' },
+                { ...clean, status: 'failed' },
+                { ...clean, status: null },
+                { ...clean, has_any_findings: true },
+                { ...clean, has_unresolved_findings: true },
+                { ...clean, has_any_findings: null },
+                { ...clean, has_unresolved_findings: undefined },
+                { status: 'completed' },
+                { ...clean, commit_sha: 'c25a71f7a231ca633de9bcd1ba15d4503f08ad1f' },
+                { ...clean, commit_sha: undefined },
+                { status: null, commit_sha: null, has_any_findings: null, has_unresolved_findings: null },
+                {}, false,
+            ]) {
+                const candidate = gate.issueCommentToCandidate(summaryComment(clean, security));
+                assert.ok(candidate, JSON.stringify(security));
+                assert.ok(!candidate.commitSha, JSON.stringify(security));
+                for (const submittedAt of [older.submittedAt, candidate.submittedAt]) {
+                    const candidates: Candidate[] = [{ ...older, submittedAt }, candidate];
+                    const current = gate.selectLatestCurrentCandidate(candidates, clean.commit_sha);
+                    assert.deepStrictEqual(gate.selectLatestNonCurrentCandidate(candidates, clean.commit_sha, current), candidate);
+                }
+            }
         });
     });
 

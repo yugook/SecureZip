@@ -313,9 +313,11 @@ function reviewToCandidate(review) {
 function issueCommentToCandidate(comment) {
   let commitSha = extractReviewedCommit(comment.body);
   if (comment.body?.startsWith('<!-- codex-pull-request-review-summary -->')) {
-    commitSha = extractCompletedSummaryCommit(comment.body);
-    // Progress or ambiguous summaries cannot approve a commit; retain explicit blockers.
-    if (!commitSha && collectBlockers([{ body: comment.body, source: `issue comment ${comment.id}` }]).length === 0) {
+    const state = parseSummaryState(comment.body);
+    commitSha = extractCompletedSummaryCommit(state);
+    // A present but unapproved security result must also block fallback to an older clean review.
+    if (!commitSha && state?.security_review == null &&
+        collectBlockers([{ body: comment.body, source: `issue comment ${comment.id}` }]).length === 0) {
       return null;
     }
   }
@@ -329,24 +331,31 @@ function issueCommentToCandidate(comment) {
   };
 }
 
-function extractCompletedSummaryCommit(body) {
+function parseSummaryState(body) {
   const match = body.match(/^<!-- codex-review-state:v1 (.+) -->\r?$/m);
   if (!match) {
     return null;
   }
 
   try {
-    const state = JSON.parse(match[1]);
-    const review = state?.code_review;
-    const security = state?.security_review;
-    if (review?.status === 'completed' &&
-        review.has_any_findings === false && review.has_unresolved_findings === false &&
-        typeof review.commit_sha === 'string' && /^[0-9a-f]{40}$/i.test(review.commit_sha) &&
-        security?.has_any_findings !== true && security?.has_unresolved_findings !== true) {
-      return review.commit_sha.toLowerCase();
-    }
+    return JSON.parse(match[1]);
   } catch {
     // Malformed metadata is not a completed review result.
+  }
+  return null;
+}
+
+function extractCompletedSummaryCommit(state) {
+  const review = state?.code_review;
+  const security = state?.security_review;
+  if (review?.status === 'completed' &&
+      review.has_any_findings === false && review.has_unresolved_findings === false &&
+      typeof review.commit_sha === 'string' && /^[0-9a-f]{40}$/i.test(review.commit_sha) &&
+      (security == null || (security.status === 'completed' &&
+        security.has_any_findings === false && security.has_unresolved_findings === false &&
+        typeof security.commit_sha === 'string' &&
+        security.commit_sha.toLowerCase() === review.commit_sha.toLowerCase()))) {
+    return review.commit_sha.toLowerCase();
   }
   return null;
 }
@@ -391,8 +400,8 @@ function selectLatestCurrentCandidate(candidates, headSha) {
 }
 
 function selectLatestNonCurrentCandidate(candidates, headSha, latestCurrentCandidate = null) {
-  const latestCandidate = selectLatestCandidate(candidates);
-  if (!latestCandidate || matchesCommit(headSha, latestCandidate.commitSha)) {
+  const latestCandidate = selectLatestCandidate(candidates.filter((candidate) => !matchesCommit(headSha, candidate.commitSha)));
+  if (!latestCandidate) {
     return null;
   }
 

@@ -101,6 +101,27 @@ describe('secure file globbing', () => {
         assert.deepStrictEqual(await globFiles('**/*', { cwd: root, ignore: ['**/LICENSE'] }), []);
     });
 
+    it('re-includes dotted hidden directories and retains matching files', async () => {
+        await write('.gitignore', '**/.config.json/\n');
+        await write('.config.json');
+        await write('nested/.config.json/file.txt');
+        await write('nested/.config.json/deeper/child.txt');
+        await write('nested/config.json');
+        const options = { cwd: root, dot: true };
+        const descendants = ['nested/.config.json/deeper/child.txt', 'nested/.config.json/file.txt'];
+        const base = await globFiles('**/*', { ...options, gitignore: true, ignore: ['**/.gitignore'] });
+        assert.deepStrictEqual(base.sort(), ['.config.json', 'nested/config.json']);
+        const included = await globFiles('**/.config.json', { ...options, gitignore: false });
+        assert.deepStrictEqual(included.sort(), ['.config.json', ...descendants]);
+        assert.deepStrictEqual(await globFiles('**/config.json', options), ['nested/config.json']);
+        for (const files of [
+            await globFiles('**/*', { ...options, ignore: ['**/.config.json', '**/.gitignore'] }),
+            await globFiles(['**/*', '!**/.config.json', '!**/.gitignore'], options),
+        ]) {
+            assert.deepStrictEqual(files, ['nested/config.json']);
+        }
+    });
+
     it('distinguishes negated extglobs from negative patterns', async () => {
         await write('README.md');
         await write('LICENSE');
