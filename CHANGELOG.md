@@ -6,6 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+- Updated vulnerable dependencies and replaced the globbing backend while preserving
+  Git ignore rules, explicit re-includes, and symbolic-link exclusions.
+
 ## [1.2.2] - 2026-09-07
 
 - `.securezipignore` re-include rules now take priority over `.gitignore`, so

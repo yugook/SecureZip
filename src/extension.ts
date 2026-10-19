@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import archiver from 'archiver';
 import zipEncrypted from 'archiver-zip-encrypted';
-import simpleGit, { SimpleGit } from 'simple-git';
+import { simpleGit, SimpleGit } from 'simple-git';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { resolveFlags } from './flags';
 import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } from './ignore';
@@ -970,7 +970,7 @@ async function collectFilesForRoot(
     root: string,
     options: { additionalExcludes: string[]; includeNodeModules: boolean },
 ): Promise<{ files: string[]; ignoreSnapshot: string[]; gitOverride: boolean }> {
-    const { globby } = await import('globby');
+    const { globFiles } = await import('./globFiles.js');
     const ignoreDefaults = resolveAutoExcludePatterns({ includeNodeModules: options.includeNodeModules });
     const szIgnore = await loadSecureZipIgnore(root);
     const ignoreSnapshot = [
@@ -989,7 +989,7 @@ async function collectFilesForRoot(
 
     const patterns = ['**/*', '**/.*'];
     const baseIgnore = [...ignoreDefaults, ...options.additionalExcludes, ...szIgnore.excludes];
-    const baseFiles = await globby(patterns, {
+    const baseFiles = await globFiles(patterns, {
         cwd: root,
         dot: true,
         gitignore: true,
@@ -1002,7 +1002,7 @@ async function collectFilesForRoot(
     const fileSet = new Set<string>(baseFiles);
 
     if (options.includeNodeModules) {
-        const nodeModuleFiles = await globby(['node_modules/**'], {
+        const nodeModuleFiles = await globFiles(['node_modules/**'], {
             cwd: root,
             dot: true,
             gitignore: false,
@@ -1017,7 +1017,7 @@ async function collectFilesForRoot(
     }
 
     if (reincludePatterns.length > 0) {
-        const reincluded = await globby(reincludePatterns, {
+        const reincluded = await globFiles(reincludePatterns, {
             cwd: root,
             dot: true,
             gitignore: false,

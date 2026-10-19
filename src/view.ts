@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import simpleGit from 'simple-git';
+import { simpleGit } from 'simple-git';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { localize } from './nls';
@@ -790,11 +790,11 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 }
 
                 try {
-                    const { globbyStream } = await import('globby');
+                    const { globFileStream } = await import('./globFiles.js');
                     const examples: string[] = [];
                     let hasMore = false;
                     const SAMPLE_LIMIT = 3;
-                    for await (const entry of globbyStream(relative || '.', {
+                    for await (const entry of globFileStream(relative || '.', {
                         cwd: root,
                         dot: true,
                         gitignore: false,
@@ -1038,8 +1038,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             options?: { onlyFiles?: boolean },
         ): Promise<AutoExcludePresence> => {
             try {
-                const { globbyStream } = await import('globby');
-                const streamOptions: { [key: string]: unknown } = {
+                const { globFileStream } = await import('./globFiles.js');
+                const streamOptions: import('./globFiles').FileGlobOptions = {
                     cwd: root,
                     dot: true,
                     gitignore: false,
@@ -1051,7 +1051,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 }
                 const examples: string[] = [];
                 let hasMore = false;
-                for await (const entry of globbyStream(pattern, streamOptions)) {
+                for await (const entry of globFileStream(pattern, streamOptions)) {
                     const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
                     if (!value) {
                         continue;
@@ -1443,8 +1443,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
 
         if (candidate.glob) {
-            const { globby } = await import('globby');
-            const matches = await globby(candidate.glob, {
+            const { globFiles } = await import('./globFiles.js');
+            const matches = await globFiles(candidate.glob, {
                 cwd: root,
                 dot: true,
                 onlyFiles: candidate.type !== 'dir',

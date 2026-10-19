@@ -303,11 +303,11 @@ async function buildGlobHover(
     token: vscode.CancellationToken,
 ): Promise<vscode.MarkdownString> {
     try {
-        const { globbyStream } = await import('globby');
+        const { globFileStream } = await import('./globFiles.js');
         const samples: string[] = [];
         let hasMore = false;
 
-        for await (const entry of globbyStream(globPattern || '.', {
+        for await (const entry of globFileStream(globPattern || '.', {
             cwd: root,
             dot: true,
             gitignore: false,

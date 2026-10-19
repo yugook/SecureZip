@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import AdmZip from 'adm-zip';
-import simpleGit from 'simple-git';
+import { simpleGit } from 'simple-git';
 import * as vscode from 'vscode';
 
 const fixturesRoot = path.join(__dirname, '..', '..', 'src', 'test', 'fixtures');
