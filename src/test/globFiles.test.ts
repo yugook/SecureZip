@@ -5,7 +5,6 @@ import * as path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { afterEach, beforeEach, describe, it } from 'mocha';
-import { simpleGit } from 'simple-git';
 import { globFiles, globFileStream } from '../globFiles';
 
 const execFileAsync = promisify(execFile);
@@ -173,13 +172,111 @@ describe('secure file globbing', () => {
         assert.strictEqual(count, 1);
     });
 
-    it('treats a POSIX filename-length error as a non-directory during expansion', async () => {
-        const originalLstat = fs.promises.lstat;
-        fs.promises.lstat = async () => {
-            throw Object.assign(new Error('name too long'), { code: 'ENAMETOOLONG' });
-        };
+    it('finishes missing nested re-includes and previews without an unhandled error', async () => {
+        for (const gitignore of [false, true]) {
+            assert.deepStrictEqual(await globFiles('missing/parent/file.txt', { cwd: root, gitignore }), []);
+        }
+    });
+
+    it('rejects a directory named .gitignore instead of leaving the stream pending', async () => {
+        await write('sub/.gitignore/entry.txt');
+        await assert.rejects(globFiles('**/*', { cwd: root, dot: true, gitignore: true }), { code: 'EISDIR' });
+    });
+
+    it('propagates Git ignore read errors with their original cause', async () => {
+        await write('sub/file.txt');
+        const original = fs.promises.readFile;
+        const denied = Object.assign(new Error('gitignore denied'), { code: 'EACCES' });
+        fs.promises.readFile = (async (file: fs.PathLike) => {
+            if (path.basename(String(file)) === '.gitignore') {
+                throw denied;
+            }
+            return original(file);
+        }) as typeof fs.promises.readFile;
         try {
-            assert.deepStrictEqual(await globFiles('missing-literal', { cwd: root }), []);
+            await assert.rejects(globFiles('**/*', { cwd: root, gitignore: true }), (error) => error === denied);
+        } finally {
+            fs.promises.readFile = original;
+        }
+    });
+
+    it('rejects unreadable directory contents instead of exporting an incomplete result', async () => {
+        await write('blocked/private.txt');
+        const original = fs.promises.readdir;
+        for (const code of ['EACCES', 'ENAMETOOLONG', 'ELOOP', 'EIO']) {
+            const denied = Object.assign(new Error('directory read failed'), { code });
+            fs.promises.readdir = (async (directory: fs.PathLike, options: unknown) => {
+                if (path.relative(path.join(root, 'blocked'), String(directory)) === '') {
+                    throw denied;
+                }
+                return original(directory, options as { withFileTypes: true });
+            }) as typeof fs.promises.readdir;
+            try {
+                await assert.rejects(globFiles('**/*', { cwd: root }), (error) => error === denied);
+            } finally {
+                fs.promises.readdir = original;
+            }
+        }
+        assert.deepStrictEqual(await globFiles('**/*', { cwd: root }), ['blocked/private.txt']);
+    });
+
+    it('propagates stat errors that the glob backend would otherwise suppress', async () => {
+        await write('keep.txt');
+        const original = fs.promises.lstat;
+        for (const code of ['EACCES', 'ENAMETOOLONG']) {
+            const denied = Object.assign(new Error('stat failed'), { code });
+            fs.promises.lstat = (async (file: fs.PathLike) => {
+                if (path.relative(root, String(file)) === '') {
+                    throw denied;
+                }
+                return original(file);
+            }) as typeof fs.promises.lstat;
+            try {
+                await assert.rejects(globFiles('**/*', { cwd: root }), (error) => error === denied);
+            } finally {
+                fs.promises.lstat = original;
+            }
+        }
+    });
+
+    it('does not perform synchronous filesystem I/O while walking and reading Git rules', async () => {
+        await write('.gitignore', 'drop.txt\n');
+        await write('drop.txt');
+        await write('nested/keep.txt');
+        const originals = { lstatSync: fs.lstatSync, readFileSync: fs.readFileSync, existsSync: fs.existsSync };
+        const nativeFs: typeof fs = require('fs');
+        const unexpected = (): never => { throw new Error('unexpected synchronous I/O'); };
+        Object.assign(nativeFs, { lstatSync: unexpected, readFileSync: unexpected, existsSync: unexpected });
+        try {
+            assert.deepStrictEqual(await globFiles('**/*', { cwd: root, gitignore: true }), ['nested/keep.txt']);
+        } finally {
+            Object.assign(nativeFs, originals);
+        }
+    });
+
+    it('counts depth from each static pattern base, including mixed and brace-expanded bases', async () => {
+        for (const file of ['root.log', 'one/child.log', 'one/two/deep.log', 'x/y/root.log', 'x/y/one/child.log', 'x/y/one/two/deep.log']) {
+            await write(file);
+        }
+        assert.deepStrictEqual((await globFiles(['**/*.log', 'x/y/**/*.log'], { cwd: root, deep: 1 })).sort(), ['root.log', 'x/y/root.log']);
+        assert.deepStrictEqual((await globFiles('{x/y,one}/**/*.log', { cwd: root, deep: 1 })).sort(), ['one/child.log', 'x/y/root.log']);
+        for (const pattern of ['./x/y/**/*.log', `${root.split(path.sep).join('/')}/x/y/**/*.log`, 'x/y']) {
+            assert.deepStrictEqual(await globFiles(pattern, { cwd: root, deep: 1 }), ['x/y/root.log']);
+        }
+        assert.deepStrictEqual(await globFiles('../one/**/*.log', { cwd: path.join(root, 'x'), deep: 1 }), ['../one/child.log']);
+        assert.deepStrictEqual(await globFiles('@(x|one)/**/*.log', { cwd: root, deep: 2 }), ['one/child.log']);
+    });
+
+    it('reports filename-length failures when a literal search reaches the filesystem', async () => {
+        const originalLstat = fs.promises.lstat;
+        fs.promises.lstat = (async (file: fs.PathLike) => {
+            if (path.basename(String(file)) === 'missing-literal') {
+                throw Object.assign(new Error('name too long'), { code: 'ENAMETOOLONG' });
+            }
+            return originalLstat(file);
+        }) as typeof fs.promises.lstat;
+        try {
+            await assert.rejects(globFiles('missing-literal', { cwd: root }), { code: 'ENAMETOOLONG' });
         } finally {
             fs.promises.lstat = originalLstat;
         }
@@ -205,11 +302,19 @@ describe('secure file globbing', () => {
                 '{' + 'a,'.repeat(15000) + 'b}',
                 '{a}' + '}'.repeat(32000) + ',z}',
             ];
+            const run = async (operation) => {
+                try {
+                    await operation();
+                } catch (error) {
+                    // POSIX may reject a literalized payload at its filename limit; that error must be catchable.
+                    if (error.code !== 'ENAMETOOLONG') throw error;
+                }
+            };
             (async () => {
                 for (const pattern of patterns) {
-                    await globFiles(pattern, { cwd: process.argv[2] });
-                    await globFiles('**/*', { cwd: process.argv[2], ignore: [pattern] });
-                    await globFiles(['**/*', '!' + pattern], { cwd: process.argv[2] });
+                    await run(() => globFiles(pattern, { cwd: process.argv[2] }));
+                    await run(() => globFiles('**/*', { cwd: process.argv[2], ignore: [pattern] }));
+                    await run(() => globFiles(['**/*', '!' + pattern], { cwd: process.argv[2] }));
                 }
                 console.log('bounded');
             })().catch(error => { console.error(error); process.exitCode = 1; });
@@ -223,12 +328,4 @@ describe('secure file globbing', () => {
         assert.match(stdout, /bounded/);
     });
 
-    it('rejects explicit VISUAL editor injection while ordinary Git commands still work', async () => {
-        await assert.rejects(
-            simpleGit(root).env({ VISUAL: 'securezip-must-not-run', TERM: 'xterm' }).raw(['var', 'GIT_EDITOR']),
-            /unsafe|VISUAL|environment/i,
-        );
-        const version = await simpleGit(root).version();
-        assert.strictEqual(version.installed, true);
-    });
 });

@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { simpleGit } from 'simple-git';
+import { createGit } from './git';
+import { globFiles, globFileStream, FileGlobOptions } from './globFiles';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { localize } from './nls';
@@ -790,7 +791,6 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 }
 
                 try {
-                    const { globFileStream } = await import('./globFiles.js');
                     const examples: string[] = [];
                     let hasMore = false;
                     const SAMPLE_LIMIT = 3;
@@ -799,9 +799,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                         dot: true,
                         gitignore: false,
                         followSymbolicLinks: false,
-                        unique: true,
                     })) {
-                        const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
+                        const value = entry;
                         if (!value) {
                             continue;
                         }
@@ -1038,13 +1037,11 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             options?: { onlyFiles?: boolean },
         ): Promise<AutoExcludePresence> => {
             try {
-                const { globFileStream } = await import('./globFiles.js');
-                const streamOptions: import('./globFiles').FileGlobOptions = {
+                const streamOptions: FileGlobOptions = {
                     cwd: root,
                     dot: true,
                     gitignore: false,
                     followSymbolicLinks: false,
-                    unique: true,
                 };
                 if (typeof options?.onlyFiles === 'boolean') {
                     streamOptions.onlyFiles = options.onlyFiles;
@@ -1052,7 +1049,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 const examples: string[] = [];
                 let hasMore = false;
                 for await (const entry of globFileStream(pattern, streamOptions)) {
-                    const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
+                    const value = entry;
                     if (!value) {
                         continue;
                     }
@@ -1178,7 +1175,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     }
 
     private async buildGitIgnorePreviewItems(root: string): Promise<{ entries: PreviewEntry[] }> {
-        const git = simpleGit(root);
+        const git = createGit(root);
 
         let isRepo = false;
         try {
@@ -1443,7 +1440,6 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
 
         if (candidate.glob) {
-            const { globFiles } = await import('./globFiles.js');
             const matches = await globFiles(candidate.glob, {
                 cwd: root,
                 dot: true,

@@ -291,6 +291,26 @@ suite('SecureZip Extension', function () {
         log('test: cancel export - completed');
     });
 
+    test('finishes export and ignore preview when a nested re-include does not exist', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const root = getWorkspaceRoot();
+        await removeIfExists(path.join(root, 'dist'));
+        const { outPath, hashes } = await exportAndCollect('securezip-missing-reinclude.zip');
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            assert.ok(hashes['src/index.ts']);
+            assert.ok(!Object.hasOwn(hashes, 'dist/release.txt'));
+            const sections = await provider.getChildren();
+            const preview = sections.find((item) => (item as any).node?.section === 'preview');
+            assert.ok(preview);
+            await provider.getChildren(preview);
+        } finally {
+            provider.dispose();
+            await removeIfExists(outPath);
+        }
+    });
+
     test('applies additionalExcludes patterns to the export set', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
@@ -973,6 +993,25 @@ suite('SecureZip Extension', function () {
             assert.deepStrictEqual(hashes, expected);
         } finally {
             await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('preserves explicit named-directory re-includes above built-in secret exclusions', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const root = getWorkspaceRoot();
+        await fs.promises.mkdir(path.join(root, 'nested/cfg'), { recursive: true });
+        await fs.promises.writeFile(path.join(root, 'nested/cfg/.env'), 'CONFIG=1\n');
+        await fs.promises.writeFile(path.join(root, 'nested/cfg/x.key'), 'fixture key\n');
+        await fs.promises.writeFile(path.join(root, '.env'), 'PRIVATE=1\n');
+        await fs.promises.appendFile(path.join(root, '.securezipignore'), '\n!**/cfg\n');
+        const { outPath, hashes } = await exportAndCollect('securezip-named-directory-reinclude.zip');
+        try {
+            assert.ok(hashes['nested/cfg/.env']);
+            assert.ok(hashes['nested/cfg/x.key']);
+            assert.ok(!Object.hasOwn(hashes, '.env'), 'Unmatched secrets must still be excluded');
+        } finally {
             await removeIfExists(outPath);
         }
     });

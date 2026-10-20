@@ -6,6 +6,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+- Fixed stalled file searches and silent omissions on filesystem errors, moved
+  search I/O off the extension host's synchronous path, and preserved pattern-relative depth limits.
+- Preserved inherited Git author/committer identity variables after the simple-git
+  upgrade. Other guarded variables, including `GIT_CONFIG_GLOBAL`, editors and pagers,
+  remain filtered; configure identity in standard Git config files or the supported identity variables.
 - Updated vulnerable dependencies and replaced the globbing backend while preserving
   Git ignore rules, explicit re-includes, and symbolic-link exclusions.
 - Fixed long-pattern handling on Linux and AI review gate parsing of formatted

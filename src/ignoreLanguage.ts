@@ -12,6 +12,7 @@ import {
 } from './ignoreHoverRules';
 import { normalizeIgnorePattern } from './ignore';
 import { localize } from './nls';
+import { globFileStream } from './globFiles';
 
 const DOCUMENT_SELECTOR: vscode.DocumentSelector = { scheme: 'file', pattern: '**/.securezipignore' };
 const MAX_FILE_PREVIEW_LINES = 10;
@@ -303,7 +304,6 @@ async function buildGlobHover(
     token: vscode.CancellationToken,
 ): Promise<vscode.MarkdownString> {
     try {
-        const { globFileStream } = await import('./globFiles.js');
         const samples: string[] = [];
         let hasMore = false;
 
@@ -312,13 +312,12 @@ async function buildGlobHover(
             dot: true,
             gitignore: false,
             followSymbolicLinks: false,
-            unique: true,
         })) {
             if (token.isCancellationRequested) {
                 return markdown;
             }
 
-            const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
+            const value = entry;
             if (!value) {
                 continue;
             }

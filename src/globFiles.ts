@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 // The raw entry point uses the patched dependencies from our lockfile rather than bundled copies.
-import { globStream, hasMagic, Ignore, Path } from 'glob/raw';
+import { Glob, globStream, hasMagic, Ignore, FSOption } from 'glob/raw';
 import ignore, { Ignore as GitIgnore } from 'ignore';
 
 export type FileGlobOptions = {
@@ -13,7 +13,6 @@ export type FileGlobOptions = {
     onlyFiles?: boolean;
     onlyDirectories?: boolean;
     followSymbolicLinks?: false;
-    unique?: boolean;
     deep?: number;
 };
 
@@ -26,11 +25,16 @@ function isMissing(error: unknown): boolean {
     return code === 'ENOENT' || code === 'ENOTDIR';
 }
 
-function findIgnoreRoot(cwd: string): string {
+async function findIgnoreRoot(cwd: string): Promise<string> {
     let directory = cwd;
     while (true) {
-        if (fs.existsSync(path.join(directory, '.git'))) {
+        try {
+            await fs.promises.lstat(path.join(directory, '.git'));
             return directory;
+        } catch (error) {
+            if (!isMissing(error)) {
+                throw error;
+            }
         }
         const parent = path.dirname(directory);
         if (parent === directory) {
@@ -40,37 +44,37 @@ function findIgnoreRoot(cwd: string): string {
     }
 }
 
-function createGitIgnorePredicate(cwd: string): (entry: Path) => boolean {
-    const root = findIgnoreRoot(cwd);
-    const matchers = new Map<string, GitIgnore>();
-    const directories = new Map<string, boolean>();
+async function createGitIgnorePredicate(cwd: string): Promise<(fullPath: string, isDirectory: boolean) => Promise<boolean>> {
+    const root = await findIgnoreRoot(cwd);
+    const matchers = new Map<string, Promise<GitIgnore>>();
+    const directories = new Map<string, Promise<boolean>>();
 
-    const matcherFor = (directory: string): GitIgnore => {
+    const matcherFor = (directory: string): Promise<GitIgnore> => {
         let matcher = matchers.get(directory);
         if (!matcher) {
-            matcher = ignore();
-            try {
-                matcher.add(fs.readFileSync(path.join(directory, '.gitignore'), 'utf8'));
-            } catch (error) {
-                if (!isMissing(error)) {
-                    throw error;
+            matcher = (async () => {
+                const result = ignore();
+                try {
+                    result.add(await fs.promises.readFile(path.join(directory, '.gitignore'), 'utf8'));
+                } catch (error) {
+                    if (!isMissing(error)) {
+                        throw error;
+                    }
                 }
-            }
+                return result;
+            })();
             matchers.set(directory, matcher);
         }
         return matcher;
     };
 
-    const isIgnored = (fullPath: string, isDirectory: boolean): boolean => {
+    const evaluate = async (fullPath: string, isDirectory: boolean): Promise<boolean> => {
         const relative = path.relative(root, fullPath);
         if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
             return false;
         }
-        if (isDirectory && directories.has(fullPath)) {
-            return directories.get(fullPath)!;
-        }
         const parent = path.dirname(fullPath);
-        if (isIgnored(parent, true)) {
+        if (await isIgnored(parent, true)) {
             return true;
         }
         const scopes: string[] = [];
@@ -83,18 +87,26 @@ function createGitIgnorePredicate(cwd: string): (entry: Path) => boolean {
         let ignored = false;
         for (const scope of scopes.reverse()) {
             const candidate = posixPath(path.relative(scope, fullPath)) + (isDirectory ? '/' : '');
-            const result = matcherFor(scope).test(candidate);
+            const result = (await matcherFor(scope)).test(candidate);
             if (result.ignored || result.unignored) {
                 ignored = result.ignored;
             }
         }
-        if (isDirectory) {
-            directories.set(fullPath, ignored);
-        }
         return ignored;
     };
 
-    return (entry) => isIgnored(entry.fullpath(), entry.isDirectory());
+    const isIgnored = (fullPath: string, isDirectory: boolean): Promise<boolean> => {
+        if (!isDirectory) {
+            return evaluate(fullPath, false);
+        }
+        let result = directories.get(fullPath);
+        if (!result) {
+            result = evaluate(fullPath, true);
+            directories.set(fullPath, result);
+        }
+        return result;
+    };
+    return isIgnored;
 }
 
 async function expandDirectories(patterns: string[], cwd: string): Promise<string[]> {
@@ -120,6 +132,28 @@ async function expandDirectories(patterns: string[], cwd: string): Promise<strin
     return expanded.flat();
 }
 
+function depthGroups(patterns: string[], cwd: string, deep?: number): Map<number | undefined, string[]> {
+    if (deep === undefined || deep === Infinity) {
+        return new Map([[undefined, patterns]]);
+    }
+    const groups = new Map<number, string[]>();
+    // Parse brace alternatives before finding each pattern's static search base.
+    for (const pattern of new Glob(patterns, { cwd, nocase: false }).patterns) {
+        const parts: string[] = [];
+        let part = pattern;
+        while (part.isString() && part.hasMore()) {
+            parts.push(String(part.pattern()));
+            part = part.rest()!;
+        }
+        const base = path.resolve(cwd, parts.join('/'));
+        const depth = deep + base.split(path.sep).length - cwd.split(path.sep).length;
+        const group = groups.get(depth) ?? [];
+        group.push(pattern.globString());
+        groups.set(depth, group);
+    }
+    return groups;
+}
+
 export async function* globFileStream(
     patterns: string | string[],
     options: FileGlobOptions,
@@ -137,47 +171,112 @@ export async function* globFileStream(
     // Excluding a matching directory also excludes its descendants, including for wildcard names.
     const excluded = new Ignore(negative.flatMap((pattern) => pattern.endsWith('/**')
         ? [pattern] : [pattern, `${pattern.replace(/\/+$/, '')}/**`]), { dot: true, nocase: false });
-    const gitIgnored = options.gitignore ? createGitIgnorePredicate(cwd) : () => false;
-    const symbolicDirectories = new Map<string, boolean>();
-    const hasSymbolicParent = (fullPath: string): boolean => {
-        const parent = path.dirname(fullPath);
-        if (samePath(parent, cwd) || parent === fullPath) {
-            return false;
+    const gitIgnored = options.gitignore ? await createGitIgnorePredicate(cwd) : async () => false;
+    const symbolicDirectories = new Map<string, Promise<boolean>>();
+    const symbolicDirectory = (directory: string): Promise<boolean> => {
+        if (samePath(directory, cwd) || path.dirname(directory) === directory) {
+            return Promise.resolve(false);
         }
-        let symbolic = symbolicDirectories.get(parent);
-        if (symbolic === undefined) {
-            symbolic = fs.lstatSync(parent).isSymbolicLink() || hasSymbolicParent(parent);
-            symbolicDirectories.set(parent, symbolic);
+        let result = symbolicDirectories.get(directory);
+        if (!result) {
+            result = (async () => {
+                try {
+                    return (await fs.promises.lstat(directory)).isSymbolicLink() ||
+                        await symbolicDirectory(path.dirname(directory));
+                } catch (error) {
+                    if (!isMissing(error)) {
+                        throw error;
+                    }
+                    return false;
+                }
+            })();
+            symbolicDirectories.set(directory, result);
         }
-        return symbolic;
+        return result;
     };
-    const skipped = (entry: Path): boolean => !samePath(entry.fullpath(), cwd) && (
-        entry.isSymbolicLink() || hasSymbolicParent(entry.fullpath()) || gitIgnored(entry)
-    );
-    const stream = globStream(positive, {
-        cwd,
-        dot: options.dot,
-        nocase: false,
-        follow: false,
-        withFileTypes: true,
-        maxDepth: options.deep,
-        ignore: {
-            ignored: (entry) => skipped(entry) || excluded.ignored(entry),
-            childrenIgnored: (entry) => skipped(entry) || excluded.childrenIgnored(entry),
-        },
-    });
-    try {
-        for await (const entry of stream) {
-            if (samePath(entry.fullpath(), cwd) || entry.isSymbolicLink()) {
-                continue;
+    const seen = new Set<string>();
+    for (const [maxDepth, patternsForDepth] of depthGroups(positive, cwd, options.deep)) {
+        const controller = new AbortController();
+        let failed = false;
+        let firstError: unknown;
+        const fail = (error: unknown): void => {
+            if (!failed) {
+                failed = true;
+                firstError = error;
+                controller.abort();
             }
-            if (options.onlyDirectories ? !entry.isDirectory() : options.onlyFiles !== false && !entry.isFile()) {
-                continue;
+        };
+        const readDirectory = async (directory: string): Promise<fs.Dirent[]> => {
+            if (await symbolicDirectory(directory) || await gitIgnored(directory, true)) {
+                return [];
             }
-            yield options.absolute ? entry.fullpath() : posixPath(path.relative(cwd, entry.fullpath()));
+            return fs.promises.readdir(directory, { withFileTypes: true });
+        };
+        // path-scurry intentionally suppresses filesystem errors; retain failures before it does so.
+        const checked = async <T>(operation: () => Promise<T>): Promise<T> => {
+            try {
+                return await operation();
+            } catch (error) {
+                if (!isMissing(error)) {
+                    fail(error);
+                }
+                throw error;
+            }
+        };
+        const strictFs: FSOption = {
+            readdir: (directory, _options, callback) => {
+                void checked(() => readDirectory(directory)).then(
+                    (entries) => callback(null, entries),
+                    (error: NodeJS.ErrnoException) => callback(error),
+                );
+            },
+            promises: {
+                readdir: (directory) => checked(() => readDirectory(directory)),
+                lstat: (file) => checked(() => fs.promises.lstat(file)),
+            },
+        };
+        const guard = (test: () => boolean): boolean => {
+            try {
+                return test();
+            } catch (error) {
+                fail(error);
+                return true;
+            }
+        };
+        const stream = globStream(patternsForDepth, {
+            cwd, dot: options.dot, nocase: false, follow: false, withFileTypes: true,
+            maxDepth, fs: strictFs, signal: controller.signal,
+            ignore: {
+                ignored: (entry) => guard(() => excluded.ignored(entry)),
+                childrenIgnored: (entry) => guard(() => excluded.childrenIgnored(entry)),
+            },
+        });
+        try {
+            try {
+                for await (const entry of stream) {
+                    const fullPath = entry.fullpath();
+                    if (samePath(fullPath, cwd) || entry.isSymbolicLink() || seen.has(fullPath) ||
+                        await symbolicDirectory(path.dirname(fullPath)) || await gitIgnored(fullPath, entry.isDirectory())) {
+                        continue;
+                    }
+                    if (options.onlyDirectories ? !entry.isDirectory() : options.onlyFiles !== false && !entry.isFile()) {
+                        continue;
+                    }
+                    seen.add(fullPath);
+                    yield options.absolute ? fullPath : posixPath(path.relative(cwd, fullPath));
+                }
+            } catch (error) {
+                if (!failed) {
+                    throw error;
+                }
+            }
+            if (failed) {
+                throw firstError;
+            }
+        } finally {
+            controller.abort();
+            stream.destroy();
         }
-    } finally {
-        stream.destroy();
     }
 }
 
