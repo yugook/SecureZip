@@ -202,6 +202,38 @@ suite('SecureZip Encrypted Export', function () {
         }
     });
 
+    test('keeps outside-root re-includes out of single-root and workspace encrypted ZIPs', async function () {
+        this.timeout(30000);
+        await stageSimpleProject();
+        const root = getWorkspaceRoot();
+        const outside = await fs.promises.mkdtemp(path.join(path.dirname(root), 'securezip-encrypted-outside-'));
+        assert.strictEqual(path.dirname(outside), path.dirname(root));
+        const relative = path.relative(root, outside).split(path.sep).join('/');
+        const win = getWindow();
+        try {
+            await fs.promises.writeFile(path.join(outside, 'outside-sentinel.txt'), 'outside encrypted fixture\n');
+            await fs.promises.appendFile(path.join(root, '.securezipignore'), `\n!${relative}/outside-sentinel.txt\n!${relative}/**\n`);
+            win.showQuickPick = (async () => undefined) as typeof vscode.window.showQuickPick;
+            win.showInformationMessage = (async () => undefined) as typeof vscode.window.showInformationMessage;
+            win.showWarningMessage = (async () => undefined) as typeof vscode.window.showWarningMessage;
+            for (const command of ['securezip.exportEncrypted', 'securezip.exportWorkspaceEncrypted']) {
+                const outPath = path.join(root, 'securezip-contained-encrypted.zip');
+                win.showInputBox = createInputBoxStub([PASSWORD, PASSWORD]);
+                win.showSaveDialog = (async () => vscode.Uri.file(outPath)) as typeof vscode.window.showSaveDialog;
+                try {
+                    await vscode.commands.executeCommand(command);
+                    const entries = inspectZip(outPath);
+                    assert.ok(entries.some((entry) => entry.name.endsWith('README.md')));
+                    assert.ok(entries.every((entry) => !entry.name.includes('outside-sentinel') && entry.encrypted));
+                } finally {
+                    await removeIfExists(outPath);
+                }
+            }
+        } finally {
+            await removeIfExists(outside);
+        }
+    });
+
     test('exportEncrypted keeps prompting on blank password input instead of creating a plain ZIP', async function () {
         this.timeout(30000);
         await stageSimpleProject();

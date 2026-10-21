@@ -3,6 +3,7 @@ import * as path from 'path';
 // The raw entry point uses the patched dependencies from our lockfile rather than bundled copies.
 import { Glob, globStream, hasMagic, Ignore, FSOption } from 'glob/raw';
 import ignore, { Ignore as GitIgnore } from 'ignore';
+import { isPathWithin } from './pathBoundary';
 
 export type FileGlobOptions = {
     cwd: string;
@@ -14,6 +15,7 @@ export type FileGlobOptions = {
     onlyDirectories?: boolean;
     followSymbolicLinks?: false;
     deep?: number;
+    restrictToCwd?: boolean;
 };
 
 const posixPath = (value: string): string => value.split(path.sep).join('/');
@@ -109,8 +111,11 @@ async function createGitIgnorePredicate(cwd: string): Promise<(fullPath: string,
     return isIgnored;
 }
 
-async function expandDirectories(patterns: string[], cwd: string): Promise<string[]> {
+async function expandDirectories(patterns: string[], cwd: string, restrictToCwd = false): Promise<string[]> {
     const expanded = await Promise.all(patterns.map(async (pattern) => {
+        if (restrictToCwd && !isPathWithin(cwd, path.resolve(cwd, pattern))) {
+            return [];
+        }
         // A recursive literal name can denote a file or a directory, regardless of its extension.
         if (/\*\*\/[^/*?\[\]{}]+$/.test(pattern)) {
             return [pattern, `${pattern}/**`];
@@ -160,18 +165,19 @@ export async function* globFileStream(
 ): AsyncGenerator<string> {
     const cwd = path.resolve(options.cwd);
     const inputs = typeof patterns === 'string' ? [patterns] : patterns;
-    const positive = await expandDirectories(inputs.filter((pattern) => !isNegativePattern(pattern)), cwd);
+    const positive = await expandDirectories(inputs.filter((pattern) => !isNegativePattern(pattern)), cwd, options.restrictToCwd);
     if (positive.length === 0) {
         return;
     }
     const negative = await expandDirectories([
         ...(options.ignore ?? []),
         ...inputs.filter(isNegativePattern).map((pattern) => pattern.slice(1)),
-    ], cwd);
+    ], cwd, options.restrictToCwd);
     // Excluding a matching directory also excludes its descendants, including for wildcard names.
     const excluded = new Ignore(negative.flatMap((pattern) => pattern.endsWith('/**')
         ? [pattern] : [pattern, `${pattern.replace(/\/+$/, '')}/**`]), { dot: true, nocase: false });
     const gitIgnored = options.gitignore ? await createGitIgnorePredicate(cwd) : async () => false;
+    const realRoot = options.restrictToCwd ? await fs.promises.realpath(cwd) : undefined;
     const symbolicDirectories = new Map<string, Promise<boolean>>();
     const symbolicDirectory = (directory: string): Promise<boolean> => {
         if (samePath(directory, cwd) || path.dirname(directory) === directory) {
@@ -207,6 +213,9 @@ export async function* globFileStream(
             }
         };
         const readDirectory = async (directory: string): Promise<fs.Dirent[]> => {
+            if (options.restrictToCwd && !isPathWithin(cwd, directory)) {
+                return [];
+            }
             if (await symbolicDirectory(directory) || await gitIgnored(directory, true)) {
                 return [];
             }
@@ -232,7 +241,12 @@ export async function* globFileStream(
             },
             promises: {
                 readdir: (directory) => checked(() => readDirectory(directory)),
-                lstat: (file) => checked(() => fs.promises.lstat(file)),
+                lstat: (file) => checked(async () => {
+                    if (options.restrictToCwd && !isPathWithin(cwd, file)) {
+                        throw Object.assign(new Error('Path is outside the search root'), { code: 'ENOENT' });
+                    }
+                    return fs.promises.lstat(file);
+                }),
             },
         };
         const guard = (test: () => boolean): boolean => {
@@ -255,11 +269,17 @@ export async function* globFileStream(
             try {
                 for await (const entry of stream) {
                     const fullPath = entry.fullpath();
+                    if (options.restrictToCwd && !isPathWithin(cwd, fullPath)) {
+                        continue;
+                    }
                     if (samePath(fullPath, cwd) || entry.isSymbolicLink() || seen.has(fullPath) ||
                         await symbolicDirectory(path.dirname(fullPath)) || await gitIgnored(fullPath, entry.isDirectory())) {
                         continue;
                     }
                     if (options.onlyDirectories ? !entry.isDirectory() : options.onlyFiles !== false && !entry.isFile()) {
+                        continue;
+                    }
+                    if (realRoot && !isPathWithin(realRoot, await fs.promises.realpath(fullPath))) {
                         continue;
                     }
                     seen.add(fullPath);

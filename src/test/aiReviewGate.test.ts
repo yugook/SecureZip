@@ -109,12 +109,13 @@ describe('ai-review-gate', () => {
             assert.strictEqual(gate.issueCommentToCandidate(malformed), null);
         });
 
-        it('requires a present security review to be completed, explicitly clean and for the same commit', () => {
+        it('requires an active security review to be completed, explicitly clean and for the same commit', () => {
             const clean = {
                 status: 'completed', commit_sha: '684a1d9ecddd3f163e593dc79c3513f03e7dd331',
                 has_any_findings: false, has_unresolved_findings: false,
             };
-            for (const security of [null, clean, { ...clean, commit_sha: clean.commit_sha.toUpperCase() }]) {
+            const inactive = { status: null, commit_sha: null, has_any_findings: null, has_unresolved_findings: null };
+            for (const security of [null, inactive, clean, { ...clean, commit_sha: clean.commit_sha.toUpperCase() }]) {
                 assert.strictEqual(gate.issueCommentToCandidate(summaryComment(clean, security))?.commitSha, clean.commit_sha);
             }
             const absent = summaryComment(clean);
@@ -137,7 +138,13 @@ describe('ai-review-gate', () => {
                 { status: 'completed' },
                 { ...clean, commit_sha: 'c25a71f7a231ca633de9bcd1ba15d4503f08ad1f' },
                 { ...clean, commit_sha: undefined },
-                { status: null, commit_sha: null, has_any_findings: null, has_unresolved_findings: null },
+                { ...inactive, status: 'running' },
+                { ...inactive, status: 'failed' },
+                { ...inactive, has_any_findings: true },
+                { ...inactive, has_unresolved_findings: true },
+                { ...inactive, commit_sha: clean.commit_sha },
+                { ...inactive, started_at: '2026-10-21T00:00:00Z' },
+                { ...inactive, has_any_findings: undefined },
                 {}, false,
             ]) {
                 const candidate = gate.issueCommentToCandidate(summaryComment(clean, security));
@@ -148,6 +155,9 @@ describe('ai-review-gate', () => {
                     const current = gate.selectLatestCurrentCandidate(candidates, clean.commit_sha);
                     assert.deepStrictEqual(gate.selectLatestNonCurrentCandidate(candidates, clean.commit_sha, current), candidate);
                 }
+            }
+            for (const status of ['running', 'failed']) {
+                assert.strictEqual(gate.issueCommentToCandidate(summaryComment({ ...clean, status }, inactive)), null);
             }
         });
     });

@@ -992,6 +992,7 @@ async function collectFilesForRoot(
     const baseIgnore = [...ignoreDefaults, ...options.additionalExcludes, ...szIgnore.excludes];
     const baseFiles = await globFiles(patterns, {
         cwd: root,
+        restrictToCwd: true,
         dot: true,
         gitignore: true,
         ignore: baseIgnore,
@@ -1005,6 +1006,7 @@ async function collectFilesForRoot(
     if (options.includeNodeModules) {
         const nodeModuleFiles = await globFiles(['node_modules/**'], {
             cwd: root,
+            restrictToCwd: true,
             dot: true,
             gitignore: false,
             ignore: baseIgnore,
@@ -1020,6 +1022,7 @@ async function collectFilesForRoot(
     if (reincludePatterns.length > 0) {
         const reincluded = await globFiles(reincludePatterns, {
             cwd: root,
+            restrictToCwd: true,
             dot: true,
             gitignore: false,
             ignore: [],

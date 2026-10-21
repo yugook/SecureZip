@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { createGit } from './git';
 import { globFiles, globFileStream, FileGlobOptions } from './globFiles';
+import { isRealPathWithin } from './pathBoundary';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { localize } from './nls';
@@ -782,6 +783,9 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 if (!hasGlobPattern(relative) || (!hasGlobPattern(statTarget) && relative.endsWith(DIRECTORY_SUFFIX))) {
                     try {
                         const full = path.join(root, statTarget);
+                        if (!await isRealPathWithin(root, full)) {
+                            return { exists: false, examples: [], hasMore: false };
+                        }
                         const stats = await fs.promises.stat(full);
                         const label = stats.isDirectory() ? `${statTarget}/` : statTarget;
                         return { exists: true, examples: [label], hasMore: false };
@@ -796,6 +800,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                     const SAMPLE_LIMIT = 3;
                     for await (const entry of globFileStream(relative || '.', {
                         cwd: root,
+                        restrictToCwd: true,
                         dot: true,
                         gitignore: false,
                         followSymbolicLinks: false,
@@ -1039,6 +1044,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             try {
                 const streamOptions: FileGlobOptions = {
                     cwd: root,
+                    restrictToCwd: true,
                     dot: true,
                     gitignore: false,
                     followSymbolicLinks: false,
@@ -1442,6 +1448,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         if (candidate.glob) {
             const matches = await globFiles(candidate.glob, {
                 cwd: root,
+                restrictToCwd: true,
                 dot: true,
                 onlyFiles: candidate.type !== 'dir',
                 onlyDirectories: candidate.type === 'dir',

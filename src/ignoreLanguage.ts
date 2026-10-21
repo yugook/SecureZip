@@ -13,6 +13,7 @@ import {
 import { normalizeIgnorePattern } from './ignore';
 import { localize } from './nls';
 import { globFileStream } from './globFiles';
+import { isRealPathWithin } from './pathBoundary';
 
 const DOCUMENT_SELECTOR: vscode.DocumentSelector = { scheme: 'file', pattern: '**/.securezipignore' };
 const MAX_FILE_PREVIEW_LINES = 10;
@@ -166,6 +167,9 @@ async function resolveDefinitionTarget(
 
     const fullPath = path.join(root, statTarget);
     try {
+        if (!await isRealPathWithin(root, fullPath)) {
+            return;
+        }
         const stats = await fs.promises.stat(fullPath);
         if (token.isCancellationRequested) {
             return;
@@ -203,6 +207,9 @@ async function buildHoverMarkdown(
     if (canStat && statTarget) {
         const fullPath = path.join(root, statTarget);
         try {
+            if (!await isRealPathWithin(root, fullPath)) {
+                return;
+            }
             const stats = await fs.promises.stat(fullPath);
             if (token.isCancellationRequested) {
                 return;
@@ -309,6 +316,7 @@ async function buildGlobHover(
 
         for await (const entry of globFileStream(globPattern || '.', {
             cwd: root,
+            restrictToCwd: true,
             dot: true,
             gitignore: false,
             followSymbolicLinks: false,

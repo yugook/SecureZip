@@ -159,6 +159,42 @@ describe('secure file globbing', () => {
         assert.deepStrictEqual(await globFiles('linked/private.txt', { cwd: root, followSymbolicLinks: false }), []);
     });
 
+    it('restricts export searches to their selected root while preserving ordinary glob traversal by default', async () => {
+        await write('project/keep.txt');
+        await write('project/..notes.txt');
+        await write('project-other/private.txt');
+        const cwd = path.join(root, 'project');
+        const outside = path.join(root, 'project-other');
+        await fs.promises.symlink(outside, path.join(cwd, 'linked'), process.platform === 'win32' ? 'junction' : 'dir');
+        const options = { cwd, dot: true, restrictToCwd: true };
+        const originalLstat = fs.promises.lstat;
+        fs.promises.lstat = (async (file: fs.PathLike) => {
+            assert.ok(!String(file).includes('project-other'), 'Outside search paths must not be probed');
+            return originalLstat(file);
+        }) as typeof fs.promises.lstat;
+        try {
+            for (const pattern of [
+                '../project-other/private.txt', './../project-other/**', '../{project-other,missing}/private.txt',
+                '../project-other/@(private|missing).txt', `${outside.split(path.sep).join('/')}/private.txt`, 'linked/**',
+            ]) {
+                assert.deepStrictEqual(await globFiles(['keep.txt', pattern], options), ['keep.txt'], pattern);
+            }
+        } finally {
+            fs.promises.lstat = originalLstat;
+        }
+        assert.deepStrictEqual((await globFiles(['**/*', 'keep.txt'], options)).sort(), ['..notes.txt', 'keep.txt']);
+        assert.deepStrictEqual(await globFiles('../project/keep.txt', options), ['keep.txt']);
+        assert.deepStrictEqual(await globFiles('../project-other/private.txt', { cwd }), ['../project-other/private.txt']);
+        const originalRealpath = fs.promises.realpath;
+        fs.promises.realpath = (async (file: fs.PathLike) => path.relative(path.join(cwd, 'keep.txt'), String(file)) === ''
+            ? path.join(outside, 'private.txt') : originalRealpath(file)) as typeof fs.promises.realpath;
+        try {
+            assert.deepStrictEqual(await globFiles('keep.txt', options), [], 'Canonical targets outside the root must be excluded');
+        } finally {
+            fs.promises.realpath = originalRealpath;
+        }
+    });
+
     it('allows preview consumers to stop a stream after one match', async () => {
         for (let index = 0; index < 12; index++) {
             await write(`dir-${index}/file.txt`);

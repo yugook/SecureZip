@@ -6,6 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+- Confined export selection and ignore-rule previews to the selected root,
+  including explicit re-includes and symbolic-link or junction targets.
+- Recognized Codex's exact inactive security-review placeholder while still
+  rejecting running, failed, incomplete or mismatched security results.
 - Fixed stalled file searches and silent omissions on filesystem errors, moved
   search I/O off the extension host's synchronous path, and preserved pattern-relative depth limits.
 - Preserved inherited Git author/committer identity variables after the simple-git

@@ -311,6 +311,45 @@ suite('SecureZip Extension', function () {
         }
     });
 
+    test('excludes outside-root re-includes from the ZIP and literal hover and definition previews', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const root = getWorkspaceRoot();
+        const outside = await fs.promises.mkdtemp(path.join(path.dirname(root), 'securezip-outside-'));
+        assert.strictEqual(path.dirname(outside), path.dirname(root));
+        const relative = path.relative(root, outside).split(path.sep).join('/');
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            await fs.promises.writeFile(path.join(outside, 'outside-sentinel.txt'), 'outside fixture content\n');
+            await fs.promises.symlink(outside, path.join(root, 'linked'), process.platform === 'win32' ? 'junction' : 'dir');
+            await writeIgnoreFile([
+                '!dist/release.txt', `!${relative}/outside-sentinel.txt`, `!${relative}/{outside-sentinel,missing}.txt`,
+                `!${outside.split(path.sep).join('/')}/outside-sentinel.txt`, '!linked/**',
+            ]);
+            const { outPath, hashes } = await exportAndCollect('securezip-contained.zip');
+            try {
+                assert.deepStrictEqual(Object.keys(hashes).sort(), ['.securezipignore', 'README.md', 'dist/release.txt', 'src/index.ts']);
+            } finally {
+                await removeIfExists(outPath);
+            }
+            const document = await vscode.workspace.openTextDocument(path.join(root, '.securezipignore'));
+            const position = new vscode.Position(1, 3);
+            const hovers = await vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', document.uri, position);
+            assert.ok(!JSON.stringify(hovers ?? []).includes('outside fixture content'));
+            const definitions = await vscode.commands.executeCommand<unknown[]>('vscode.executeDefinitionProvider', document.uri, position);
+            assert.ok(!definitions || definitions.length === 0);
+            const sections = await provider.getChildren();
+            const preview = sections.find((item) => (item as any).node?.section === 'preview');
+            assert.ok(preview);
+            const items = await provider.getChildren(preview);
+            assert.ok(items.every((item) => !getTreeItemLabel(item).includes('outside-sentinel')));
+        } finally {
+            provider.dispose();
+            await removeIfExists(path.join(root, 'linked'));
+            await removeIfExists(outside);
+        }
+    });
+
     test('applies additionalExcludes patterns to the export set', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');

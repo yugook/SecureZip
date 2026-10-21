@@ -316,7 +316,7 @@ function issueCommentToCandidate(comment) {
     const state = parseSummaryState(comment.body);
     commitSha = extractCompletedSummaryCommit(state);
     // A present but unapproved security result must also block fallback to an older clean review.
-    if (!commitSha && state?.security_review == null &&
+    if (!commitSha && isInactiveSecurityReview(state?.security_review) &&
         collectBlockers([{ body: comment.body, source: `issue comment ${comment.id}` }]).length === 0) {
       return null;
     }
@@ -351,13 +351,24 @@ function extractCompletedSummaryCommit(state) {
   if (review?.status === 'completed' &&
       review.has_any_findings === false && review.has_unresolved_findings === false &&
       typeof review.commit_sha === 'string' && /^[0-9a-f]{40}$/i.test(review.commit_sha) &&
-      (security == null || (security.status === 'completed' &&
+      (isInactiveSecurityReview(security) || (security.status === 'completed' &&
         security.has_any_findings === false && security.has_unresolved_findings === false &&
         typeof security.commit_sha === 'string' &&
         security.commit_sha.toLowerCase() === review.commit_sha.toLowerCase()))) {
     return review.commit_sha.toLowerCase();
   }
   return null;
+}
+
+function isInactiveSecurityReview(review) {
+  if (review == null) {
+    return true;
+  }
+  // Codex emits this exact placeholder when no security review was requested.
+  const fields = ['commit_sha', 'has_any_findings', 'has_unresolved_findings', 'status'];
+  return typeof review === 'object' && !Array.isArray(review) &&
+    Object.keys(review).length === fields.length &&
+    fields.every((field) => Object.hasOwn(review, field) && review[field] === null);
 }
 
 function reviewCommentToCandidate(comment) {
