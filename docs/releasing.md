@@ -77,9 +77,12 @@ commit, fetches the PR head into a local git ref, and validates that:
 
 - `package.json` changes the version from the `main` base branch and the new
   version is greater than the base version.
-- The release branch version, `package.json`, `package-lock.json`,
-  `CHANGELOG.md`, and `dist/securezip-sbom.cdx.json` all agree on the same
-  `X.Y.Z` version.
+- The release branch version, `package.json`, `package-lock.json`, and
+  `CHANGELOG.md` all agree on the same `X.Y.Z` version.
+
+The release PR check does not require a committed SBOM. The regular CI package
+job generates and validates the SBOM, and the release workflow regenerates it
+from the exact release tag before packaging.
 
 The Marketplace PAT verification job uses the protected `marketplace-pat`
 GitHub Environment. Configure that environment with required reviewers, then
@@ -108,7 +111,11 @@ for protected environments.
 ## Additional notes
 
 - `npm run package` triggers SBOM generation (`scripts/generate-sbom.cjs`);
-  the resulting `dist/securezip-sbom.cdx.json` is bundled automatically.
+  the resulting `dist/securezip-sbom.cdx.json` is bundled automatically and
+  attached to the GitHub Release as `securezip-X.Y.Z-sbom.cdx.json`.
+- The SBOM is a generated build/release artifact and is intentionally not
+  committed to Git. `package.json` and `package-lock.json` remain its source of
+  truth.
 - Codex or other automation must read this document before touching release
   branches to ensure version bumps, changelog entries, and workflow toggles are
   handled consistently.
