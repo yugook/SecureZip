@@ -72,6 +72,9 @@ exception in the inner task always releases the lock.
 - `src/defaultExcludes.ts` + `src/autoExcludeDisplay.ts` describe the built-in
   auto-exclude set (git metadata, node_modules, etc.) and the metadata displayed
   in the preview.
+- Re-include rules from `.securezipignore` are collected in a separate pass and
+  take priority over `.gitignore`, built-in auto-excludes, and configured
+  additional excludes.
 - Suggested patterns and duplicates are surfaced through these modules.
 
 ## SecureZip view

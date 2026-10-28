@@ -1,7 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import simpleGit from 'simple-git';
+import { createGit } from './git';
+import { globFiles, globFileStream, FileGlobOptions } from './globFiles';
+import { isRealPathWithin } from './pathBoundary';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { localize } from './nls';
@@ -29,7 +31,8 @@ type LastExportSnapshot = {
     archivePath?: string;
 };
 
-type LastExportByRoot = Record<string, LastExportSnapshot>;
+type LastExportHistoryByRoot = Record<string, LastExportSnapshot[]>;
+type StoredLastExportByRoot = Record<string, LastExportSnapshot | LastExportSnapshot[] | undefined>;
 type LastExportMetadata = Pick<LastExportSnapshot, 'archivePath' | 'mode' | 'tagName'>;
 
 type PreviewStatus = 'exclude' | 'include' | 'comment' | 'duplicate' | 'auto' | 'git';
@@ -199,6 +202,7 @@ const ARTIFACT_CANDIDATES: ArtifactCandidate[] = [
 const WATCH_PATTERN = '**/.securezipignore';
 
 const LAST_EXPORT_STATE_KEY = 'securezip.lastExportByRoot';
+const RECENT_EXPORT_LIMIT = 10;
 
 const GIT_IGNORE_PREVIEW_LIMIT = 5;
 const GIT_CHECK_IGNORE_PATH_LIMIT = 200;
@@ -221,10 +225,28 @@ function makePreviewKey(kind: 'include' | 'exclude', pattern: string): string {
     return `${kind}:${canonicalizePattern(pattern)}`;
 }
 
+function normalizeLastExportHistory(stored: StoredLastExportByRoot | undefined): LastExportHistoryByRoot {
+    const normalized: LastExportHistoryByRoot = {};
+    if (!stored) {
+        return normalized;
+    }
+
+    for (const [root, value] of Object.entries(stored)) {
+        const snapshots = Array.isArray(value) ? value : value ? [value] : [];
+        const recent = snapshots.slice(0, RECENT_EXPORT_LIMIT);
+        if (recent.length > 0) {
+            normalized[root] = recent;
+        }
+    }
+
+    return normalized;
+}
+
 export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipTreeItem>, vscode.Disposable {
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
     readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
+    private lastExportWrite: Promise<void> = Promise.resolve();
     private readonly disposables: vscode.Disposable[] = [];
     private ignoreCache = new Map<string, IgnoreContext>();
     private treeView: vscode.TreeView<SecureZipTreeItem> | undefined;
@@ -280,10 +302,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         void this.treeView.reveal(item, { expand: true, focus: true });
     }
 
-    async recordLastExport(root: string, patterns: string[], metadata?: LastExportMetadata) {
+    async recordLastExport(root: string, patterns: string[], metadata?: LastExportMetadata): Promise<void> {
         const sanitized = Array.from(new Set(patterns.map((p) => p.trim()).filter(Boolean)));
-        const existing = this.context.workspaceState.get<LastExportByRoot>(LAST_EXPORT_STATE_KEY) ?? {};
-        const updated: LastExportByRoot = { ...existing };
         const snapshot: LastExportSnapshot = {
             timestamp: Date.now(),
             patterns: sanitized,
@@ -295,9 +315,20 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         if (metadata?.archivePath) {
             snapshot.archivePath = metadata.archivePath;
         }
-        updated[root] = snapshot;
-        await this.context.workspaceState.update(LAST_EXPORT_STATE_KEY, updated);
-        this.refresh();
+
+        const writeHistory = async () => {
+            const existing = this.getLastExportHistoryByRoot();
+            const updated: LastExportHistoryByRoot = {
+                ...existing,
+                [root]: [snapshot, ...(existing[root] ?? [])].slice(0, RECENT_EXPORT_LIMIT),
+            };
+            await this.context.workspaceState.update(LAST_EXPORT_STATE_KEY, updated);
+            this.refresh();
+        };
+
+        const write = this.lastExportWrite.then(writeHistory, writeHistory);
+        this.lastExportWrite = write;
+        await write;
     }
 
     getTreeItem(element: SecureZipTreeItem): vscode.TreeItem {
@@ -384,8 +415,16 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     }
 
     private getLastExportSnapshot(root: string): LastExportSnapshot | undefined {
-        const all = this.context.workspaceState.get<LastExportByRoot>(LAST_EXPORT_STATE_KEY);
-        return all?.[root];
+        return this.getRecentExportSnapshots(root)[0];
+    }
+
+    private getRecentExportSnapshots(root: string): LastExportSnapshot[] {
+        return this.getLastExportHistoryByRoot()[root] ?? [];
+    }
+
+    private getLastExportHistoryByRoot(): LastExportHistoryByRoot {
+        const stored = this.context.workspaceState.get<StoredLastExportByRoot>(LAST_EXPORT_STATE_KEY);
+        return normalizeLastExportHistory(stored);
     }
 
     private async ensureIgnoreContext(root: string): Promise<IgnoreContext> {
@@ -534,8 +573,8 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         group: TargetGroup,
         sectionItem?: SecureZipTreeItem,
     ): Promise<SecureZipTreeItem[]> {
-        const snapshot = this.getLastExportSnapshot(group.root);
-        if (!snapshot) {
+        const snapshots = this.getRecentExportSnapshots(group.root);
+        if (snapshots.length === 0) {
             if (sectionItem) {
                 sectionItem.description = localize('recent.none', 'No history');
             }
@@ -547,35 +586,51 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             ];
         }
 
-        const description = this.formatTimestamp(snapshot.timestamp);
-        const mode = snapshot.mode ?? 'plain';
-        const modeLabel = mode === 'encrypted'
+        const latestSnapshot = snapshots[0];
+        const latestDescription = this.formatTimestamp(latestSnapshot.timestamp);
+        const latestMode = latestSnapshot.mode ?? 'plain';
+        const latestModeLabel = latestMode === 'encrypted'
             ? localize('recent.mode.encryptedZip', 'Encrypted ZIP')
             : localize('recent.mode.plainZip', 'ZIP');
         if (sectionItem) {
-            sectionItem.description = mode === 'encrypted'
-                ? localize('recent.sectionDescription', '{0} · {1}', modeLabel, description)
-                : description;
+            sectionItem.description = latestMode === 'encrypted'
+                ? localize('recent.sectionDescription', '{0} · {1}', latestModeLabel, latestDescription)
+                : latestDescription;
         }
-        const tooltipParts = [
-            localize('recent.tooltip.type', 'Type: {0}', modeLabel),
-            snapshot.tagName ? localize('recent.tooltip.tag', 'Tag: {0}', snapshot.tagName) : undefined,
-            snapshot.archivePath ? localize('recent.tooltip.archive', 'Archive: {0}', snapshot.archivePath) : undefined,
-            snapshot.patterns.length > 0
-                ? localize('recent.tooltip.ignoreSnapshot', 'Ignore snapshot:\n{0}', snapshot.patterns.join('\n'))
-                : undefined,
-        ].filter((part): part is string => typeof part === 'string' && part.length > 0);
-        return [
-            new SecureZipTreeItem({
+
+        return snapshots.map((snapshot, index) => {
+            const description = this.formatTimestamp(snapshot.timestamp);
+            const mode = snapshot.mode ?? 'plain';
+            const modeLabel = mode === 'encrypted'
+                ? localize('recent.mode.encryptedZip', 'Encrypted ZIP')
+                : localize('recent.mode.plainZip', 'ZIP');
+            const tooltipParts = [
+                localize('recent.tooltip.type', 'Type: {0}', modeLabel),
+                snapshot.tagName ? localize('recent.tooltip.tag', 'Tag: {0}', snapshot.tagName) : undefined,
+                snapshot.archivePath ? localize('recent.tooltip.archive', 'Archive: {0}', snapshot.archivePath) : undefined,
+                snapshot.patterns.length > 0
+                    ? localize('recent.tooltip.ignoreSnapshot', 'Ignore snapshot:\n{0}', snapshot.patterns.join('\n'))
+                    : undefined,
+            ].filter((part): part is string => typeof part === 'string' && part.length > 0);
+
+            const isLatest = index === 0;
+            const label = isLatest
+                ? this.formatLatestExportLabel(mode, description)
+                : localize('recent.item', '{0}: {1}', modeLabel, description);
+            return new SecureZipTreeItem({
                 kind: 'message',
-                label: mode === 'encrypted'
-                    ? localize('recent.latestEncrypted', 'Latest encrypted export: {0}', description)
-                    : localize('recent.latest', 'Latest export: {0}', description),
+                label,
                 description: snapshot.tagName,
                 icon: mode === 'encrypted' ? 'lock' : 'package',
                 tooltip: tooltipParts.length > 0 ? tooltipParts.join('\n') : undefined,
-            }),
-        ];
+            });
+        });
+    }
+
+    private formatLatestExportLabel(mode: 'plain' | 'encrypted', description: string): string {
+        return mode === 'encrypted'
+            ? localize('recent.latestEncrypted', 'Latest encrypted export: {0}', description)
+            : localize('recent.latest', 'Latest export: {0}', description);
     }
 
     private async collectArtifactSuggestions(root: string, context: IgnoreContext): Promise<ArtifactCandidate[]> {
@@ -728,6 +783,9 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 if (!hasGlobPattern(relative) || (!hasGlobPattern(statTarget) && relative.endsWith(DIRECTORY_SUFFIX))) {
                     try {
                         const full = path.join(root, statTarget);
+                        if (!await isRealPathWithin(root, full)) {
+                            return { exists: false, examples: [], hasMore: false };
+                        }
                         const stats = await fs.promises.stat(full);
                         const label = stats.isDirectory() ? `${statTarget}/` : statTarget;
                         return { exists: true, examples: [label], hasMore: false };
@@ -737,18 +795,17 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 }
 
                 try {
-                    const { globbyStream } = await import('globby');
                     const examples: string[] = [];
                     let hasMore = false;
                     const SAMPLE_LIMIT = 3;
-                    for await (const entry of globbyStream(relative || '.', {
+                    for await (const entry of globFileStream(relative || '.', {
                         cwd: root,
+                        restrictToCwd: true,
                         dot: true,
                         gitignore: false,
                         followSymbolicLinks: false,
-                        unique: true,
                     })) {
-                        const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
+                        const value = entry;
                         if (!value) {
                             continue;
                         }
@@ -985,21 +1042,20 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             options?: { onlyFiles?: boolean },
         ): Promise<AutoExcludePresence> => {
             try {
-                const { globbyStream } = await import('globby');
-                const streamOptions: { [key: string]: unknown } = {
+                const streamOptions: FileGlobOptions = {
                     cwd: root,
+                    restrictToCwd: true,
                     dot: true,
                     gitignore: false,
                     followSymbolicLinks: false,
-                    unique: true,
                 };
                 if (typeof options?.onlyFiles === 'boolean') {
                     streamOptions.onlyFiles = options.onlyFiles;
                 }
                 const examples: string[] = [];
                 let hasMore = false;
-                for await (const entry of globbyStream(pattern, streamOptions)) {
-                    const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
+                for await (const entry of globFileStream(pattern, streamOptions)) {
+                    const value = entry;
                     if (!value) {
                         continue;
                     }
@@ -1125,7 +1181,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     }
 
     private async buildGitIgnorePreviewItems(root: string): Promise<{ entries: PreviewEntry[] }> {
-        const git = simpleGit(root);
+        const git = createGit(root);
 
         let isRepo = false;
         try {
@@ -1390,9 +1446,9 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
 
         if (candidate.glob) {
-            const { globby } = await import('globby');
-            const matches = await globby(candidate.glob, {
+            const matches = await globFiles(candidate.glob, {
                 cwd: root,
+                restrictToCwd: true,
                 dot: true,
                 onlyFiles: candidate.type !== 'dir',
                 onlyDirectories: candidate.type === 'dir',

@@ -6,7 +6,9 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import archiver from 'archiver';
 import zipEncrypted from 'archiver-zip-encrypted';
-import simpleGit, { SimpleGit } from 'simple-git';
+import { SimpleGit } from 'simple-git';
+import { createGit } from './git';
+import { globFiles } from './globFiles';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { resolveFlags } from './flags';
 import { AddPatternResult, addPatternsToSecureZipIgnore, loadSecureZipIgnore } from './ignore';
@@ -625,7 +627,7 @@ async function exportSingleRoot(
     let exportTagName: string | undefined;
 
     // Git operations (single-root only)
-    const git: SimpleGit = simpleGit({ baseDir: root });
+    const git: SimpleGit = createGit(root);
     let branch = 'unknown';
     try {
         const isRepo = await git.checkIsRepo();
@@ -889,7 +891,7 @@ async function exportSingleRoot(
 
     progress.report({ message: getCreatingZipMessage(zipOptions) });
     await createZipEntries(entries, outFile, zipOptions, progress);
-    void treeProvider?.recordLastExport(root, collection.ignoreSnapshot, {
+    await treeProvider?.recordLastExport(root, collection.ignoreSnapshot, {
         archivePath: outFile,
         mode: zipOptions.mode,
         tagName: exportTagName,
@@ -970,7 +972,6 @@ async function collectFilesForRoot(
     root: string,
     options: { additionalExcludes: string[]; includeNodeModules: boolean },
 ): Promise<{ files: string[]; ignoreSnapshot: string[]; gitOverride: boolean }> {
-    const { globby } = await import('globby');
     const ignoreDefaults = resolveAutoExcludePatterns({ includeNodeModules: options.includeNodeModules });
     const szIgnore = await loadSecureZipIgnore(root);
     const ignoreSnapshot = [
@@ -989,8 +990,9 @@ async function collectFilesForRoot(
 
     const patterns = ['**/*', '**/.*'];
     const baseIgnore = [...ignoreDefaults, ...options.additionalExcludes, ...szIgnore.excludes];
-    const baseFiles = await globby(patterns, {
+    const baseFiles = await globFiles(patterns, {
         cwd: root,
+        restrictToCwd: true,
         dot: true,
         gitignore: true,
         ignore: baseIgnore,
@@ -1002,8 +1004,9 @@ async function collectFilesForRoot(
     const fileSet = new Set<string>(baseFiles);
 
     if (options.includeNodeModules) {
-        const nodeModuleFiles = await globby(['node_modules/**'], {
+        const nodeModuleFiles = await globFiles(['node_modules/**'], {
             cwd: root,
+            restrictToCwd: true,
             dot: true,
             gitignore: false,
             ignore: baseIgnore,
@@ -1017,10 +1020,11 @@ async function collectFilesForRoot(
     }
 
     if (reincludePatterns.length > 0) {
-        const reincluded = await globby(reincludePatterns, {
+        const reincluded = await globFiles(reincludePatterns, {
             cwd: root,
+            restrictToCwd: true,
             dot: true,
-            gitignore: true,
+            gitignore: false,
             ignore: [],
             onlyFiles: true,
             followSymbolicLinks: false,
