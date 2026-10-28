@@ -6,6 +6,24 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+- Confined export selection and ignore-rule previews to the selected root,
+  including explicit re-includes and symbolic-link or junction targets.
+- Recognized Codex's exact inactive security-review placeholder while still
+  rejecting running, failed, incomplete or mismatched security results.
+- Fixed stalled file searches and silent omissions on filesystem errors, moved
+  search I/O off the extension host's synchronous path, and preserved pattern-relative depth limits.
+- Preserved inherited Git author/committer identity variables after the simple-git
+  upgrade. Other guarded variables, including `GIT_CONFIG_GLOBAL`, editors and pagers,
+  remain filtered; configure identity in standard Git config files or the supported identity variables.
+- Updated vulnerable dependencies and replaced the globbing backend while preserving
+  Git ignore rules, explicit re-includes, and symbolic-link exclusions.
+- Fixed long-pattern handling on Linux and AI review gate parsing of formatted
+  commit labels and review activity notifications.
+- Restored recursive re-includes for dotted hidden directories and require present
+  security reviews to finish cleanly on the reviewed commit before approving summaries.
+- Fixed recursive exclusions for ordinary dotted directory names and wildcard
+  directory matches so their contents remain out of exported archives.
+
 ## [1.2.2] - 2026-09-07
 
 - `.securezipignore` re-include rules now take priority over `.gitignore`, so
