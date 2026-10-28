@@ -95,7 +95,7 @@ async function main() {
       .filter(isBotAuthored)
       .filter((comment) => activeBotReviewIds.has(comment.pull_request_review_id))
       .map(reviewCommentToCandidate),
-  ].filter((candidate) => candidate.body || candidate.commitSha);
+  ].filter((candidate) => candidate && (candidate.body || candidate.commitSha));
 
   const latestCurrentCandidate = selectLatestCurrentCandidate(candidates, headSha);
   const currentBlockers = latestCurrentCandidate ? collectBlockers([latestCurrentCandidate]) : [];
@@ -311,13 +311,64 @@ function reviewToCandidate(review) {
 }
 
 function issueCommentToCandidate(comment) {
+  let commitSha = extractReviewedCommit(comment.body);
+  if (comment.body?.startsWith('<!-- codex-pull-request-review-summary -->')) {
+    const state = parseSummaryState(comment.body);
+    commitSha = extractCompletedSummaryCommit(state);
+    // A present but unapproved security result must also block fallback to an older clean review.
+    if (!commitSha && isInactiveSecurityReview(state?.security_review) &&
+        collectBlockers([{ body: comment.body, source: `issue comment ${comment.id}` }]).length === 0) {
+      return null;
+    }
+  }
+
   return {
     body: comment.body || '',
-    commitSha: extractReviewedCommit(comment.body),
+    commitSha,
     groupKey: `issue-comment:${comment.id}`,
     source: `issue comment ${comment.id}`,
     submittedAt: parseTimestamp(comment.updated_at || comment.created_at),
   };
+}
+
+function parseSummaryState(body) {
+  const match = body.match(/^<!-- codex-review-state:v1 (.+) -->\r?$/m);
+  if (!match) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(match[1]);
+  } catch {
+    // Malformed metadata is not a completed review result.
+  }
+  return null;
+}
+
+function extractCompletedSummaryCommit(state) {
+  const review = state?.code_review;
+  const security = state?.security_review;
+  if (review?.status === 'completed' &&
+      review.has_any_findings === false && review.has_unresolved_findings === false &&
+      typeof review.commit_sha === 'string' && /^[0-9a-f]{40}$/i.test(review.commit_sha) &&
+      (isInactiveSecurityReview(security) || (security.status === 'completed' &&
+        security.has_any_findings === false && security.has_unresolved_findings === false &&
+        typeof security.commit_sha === 'string' &&
+        security.commit_sha.toLowerCase() === review.commit_sha.toLowerCase()))) {
+    return review.commit_sha.toLowerCase();
+  }
+  return null;
+}
+
+function isInactiveSecurityReview(review) {
+  if (review == null) {
+    return true;
+  }
+  // Codex emits this exact placeholder when no security review was requested.
+  const fields = ['commit_sha', 'has_any_findings', 'has_unresolved_findings', 'status'];
+  return typeof review === 'object' && !Array.isArray(review) &&
+    Object.keys(review).length === fields.length &&
+    fields.every((field) => Object.hasOwn(review, field) && review[field] === null);
 }
 
 function reviewCommentToCandidate(comment) {
@@ -337,7 +388,7 @@ function extractReviewedCommit(body) {
     return null;
   }
 
-  const match = body.match(/(?:reviewed commit|レビュー済みコミット)\s*[:：]\s*`?([0-9a-f]{7,40})`?/i);
+  const match = body.match(/(?:reviewed commit|レビュー済みコミット)(?:\*\*|__)?\s*[:：](?:\*\*|__)?\s*`?([0-9a-f]{7,40})`?/i);
   return match?.[1]?.toLowerCase() || null;
 }
 
@@ -360,8 +411,8 @@ function selectLatestCurrentCandidate(candidates, headSha) {
 }
 
 function selectLatestNonCurrentCandidate(candidates, headSha, latestCurrentCandidate = null) {
-  const latestCandidate = selectLatestCandidate(candidates);
-  if (!latestCandidate || matchesCommit(headSha, latestCandidate.commitSha)) {
+  const latestCandidate = selectLatestCandidate(candidates.filter((candidate) => !matchesCommit(headSha, candidate.commitSha)));
+  if (!latestCandidate) {
     return null;
   }
 
@@ -580,8 +631,10 @@ function fail(message) {
 
 module.exports = {
   collectBlockers,
+  extractReviewedCommit,
   extractPriorityLevel,
   groupCandidates,
+  issueCommentToCandidate,
   matchesCommit,
   resolvePullRequestNumber,
   readRelayPullRequestNumber,

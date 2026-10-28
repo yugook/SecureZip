@@ -122,7 +122,12 @@ SecureZip respects the following when selecting files to include:
 - `!pattern` re-includes matches and takes priority over `.gitignore`, built-in
   auto-excludes, and `secureZip.additionalExcludes`.
 - `/path` is treated as workspace-root relative.
+- Matches outside the selected export root are ignored, including parent-directory
+  re-includes and paths through symbolic links or junctions.
 - `dir/` matches a directory (expanded to `dir/**`).
+- A named directory match such as `!**/config` also re-includes its descendants,
+  including `.env` and key files. Use a more specific file path when you do not
+  intend to include the whole directory.
 
 Examples:
 
@@ -308,7 +313,12 @@ SecureZip はアーカイブに含めるファイルを選ぶ際、次のルー�
 - `!pattern` は一致した項目を再包含し、`.gitignore`、組み込みの自動除外、
   `secureZip.additionalExcludes` より優先されます。
 - `/path` はワークスペースルートからの相対パスです。
+- 親ディレクトリを参照する再包含やシンボリックリンク・ジャンクション経由のパスも含め、
+  選択したエクスポートルート外の項目は対象になりません。
 - `dir/` はディレクトリに一致し、`dir/**` に展開されます。
+- `!**/config` のように名前付きディレクトリに一致する再包含は、その配下の
+  `.env` や鍵ファイルも対象になります。ディレクトリ全体を含めたくない場合は、
+  より具体的なファイルパスを指定してください。
 
 例:
 
