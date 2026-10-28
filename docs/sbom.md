@@ -21,7 +21,7 @@ npm run sbom            # regenerate dist/securezip-sbom.cdx.json
 npm run package         # compile production bundle and refresh the SBOM
 ```
 
-The generated JSON conforms to CycloneDX 1.5 and lists runtime dependencies (`archiver`, `globby`, `simple-git`, etc.) with hashes, source URLs, and licenses derived from `package-lock.json`.
+The generated JSON conforms to CycloneDX 1.5 and lists runtime dependencies (`archiver`, `glob`, `ignore`, `simple-git`, etc.) with hashes, source URLs, and licenses derived from `package-lock.json`.
 
 The CI audit gate remains independent of the SBOM. Runtime dependencies are checked with `npm audit --omit=dev --audit-level=high`, while the scheduled Security Audit workflow reports development dependency findings separately.
 

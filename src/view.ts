@@ -1,7 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import simpleGit from 'simple-git';
+import { createGit } from './git';
+import { globFiles, globFileStream, FileGlobOptions } from './globFiles';
+import { isRealPathWithin } from './pathBoundary';
 import { loadSecureZipIgnore, normalizeIgnorePattern } from './ignore';
 import { resolveAutoExcludePatterns } from './defaultExcludes';
 import { localize } from './nls';
@@ -781,6 +783,9 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 if (!hasGlobPattern(relative) || (!hasGlobPattern(statTarget) && relative.endsWith(DIRECTORY_SUFFIX))) {
                     try {
                         const full = path.join(root, statTarget);
+                        if (!await isRealPathWithin(root, full)) {
+                            return { exists: false, examples: [], hasMore: false };
+                        }
                         const stats = await fs.promises.stat(full);
                         const label = stats.isDirectory() ? `${statTarget}/` : statTarget;
                         return { exists: true, examples: [label], hasMore: false };
@@ -790,18 +795,17 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
                 }
 
                 try {
-                    const { globbyStream } = await import('globby');
                     const examples: string[] = [];
                     let hasMore = false;
                     const SAMPLE_LIMIT = 3;
-                    for await (const entry of globbyStream(relative || '.', {
+                    for await (const entry of globFileStream(relative || '.', {
                         cwd: root,
+                        restrictToCwd: true,
                         dot: true,
                         gitignore: false,
                         followSymbolicLinks: false,
-                        unique: true,
                     })) {
-                        const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
+                        const value = entry;
                         if (!value) {
                             continue;
                         }
@@ -1038,21 +1042,20 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
             options?: { onlyFiles?: boolean },
         ): Promise<AutoExcludePresence> => {
             try {
-                const { globbyStream } = await import('globby');
-                const streamOptions: { [key: string]: unknown } = {
+                const streamOptions: FileGlobOptions = {
                     cwd: root,
+                    restrictToCwd: true,
                     dot: true,
                     gitignore: false,
                     followSymbolicLinks: false,
-                    unique: true,
                 };
                 if (typeof options?.onlyFiles === 'boolean') {
                     streamOptions.onlyFiles = options.onlyFiles;
                 }
                 const examples: string[] = [];
                 let hasMore = false;
-                for await (const entry of globbyStream(pattern, streamOptions)) {
-                    const value = typeof entry === 'string' ? entry : String((entry as { path?: string }).path ?? '');
+                for await (const entry of globFileStream(pattern, streamOptions)) {
+                    const value = entry;
                     if (!value) {
                         continue;
                     }
@@ -1178,7 +1181,7 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
     }
 
     private async buildGitIgnorePreviewItems(root: string): Promise<{ entries: PreviewEntry[] }> {
-        const git = simpleGit(root);
+        const git = createGit(root);
 
         let isRepo = false;
         try {
@@ -1443,9 +1446,9 @@ export class SecureZipViewProvider implements vscode.TreeDataProvider<SecureZipT
         }
 
         if (candidate.glob) {
-            const { globby } = await import('globby');
-            const matches = await globby(candidate.glob, {
+            const matches = await globFiles(candidate.glob, {
                 cwd: root,
+                restrictToCwd: true,
                 dot: true,
                 onlyFiles: candidate.type !== 'dir',
                 onlyDirectories: candidate.type === 'dir',

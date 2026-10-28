@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createHash } from 'crypto';
 import AdmZip from 'adm-zip';
-import simpleGit, { SimpleGit } from 'simple-git';
+import { simpleGit, SimpleGit } from 'simple-git';
 import * as vscode from 'vscode';
 import { SecureZipViewProvider } from '../view';
 import { localize } from '../nls';
@@ -291,6 +291,65 @@ suite('SecureZip Extension', function () {
         log('test: cancel export - completed');
     });
 
+    test('finishes export and ignore preview when a nested re-include does not exist', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const root = getWorkspaceRoot();
+        await removeIfExists(path.join(root, 'dist'));
+        const { outPath, hashes } = await exportAndCollect('securezip-missing-reinclude.zip');
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            assert.ok(hashes['src/index.ts']);
+            assert.ok(!Object.hasOwn(hashes, 'dist/release.txt'));
+            const sections = await provider.getChildren();
+            const preview = sections.find((item) => (item as any).node?.section === 'preview');
+            assert.ok(preview);
+            await provider.getChildren(preview);
+        } finally {
+            provider.dispose();
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('excludes outside-root re-includes from the ZIP and literal hover and definition previews', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const root = getWorkspaceRoot();
+        const outside = await fs.promises.mkdtemp(path.join(path.dirname(root), 'securezip-outside-'));
+        assert.strictEqual(path.dirname(outside), path.dirname(root));
+        const relative = path.relative(root, outside).split(path.sep).join('/');
+        const provider = new SecureZipViewProvider(createTestExtensionContext());
+        try {
+            await fs.promises.writeFile(path.join(outside, 'outside-sentinel.txt'), 'outside fixture content\n');
+            await fs.promises.symlink(outside, path.join(root, 'linked'), process.platform === 'win32' ? 'junction' : 'dir');
+            await writeIgnoreFile([
+                '!dist/release.txt', `!${relative}/outside-sentinel.txt`, `!${relative}/{outside-sentinel,missing}.txt`,
+                `!${outside.split(path.sep).join('/')}/outside-sentinel.txt`, '!linked/**',
+            ]);
+            const { outPath, hashes } = await exportAndCollect('securezip-contained.zip');
+            try {
+                assert.deepStrictEqual(Object.keys(hashes).sort(), ['.securezipignore', 'README.md', 'dist/release.txt', 'src/index.ts']);
+            } finally {
+                await removeIfExists(outPath);
+            }
+            const document = await vscode.workspace.openTextDocument(path.join(root, '.securezipignore'));
+            const position = new vscode.Position(1, 3);
+            const hovers = await vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', document.uri, position);
+            assert.ok(!JSON.stringify(hovers ?? []).includes('outside fixture content'));
+            const definitions = await vscode.commands.executeCommand<unknown[]>('vscode.executeDefinitionProvider', document.uri, position);
+            assert.ok(!definitions || definitions.length === 0);
+            const sections = await provider.getChildren();
+            const preview = sections.find((item) => (item as any).node?.section === 'preview');
+            assert.ok(preview);
+            const items = await provider.getChildren(preview);
+            assert.ok(items.every((item) => !getTreeItemLabel(item).includes('outside-sentinel')));
+        } finally {
+            provider.dispose();
+            await removeIfExists(path.join(root, 'linked'));
+            await removeIfExists(outside);
+        }
+    });
+
     test('applies additionalExcludes patterns to the export set', async function () {
         this.timeout(30000);
         await stageFixture('simple-project');
@@ -304,6 +363,31 @@ suite('SecureZip Extension', function () {
             assert.deepStrictEqual(hashes, expected);
         } finally {
             await config.update('additionalExcludes', undefined, vscode.ConfigurationTarget.Workspace);
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('excludes ordinary dotted directories recursively from the exported ZIP', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const root = getWorkspaceRoot();
+        const excluded = ['cache.v1/private.txt', 'nested/cache.v1/deeper/private.txt', 'nested/cache.v1.tar.gz/private.txt'];
+        for (const relative of [...excluded, 'nested/cache.v2/keep.txt']) {
+            const file = path.join(root, relative);
+            await fs.promises.mkdir(path.dirname(file), { recursive: true });
+            await fs.promises.writeFile(file, 'fixture\n', 'utf8');
+        }
+        await fs.promises.appendFile(path.join(root, '.securezipignore'), '\n**/cache.v1\n**/cache.v1.tar.*\n', 'utf8');
+
+        const { outPath, hashes } = await exportAndCollect('securezip-dotted-directories.zip');
+        try {
+            for (const relative of excluded) {
+                assert.ok(!Object.hasOwn(hashes, relative), `${relative} must not be exported`);
+            }
+            assert.ok(hashes['nested/cache.v2/keep.txt'], 'Unmatched dotted directories must remain included');
+            assert.ok(hashes['src/index.ts'], 'Ordinary source files must remain included');
+            assert.ok(hashes['dist/release.txt'], 'Existing explicit re-includes must remain effective');
+        } finally {
             await removeIfExists(outPath);
         }
     });
@@ -948,6 +1032,25 @@ suite('SecureZip Extension', function () {
             assert.deepStrictEqual(hashes, expected);
         } finally {
             await fs.promises.writeFile(secureZipIgnorePath, originalIgnore, 'utf8');
+            await removeIfExists(outPath);
+        }
+    });
+
+    test('preserves explicit named-directory re-includes above built-in secret exclusions', async function () {
+        this.timeout(30000);
+        await stageFixture('simple-project');
+        const root = getWorkspaceRoot();
+        await fs.promises.mkdir(path.join(root, 'nested/cfg'), { recursive: true });
+        await fs.promises.writeFile(path.join(root, 'nested/cfg/.env'), 'CONFIG=1\n');
+        await fs.promises.writeFile(path.join(root, 'nested/cfg/x.key'), 'fixture key\n');
+        await fs.promises.writeFile(path.join(root, '.env'), 'PRIVATE=1\n');
+        await fs.promises.appendFile(path.join(root, '.securezipignore'), '\n!**/cfg\n');
+        const { outPath, hashes } = await exportAndCollect('securezip-named-directory-reinclude.zip');
+        try {
+            assert.ok(hashes['nested/cfg/.env']);
+            assert.ok(hashes['nested/cfg/x.key']);
+            assert.ok(!Object.hasOwn(hashes, '.env'), 'Unmatched secrets must still be excluded');
+        } finally {
             await removeIfExists(outPath);
         }
     });
