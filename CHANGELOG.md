@@ -6,23 +6,35 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+## [1.2.3] - 2026-10-29
+
+### Fixed
+
 - Confined export selection and ignore-rule previews to the selected root,
   including explicit re-includes and symbolic-link or junction targets.
-- Recognized Codex's exact inactive security-review placeholder while still
-  rejecting running, failed, incomplete or mismatched security results.
 - Fixed stalled file searches and silent omissions on filesystem errors, moved
-  search I/O off the extension host's synchronous path, and preserved pattern-relative depth limits.
+  search I/O off the extension host's synchronous path, and preserved
+  pattern-relative depth limits.
+- Restored recursive re-includes for dotted hidden directories and fixed recursive
+  exclusions for dotted directory names and wildcard directory matches.
+- Fixed long-pattern handling on Linux.
 - Preserved inherited Git author/committer identity variables after the simple-git
   upgrade. Other guarded variables, including `GIT_CONFIG_GLOBAL`, editors and pagers,
   remain filtered; configure identity in standard Git config files or the supported identity variables.
+
+### Security
+
 - Updated vulnerable dependencies and replaced the globbing backend while preserving
   Git ignore rules, explicit re-includes, and symbolic-link exclusions.
-- Fixed long-pattern handling on Linux and AI review gate parsing of formatted
-  commit labels and review activity notifications.
-- Restored recursive re-includes for dotted hidden directories and require present
-  security reviews to finish cleanly on the reviewed commit before approving summaries.
-- Fixed recursive exclusions for ordinary dotted directory names and wildcard
-  directory matches so their contents remain out of exported archives.
+
+### Maintenance
+
+- Updated development and packaging dependencies and expanded regression coverage
+  for file searches, ignore rules, Git operations, and normal and encrypted exports.
+- Fixed AI review gate parsing of formatted commit labels and review activity
+  notifications. Present security reviews must finish cleanly on the reviewed commit;
+  only Codex's exact inactive security-review placeholder permits code review alone.
+  Running, failed, incomplete, or mismatched security results remain rejected.
 
 ## [1.2.2] - 2026-09-07
 
