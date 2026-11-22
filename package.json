@@ -180,7 +180,7 @@
     "archiver-zip-encrypted": "^2.0.0",
     "glob": "^13.0.6",
     "ignore": "^7.0.14",
-    "simple-git": "^4.0.2"
+    "simple-git": "^4.1.0"
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
